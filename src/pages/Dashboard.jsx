@@ -24,6 +24,8 @@ import { useAuthStore } from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
+import UserProfile from '../components/UserProfile'
+import OnboardingModal from '../components/OnboardingModal'
 
 /**
  * 대시보드 페이지 컴포넌트
@@ -39,11 +41,17 @@ const Dashboard = () => {
   
   // 로컬 상태 관리
   const [projects, setProjects] = useState([]) // 프로젝트 목록
-  const [anchorEl, setAnchorEl] = useState(null) // 사용자 메뉴 앵커 요소
+  const [showOnboarding, setShowOnboarding] = useState(false) // 온보딩 모달 표시 여부
 
-  // 컴포넌트 마운트 시 프로젝트 목록 가져오기
+  // 컴포넌트 마운트 시 프로젝트 목록 가져오기 및 온보딩 체크
   useEffect(() => {
     fetchProjects()
+    
+    // 첫 로그인 시 온보딩 표시 (로컬 스토리지 체크)
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding')
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true)
+    }
   }, [])
 
   /**
@@ -75,13 +83,16 @@ const Dashboard = () => {
   }
 
   /**
-   * 로그아웃 핸들러
-   * 사용자 로그아웃 처리
+   * 온보딩 완료 핸들러
+   * 로컬 스토리지에 온보딩 완료 표시를 저장
    */
-  const handleLogout = () => {
-    logout()
-    toast.success('로그아웃되었습니다.')
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true')
+    setShowOnboarding(false)
+    toast.success('SceneForge를 시작합니다!')
   }
+
+
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -93,31 +104,8 @@ const Dashboard = () => {
             SceneForge
           </Typography>
           
-          {/* 사용자 아바타 버튼 */}
-          <IconButton
-            color="inherit"
-            onClick={(e) => setAnchorEl(e.currentTarget)}
-          >
-            <Avatar sx={{ width: 32, height: 32 }}>
-              {user?.name?.charAt(0) || 'U'}
-            </Avatar>
-          </IconButton>
-          
-          {/* 사용자 메뉴 */}
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={() => setAnchorEl(null)}
-          >
-            <MenuItem onClick={() => setAnchorEl(null)}>
-              <AccountCircle sx={{ mr: 1 }} />
-              {user?.name || '사용자'}
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <Logout sx={{ mr: 1 }} />
-              로그아웃
-            </MenuItem>
-          </Menu>
+          {/* 사용자 프로필 컴포넌트 */}
+          <UserProfile />
         </Toolbar>
       </AppBar>
 
@@ -226,6 +214,13 @@ const Dashboard = () => {
           )}
         </Grid>
       </Container>
+
+      {/* 온보딩 모달 */}
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleOnboardingComplete}
+      />
     </Box>
   )
 }
