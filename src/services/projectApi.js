@@ -33,7 +33,7 @@ import api from './api'
  */
 export const createProject = async (projectData) => {
   try {
-    const response = await api.post('/project/save', projectData, {
+    const response = await api.post('/projects', projectData, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -107,7 +107,7 @@ export const getProject = async (projectId) => {
  */
 export const getProjects = async () => {
   try {
-    const response = await api.get('/project/list', {
+    const response = await api.get('/projects', {
       timeout: 5000
     })
     return response.data

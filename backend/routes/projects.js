@@ -105,15 +105,22 @@ router.get('/', authenticateToken, async (req, res) => {
     const { status, limit = 50, search } = req.query;
     const options = { status, limit: parseInt(limit) };
 
+    console.log('📋 프로젝트 목록 조회:', { 
+      userId: req.user._id,
+      email: req.user.email 
+    });
+
     let projects;
     
     if (search) {
       // 검색 기능
       projects = await Project.searchProjects(req.user._id, search);
     } else {
-      // 일반 목록 조회
+      // 일반 목록 조회 - 현재 사용자의 프로젝트만 조회
       projects = await Project.findByUserId(req.user._id, options);
     }
+
+    console.log('✅ 조회된 프로젝트 수:', projects.length);
 
     res.status(200).json({
       success: true,

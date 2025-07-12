@@ -50,6 +50,11 @@ const Dashboard = () => {
 
   // 컴포넌트 마운트 시 프로젝트 목록 가져오기 및 온보딩 체크
   useEffect(() => {
+    // 기존 임시 데이터 정리
+    localStorage.removeItem('project-storage')
+    localStorage.removeItem('story-storage')
+    sessionStorage.clear()
+    
     fetchProjects()
     
     // 첫 로그인 시 온보딩 표시 (로컬 스토리지 체크)
@@ -64,8 +69,8 @@ const Dashboard = () => {
    */
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/project/list')
-      setProjects(response.data.projects || [])
+      const response = await api.get('/projects')
+      setProjects(response.data.data.projects || [])
     } catch (error) {
       console.error('프로젝트 조회 실패:', error)
       // 에러 시 빈 배열로 설정
