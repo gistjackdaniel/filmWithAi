@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import api from '../services/api'
+import api, { userAPI } from '../services/api'
 
 /**
  * 인증 상태 관리 스토어
@@ -62,16 +62,32 @@ const useAuthStore = create(
 
       /**
        * Google OAuth 로그인 처리
-       * @param {string} accessToken - Google OAuth access token
+       * @param {Object} userData - Google OAuth 사용자 데이터
        * @returns {Object} 로그인 결과 { success: boolean, error?: string }
        */
-      login: async (accessToken) => {
+      login: async (userData) => {
         try {
           set({ loading: true })
           
-          // 서버에 Google access token 전송하여 JWT 토큰 받기
-          const response = await api.post('/auth/google', { access_token: accessToken })
-          const { token, user } = response.data
+          // Google access_token을 사용하여 사용자 정보 가져오기
+          const googleUserInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: {
+              'Authorization': `Bearer ${userData.access_token}`
+            }
+          }).then(res => res.json())
+          
+          // 백엔드에 전송할 사용자 데이터 구성
+          const userDataForBackend = {
+            googleId: googleUserInfo.id,
+            email: googleUserInfo.email,
+            name: googleUserInfo.name,
+            picture: googleUserInfo.picture
+          }
+          
+          // MongoDB 연동된 사용자 인증 API 호출
+          const response = await userAPI.googleAuth(userDataForBackend)
+          const { data } = response.data
+          const { token, user } = data
           
           // 토큰과 사용자 정보 설정
           get().setToken(token)
@@ -234,9 +250,9 @@ const useAuthStore = create(
             }
           }
 
-          // 서버에 현재 사용자 정보 요청
-          const response = await api.get('/auth/me')
-          get().setUser(response.data.user)
+          // MongoDB 연동된 사용자 프로필 조회 API 호출
+          const response = await userAPI.getProfile()
+          get().setUser(response.data.data.user)
           set({ loading: false })
         } catch (error) {
           console.error('Auth check error:', error)

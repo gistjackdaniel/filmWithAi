@@ -1,19 +1,76 @@
 const express = require('express')
 const cors = require('cors')
 const axios = require('axios')
+const mongoose = require('mongoose')
+const http = require('http')
+const { validateEnvironmentVariables } = require('./config/security')
+const {
+  rateLimiter,
+  corsMiddleware,
+  helmetMiddleware,
+  sqlInjectionProtection,
+  requestLogging,
+  errorHandler
+} = require('./middleware/security')
+const RealtimeService = require('./services/realtimeService')
+const AnalyticsService = require('./services/analyticsService')
+const MonitoringService = require('./services/monitoringService')
 require('dotenv').config()
 
 /**
  * SceneForge 백엔드 서버
  * AI 스토리 생성 및 이미지 생성 API 제공
+ * MongoDB 연동으로 사용자별 데이터 영구 저장
+ * 보안 강화 미들웨어 적용
  */
 
 const app = express()
+const server = http.createServer(app)
 const PORT = process.env.PORT || 5001
 
-// 미들웨어 설정
-app.use(cors()) // CORS 허용
-app.use(express.json()) // JSON 파싱
+// 환경 변수 검증
+try {
+  validateEnvironmentVariables()
+  console.log('✅ 환경 변수 검증 완료')
+} catch (error) {
+  console.error('❌ 환경 변수 검증 실패:', error.message)
+  process.exit(1)
+}
+
+// 보안 미들웨어 설정
+app.use(helmetMiddleware)
+app.use(corsMiddleware)
+app.use(rateLimiter)
+app.use(requestLogging)
+app.use(sqlInjectionProtection)
+
+// 기본 미들웨어 설정
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// MongoDB 연결
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sceneforge_db'
+
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('✅ MongoDB 연결 성공:', MONGODB_URI)
+})
+.catch((error) => {
+  console.error('❌ MongoDB 연결 실패:', error.message)
+  process.exit(1)
+})
+
+// MongoDB 연결 상태 모니터링
+mongoose.connection.on('error', (error) => {
+  console.error('❌ MongoDB 연결 오류:', error)
+})
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ MongoDB 연결이 끊어졌습니다.')
+})
 
 // OpenAI API 키 확인
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
@@ -23,8 +80,16 @@ if (!OPENAI_API_KEY) {
   process.exit(1)
 }
 
-const authRoutes = require('./routes/auth'); // 인증 라우트
+// 라우터 등록
+const authRoutes = require('./routes/auth'); // 기존 인증 라우트
+const userRoutes = require('./routes/users'); // 사용자 관리 라우트
+const projectRoutes = require('./routes/projects'); // 프로젝트 관리 라우트
+const conteRoutes = require('./routes/contes'); // 콘티 관리 라우트
+
 app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
+app.use('/api/users', userRoutes); // /api/users/* 경로를 user 라우터로 연결
+app.use('/api/projects', projectRoutes); // /api/projects/* 경로를 project 라우터로 연결
+app.use('/api/projects', conteRoutes); // /api/projects/*/contes/* 경로를 conte 라우터로 연결
 
 /**
  * AI 스토리 생성 API
@@ -1154,11 +1219,176 @@ app.get('/api/health', (req, res) => {
   })
 })
 
+// API 성능 모니터링 미들웨어
+app.use((req, res, next) => {
+  const startTime = Date.now()
+  
+  // 응답 완료 후 성능 메트릭 기록
+  res.on('finish', () => {
+    const responseTime = Date.now() - startTime
+    monitoringService.recordAPIMetric(req.path, responseTime, res.statusCode)
+  })
+  
+  next()
+})
+
+// 에러 핸들링 미들웨어 (마지막에 추가)
+app.use(errorHandler)
+
+// 실시간 협업 서비스 초기화
+const realtimeService = new RealtimeService(server)
+
+// 데이터 분석 서비스 초기화
+const analyticsService = new AnalyticsService()
+
+// 모니터링 서비스 초기화
+const monitoringService = new MonitoringService()
+
+// 실시간 서비스 상태 확인 API
+app.get('/api/realtime/stats', (req, res) => {
+  res.json({
+    success: true,
+    stats: realtimeService.getStats(),
+    timestamp: new Date().toISOString()
+  })
+})
+
+// 데이터 분석 API
+app.get('/api/analytics/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params
+    const analytics = await analyticsService.getUserAnalytics(userId)
+    res.json({
+      success: true,
+      analytics
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+app.get('/api/analytics/system', async (req, res) => {
+  try {
+    const analytics = await analyticsService.getSystemAnalytics()
+    res.json({
+      success: true,
+      analytics
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+app.get('/api/analytics/project/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params
+    const analytics = await analyticsService.getProjectAnalytics(projectId)
+    res.json({
+      success: true,
+      analytics
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+// 활동 로그 기록 API
+app.post('/api/analytics/log', (req, res) => {
+  try {
+    const logData = req.body
+    analyticsService.logActivity(logData)
+    res.json({
+      success: true,
+      message: '활동 로그가 기록되었습니다.'
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+// 모니터링 API
+app.get('/api/monitoring/status', (req, res) => {
+  try {
+    const status = monitoringService.getSystemStatus()
+    res.json({
+      success: true,
+      status
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+app.get('/api/monitoring/report', (req, res) => {
+  try {
+    const report = monitoringService.generatePerformanceReport()
+    res.json({
+      success: true,
+      report
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+app.get('/api/monitoring/alerts', (req, res) => {
+  try {
+    const alerts = monitoringService.alerts
+    res.json({
+      success: true,
+      alerts
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+app.post('/api/monitoring/alerts/:alertId/acknowledge', (req, res) => {
+  try {
+    const { alertId } = req.params
+    monitoringService.acknowledgeAlert(alertId)
+    res.json({
+      success: true,
+      message: '알림이 확인되었습니다.'
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
 // 서버 시작
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 SceneForge 백엔드 서버가 포트 ${PORT}에서 실행 중입니다.`)
   console.log(`📡 API 엔드포인트: http://localhost:${PORT}/api`)
   console.log(`🔑 OpenAI API 키: ${OPENAI_API_KEY ? '✅ 설정됨' : '❌ 설정되지 않음'}`)
+  console.log(`🔒 보안 미들웨어: ✅ 활성화됨`)
+  console.log(`🔗 실시간 협업: ✅ Socket.io 활성화됨`)
+  console.log(`📊 데이터 분석: ✅ Analytics 서비스 활성화됨`)
+  console.log(`📈 시스템 모니터링: ✅ Monitoring 서비스 활성화됨`)
 })
 
 module.exports = app 
