@@ -75,9 +75,12 @@ const OnboardingModal = ({ open, onClose, onComplete }) => {
       disableRestoreFocus
       PaperProps={{
         sx: {
-          backgroundColor: 'var(--color-card-bg)',
+          background: 'rgba(47, 47, 55, 0.95)', // 반투명한 배경
+          backdropFilter: 'blur(20px)', // 강한 블러 효과
+          border: '1px solid rgba(212, 175, 55, 0.2)', // 반투명한 골드 테두리
           color: 'var(--color-text-primary)',
-          borderRadius: 3
+          borderRadius: 3,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)', // 부드러운 그림자
         }
       }}
     >
@@ -110,23 +113,13 @@ const OnboardingModal = ({ open, onClose, onComplete }) => {
             <Step key={step.label}>
               <StepLabel
                 StepIconComponent={() => (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    width: 60,
-                    height: 60,
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--color-primary)',
-                    color: 'var(--color-text-primary)'
-                  }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {step.icon}
                   </Box>
                 )}
                 sx={{
                   '& .MuiStepLabel-label': {
                     color: 'var(--color-text-primary)',
-                    fontSize: '1.1rem',
                     fontWeight: 500
                   }
                 }}
@@ -134,27 +127,16 @@ const OnboardingModal = ({ open, onClose, onComplete }) => {
                 {step.label}
               </StepLabel>
               <StepContent>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 3,
-                    mt: 2,
-                    backgroundColor: 'var(--color-bg)',
-                    borderRadius: 2,
-                    border: '1px solid var(--color-primary)'
+                <Typography 
+                  variant="body1" 
+                  sx={{ 
+                    color: 'var(--color-text-secondary)',
+                    mt: 1,
+                    mb: 2
                   }}
                 >
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      color: 'var(--color-text-secondary)',
-                      lineHeight: 1.6,
-                      fontSize: '1rem'
-                    }}
-                  >
-                    {step.description}
-                  </Typography>
-                </Paper>
+                  {step.description}
+                </Typography>
               </StepContent>
             </Step>
           ))}

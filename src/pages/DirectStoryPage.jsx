@@ -32,7 +32,8 @@ import {
   Movie,
   ExpandMore,
   Lightbulb,
-  TipsAndUpdates
+  TipsAndUpdates,
+  Timeline
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -149,9 +150,15 @@ const DirectStoryPage = () => {
   }
 
   const handleSaveConte = (updatedConte) => {
+    console.log('💾 DirectStoryPage handleSaveConte 호출됨')
+    console.log('updatedConte:', updatedConte)
+    console.log('현재 generatedConte 길이:', generatedConte.length)
+    
     const updatedConteList = generatedConte.map(conte => 
       conte.id === updatedConte.id ? updatedConte : conte
     )
+    
+    console.log('업데이트된 콘티 리스트:', updatedConteList)
     setGeneratedConte(updatedConteList)
     toast.success('콘티가 저장되었습니다.')
   }
@@ -185,6 +192,16 @@ const DirectStoryPage = () => {
     } catch (error) {
       console.error('❌ 콘티 재생성 실패:', error)
       throw error
+    }
+  }
+
+  const handleViewTimeline = () => {
+    // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
+    if (generatedConte.length > 0) {
+      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      navigate('/project/temp-project-id')
+    } else {
+      toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
     }
   }
 
@@ -476,19 +493,39 @@ const DirectStoryPage = () => {
         {/* 생성된 콘티 결과 표시 */}
         {generatedConte.length > 0 && (
           <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom sx={{ 
+            <Box sx={{ 
               display: 'flex', 
-              alignItems: 'center', 
-              gap: 1,
+              justifyContent: 'space-between', 
+              alignItems: 'center',
               mb: 3 
             }}>
-              🎬 생성된 콘티 리스트
-              <Chip 
-                label={`${generatedConte.length}개 씬`} 
-                color="primary" 
-                variant="outlined"
-              />
-            </Typography>
+              <Typography variant="h5" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1
+              }}>
+                🎬 생성된 콘티 리스트
+                <Chip 
+                  label={`${generatedConte.length}개 씬`} 
+                  color="primary" 
+                  variant="outlined"
+                />
+              </Typography>
+              
+              <Button
+                variant="contained"
+                startIcon={<Timeline />}
+                onClick={handleViewTimeline}
+                sx={{
+                  backgroundColor: 'var(--color-success)',
+                  '&:hover': {
+                    backgroundColor: 'var(--color-success-dark)',
+                  }
+                }}
+              >
+                타임라인 보기
+              </Button>
+            </Box>
             
             {generatedConte.map((conte, index) => (
               <Card 
@@ -646,7 +683,7 @@ const DirectStoryPage = () => {
                           <Button
                             size="small"
                             variant="outlined"
-                            startIcon={<Save />}
+                            startIcon={<Edit />}
                             onClick={() => handleEditConte(conte)}
                             sx={{ minWidth: 'auto', px: 1 }}
                           >

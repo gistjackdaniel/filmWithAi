@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { CaptionCardType } from '../types/timeline'
 import timelineService from '../services/timelineService'
+import { useAuthStore } from './authStore'
 
 /**
  * 타임라인 상태 관리 스토어
@@ -28,10 +29,85 @@ const useTimelineStore = create((set, get) => ({
   // 액션들
 
   /**
+   * 사용자별 데이터 로드
+   * @param {string} userId - 사용자 ID
+   */
+  loadUserData: (userId) => {
+    if (!userId) return
+    
+    try {
+      const savedData = localStorage.getItem(`timeline-data-${userId}`)
+      if (savedData) {
+        const data = JSON.parse(savedData)
+        set(data)
+        console.log('User timeline data loaded for:', userId)
+      }
+    } catch (error) {
+      console.warn('Failed to load user timeline data:', error)
+    }
+  },
+
+  /**
+   * 사용자별 데이터 저장
+   * @param {string} userId - 사용자 ID
+   */
+  saveUserData: (userId) => {
+    if (!userId) return
+    
+    try {
+      const currentState = get()
+      const dataToSave = {
+        scenes: currentState.scenes,
+        selectedSceneId: currentState.selectedSceneId,
+        currentProjectId: currentState.currentProjectId,
+        filters: currentState.filters,
+        sortBy: currentState.sortBy,
+        currentScene: currentState.currentScene
+      }
+      
+      localStorage.setItem(`timeline-data-${userId}`, JSON.stringify(dataToSave))
+      console.log('User timeline data saved for:', userId)
+    } catch (error) {
+      console.warn('Failed to save user timeline data:', error)
+    }
+  },
+
+  /**
+   * 모든 데이터 초기화
+   */
+  clearAllData: () => {
+    set({
+      scenes: [],
+      selectedSceneId: null,
+      loading: false,
+      error: null,
+      currentProjectId: null,
+      websocketConnection: null,
+      filters: {
+        type: null,
+        dateRange: null,
+        location: null,
+        character: null,
+        equipment: null,
+      },
+      sortBy: 'scene_number',
+      modalOpen: false,
+      currentScene: null
+    })
+    console.log('All timeline data cleared')
+  },
+
+  /**
    * 씬들 설정
    */
   setScenes: (scenes) => {
     set({ scenes, loading: false, error: null })
+    
+    // 사용자별 데이터 저장
+    const { user } = useAuthStore.getState()
+    if (user && user.id) {
+      get().saveUserData(user.id)
+    }
   },
 
   /**

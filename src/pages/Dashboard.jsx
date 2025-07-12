@@ -31,6 +31,7 @@ import api from '../services/api'
 import toast from 'react-hot-toast'
 import UserProfile from '../components/UserProfile'
 import OnboardingModal from '../components/OnboardingModal'
+import ProjectSelectionModal from '../components/ProjectSelectionModal'
 
 /**
  * SceneForge 대시보드 페이지 컴포넌트
@@ -47,6 +48,7 @@ const Dashboard = () => {
   // 로컬 상태 관리
   const [projects, setProjects] = useState([]) // 프로젝트 목록
   const [showOnboarding, setShowOnboarding] = useState(false) // 온보딩 모달 표시 여부
+  const [showProjectSelection, setShowProjectSelection] = useState(false) // 프로젝트 선택 모달 표시 여부
 
   // 컴포넌트 마운트 시 프로젝트 목록 가져오기 및 온보딩 체크
   useEffect(() => {
@@ -75,10 +77,33 @@ const Dashboard = () => {
 
   /**
    * 새 프로젝트 생성 버튼 클릭 핸들러
-   * 스토리 생성 페이지로 이동
+   * 프로젝트 선택 모달을 표시
    */
   const handleCreateProject = () => {
+    setShowProjectSelection(true)
+  }
+
+  /**
+   * 프로젝트 선택 모달 닫기 핸들러
+   */
+  const handleProjectSelectionClose = () => {
+    setShowProjectSelection(false)
+  }
+
+  /**
+   * 스토리 생성 선택 핸들러
+   */
+  const handleSelectStoryGeneration = () => {
+    setShowProjectSelection(false)
     navigate('/story-generation')
+  }
+
+  /**
+   * 콘티 생성 선택 핸들러
+   */
+  const handleSelectConteGeneration = () => {
+    setShowProjectSelection(false)
+    navigate('/direct-story')
   }
 
   /**
@@ -197,7 +222,7 @@ const Dashboard = () => {
                   콘티 생성
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  스토리 기반으로 콘티를 자동 생성하세요
+                  나만의 스토리로 콘티를 자동 생성하세요
                 </Typography>
               </CardContent>
             </Card>
@@ -294,6 +319,14 @@ const Dashboard = () => {
         open={showOnboarding}
         onClose={() => setShowOnboarding(false)}
         onComplete={handleOnboardingComplete}
+      />
+
+      {/* 프로젝트 선택 모달 */}
+      <ProjectSelectionModal
+        open={showProjectSelection}
+        onClose={handleProjectSelectionClose}
+        onSelectStoryGeneration={handleSelectStoryGeneration}
+        onSelectConteGeneration={handleSelectConteGeneration}
       />
     </Box>
   )

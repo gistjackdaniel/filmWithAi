@@ -77,6 +77,26 @@ const useAuthStore = create(
           get().setToken(token)
           get().setUser(user)
           
+          // 사용자별 데이터 로드
+          try {
+            const { default: storyStore } = await import('./storyGenerationStore')
+            if (storyStore && storyStore.getState) {
+              storyStore.getState().loadUserData(user.id)
+            }
+            
+            const { default: timelineStore } = await import('./timelineStore')
+            if (timelineStore && timelineStore.getState) {
+              timelineStore.getState().loadUserData(user.id)
+            }
+            
+            const { default: historyStore } = await import('./storyHistoryStore')
+            if (historyStore && historyStore.getState) {
+              historyStore.getState().loadUserData(user.id)
+            }
+          } catch (error) {
+            console.warn('Failed to load user data:', error)
+          }
+          
           // 자동 로그아웃 타이머 설정
           get().setAutoLogoutTimer()
           
@@ -91,9 +111,32 @@ const useAuthStore = create(
 
       /**
        * 로그아웃 처리
-       * 모든 인증 정보를 초기화
+       * 모든 인증 정보를 초기화하고 다른 스토어들도 초기화
        */
-      logout: () => {
+      logout: async () => {
+        // 다른 스토어들 초기화
+        try {
+          // 스토리 생성 스토어 초기화
+          const { default: storyStore } = await import('./storyGenerationStore')
+          if (storyStore && storyStore.getState) {
+            storyStore.getState().clearAllData()
+          }
+          
+          // 타임라인 스토어 초기화
+          const { default: timelineStore } = await import('./timelineStore')
+          if (timelineStore && timelineStore.getState) {
+            timelineStore.getState().clearAllData()
+          }
+          
+          // 스토리 히스토리 스토어 초기화
+          const { default: historyStore } = await import('./storyHistoryStore')
+          if (historyStore && historyStore.getState) {
+            historyStore.getState().clearAllData()
+          }
+        } catch (error) {
+          console.warn('Failed to clear other stores:', error)
+        }
+        
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -101,6 +144,18 @@ const useAuthStore = create(
           loading: false 
         })
         get().setToken(null)
+        
+        // 로컬 스토리지에서 사용자별 데이터 제거
+        try {
+          const currentUser = get().user
+          if (currentUser && currentUser.id) {
+            localStorage.removeItem(`story-data-${currentUser.id}`)
+            localStorage.removeItem(`conte-data-${currentUser.id}`)
+            localStorage.removeItem(`timeline-data-${currentUser.id}`)
+          }
+        } catch (error) {
+          console.warn('Failed to clear user data from localStorage:', error)
+        }
       },
 
       /**
@@ -187,6 +242,8 @@ const useAuthStore = create(
           console.error('Auth check error:', error)
           // 인증 실패 시 로그아웃 처리
           get().logout()
+          // 로딩 상태도 해제
+          set({ loading: false })
         }
       },
 
@@ -259,6 +316,18 @@ const useAuthStore = create(
         try {
           // 세션 동기화 설정
           get().setupSessionSync()
+          
+          // 토큰이 없으면 바로 로딩 상태 해제
+          const token = get().token
+          if (!token) {
+            set({ 
+              user: null, 
+              isAuthenticated: false, 
+              token: null,
+              loading: false 
+            })
+            return
+          }
           
           await get().checkAuth()
         } catch (error) {

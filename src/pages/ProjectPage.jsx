@@ -19,6 +19,7 @@ import api from '../services/api'
 import toast from 'react-hot-toast'
 import TimelineViewer from '../components/timeline/organisms/TimelineViewer'
 import SceneDetailModal from '../components/timeline/organisms/SceneDetailModal'
+import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import useTimelineStore from '../stores/timelineStore'
 
 /**
@@ -52,11 +53,19 @@ const ProjectPage = () => {
   // 로컬 상태 관리
   const [project, setProject] = useState(null) // 프로젝트 정보
   const [loading, setLoading] = useState(true) // 로딩 상태
+  const [editModalOpen, setEditModalOpen] = useState(false) // 편집 모달 열림 상태
+  const [editingScene, setEditingScene] = useState(null) // 편집 중인 씬
 
   // 프로젝트 ID가 변경될 때마다 프로젝트 정보와 타임라인 데이터 로드
   useEffect(() => {
     console.log('ProjectPage useEffect triggered with projectId:', projectId)
-    fetchProject()
+    
+    // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
+    if (projectId === 'temp-project-id') {
+      loadLocalConteData()
+    } else {
+      fetchProject()
+    }
   }, [projectId])
 
   // 컴포넌트 언마운트 시 실시간 연결 해제
@@ -66,6 +75,120 @@ const ProjectPage = () => {
       disconnectRealtimeUpdates()
     }
   }, [disconnectRealtimeUpdates])
+
+  /**
+   * 시간 문자열을 초 단위로 변환하는 함수
+   * @param {string} duration - 시간 문자열 (예: "5분", "2분 30초")
+   * @returns {number} 초 단위 시간
+   */
+  const parseDurationToSeconds = (duration) => {
+    if (!duration) {
+      console.log('parseDurationToSeconds: no duration, returning 300s')
+      return 300 // 기본 5분
+    }
+    
+    console.log(`parseDurationToSeconds: parsing "${duration}"`)
+    
+    const match = duration.match(/(\d+)분\s*(\d+)?초?/)
+    if (match) {
+      const minutes = parseInt(match[1]) || 0
+      const seconds = parseInt(match[2]) || 0
+      const result = minutes * 60 + seconds
+      console.log(`parseDurationToSeconds: matched "${duration}" -> ${minutes}m ${seconds}s = ${result}s`)
+      return result
+    }
+    
+    // 숫자만 있는 경우 분으로 간주
+    const numMatch = duration.match(/(\d+)/)
+    if (numMatch) {
+      const minutes = parseInt(numMatch[1])
+      const result = minutes * 60
+      console.log(`parseDurationToSeconds: number only "${duration}" -> ${minutes}m = ${result}s`)
+      return result
+    }
+    
+    console.log(`parseDurationToSeconds: no match for "${duration}", returning 300s`)
+    return 300 // 기본 5분
+  }
+
+  /**
+   * 로컬 스토리지에서 콘티 데이터를 로드하는 함수
+   */
+  const loadLocalConteData = () => {
+    try {
+      console.log('ProjectPage loadLocalConteData started')
+      setLoading(true)
+      
+      const storedData = localStorage.getItem('currentConteData')
+      
+      if (!storedData) {
+        console.log('ProjectPage no stored conte data found')
+        setProject({
+          projectTitle: '임시 프로젝트',
+          synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+          story: '',
+          conteList: []
+        })
+        setLoading(false)
+        return
+      }
+      
+      const parsedData = JSON.parse(storedData)
+      
+      if (!Array.isArray(parsedData) || parsedData.length === 0) {
+        console.log('ProjectPage invalid stored conte data')
+        setProject({
+          projectTitle: '임시 프로젝트',
+          synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+          story: '',
+          conteList: []
+        })
+        setLoading(false)
+        return
+      }
+      
+      // 임시 프로젝트 정보 생성
+      const tempProject = {
+        projectTitle: '임시 프로젝트',
+        synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+        story: '',
+        conteList: parsedData
+      }
+      
+      setProject(tempProject)
+      
+      // 타임라인 스토어에 콘티 데이터 설정
+      const { setScenes } = useTimelineStore.getState()
+      
+      // 이미지 URL과 duration이 있는 경우 포함하여 설정
+      const scenesWithImages = parsedData.map(scene => {
+        const duration = scene.duration || parseDurationToSeconds(scene.estimatedDuration || '5분')
+        console.log(`Processing scene ${scene.scene}: estimatedDuration=${scene.estimatedDuration}, parsed duration=${duration}s`)
+        
+        return {
+          ...scene,
+          imageUrl: scene.imageUrl || null,
+          type: scene.type || 'live_action',
+          duration: duration
+        }
+      })
+      
+      setScenes(scenesWithImages)
+      
+      console.log('ProjectPage local conte data loaded:', parsedData.length, 'scenes')
+      
+    } catch (error) {
+      console.error('ProjectPage loadLocalConteData failed:', error)
+      setProject({
+        projectTitle: '임시 프로젝트',
+        synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+        story: '',
+        conteList: []
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   /**
    * 서버에서 프로젝트 상세 정보를 가져오는 함수
@@ -137,7 +260,67 @@ const ProjectPage = () => {
    * 씬 편집 핸들러
    */
   const handleSceneEdit = useCallback((scene) => {
-    toast.info('씬 편집 기능은 향후 구현 예정입니다.')
+    setEditingScene(scene)
+    setEditModalOpen(true)
+  }, [])
+
+  /**
+   * 편집 모달 닫기 핸들러
+   */
+  const handleEditModalClose = useCallback(() => {
+    setEditModalOpen(false)
+    setEditingScene(null)
+  }, [])
+
+  /**
+   * 편집된 씬 저장 핸들러
+   */
+  const handleSaveScene = useCallback(async (editedScene) => {
+    try {
+      // 타임라인 스토어에서 씬 업데이트
+      const { updateScene } = useTimelineStore.getState()
+      updateScene(editedScene.id, editedScene)
+      
+      // 서버에 변경사항 저장
+      const timelineService = (await import('../services/timelineService')).default
+      const result = await timelineService.updateScene(projectId, editedScene)
+      
+      if (result.success) {
+        toast.success('씬이 저장되었습니다.')
+      } else {
+        toast.error(result.error || '씬 저장에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('씬 저장 실패:', error)
+      toast.error('씬 저장에 실패했습니다.')
+    }
+    handleEditModalClose()
+  }, [projectId, handleEditModalClose])
+
+  /**
+   * 씬 이미지 재생성 핸들러
+   */
+  const handleRegenerateImage = useCallback(async (scene) => {
+    try {
+      // 이미지 재생성 로직 구현
+      toast.info('이미지 재생성 기능은 준비 중입니다.')
+    } catch (error) {
+      console.error('이미지 재생성 실패:', error)
+      toast.error('이미지 재생성에 실패했습니다.')
+    }
+  }, [])
+
+  /**
+   * 씬 재생성 핸들러
+   */
+  const handleRegenerateScene = useCallback(async (scene) => {
+    try {
+      // 씬 재생성 로직 구현
+      toast.info('씬 재생성 기능은 준비 중입니다.')
+    } catch (error) {
+      console.error('씬 재생성 실패:', error)
+      toast.error('씬 재생성에 실패했습니다.')
+    }
   }, [])
 
   /**
@@ -282,6 +465,10 @@ const ProjectPage = () => {
             onSceneInfo={handleSceneInfo}
             onScenesReorder={handleScenesReorder}
             emptyMessage="콘티가 없습니다. AI를 사용하여 콘티를 생성해보세요."
+            timeScale={100} // 1초당 100픽셀로 더 크게 증가
+            zoomLevel={1}
+            showTimeInfo={true}
+            baseScale={1}
           />
         </Box>
 
@@ -313,6 +500,16 @@ const ProjectPage = () => {
         onClose={closeModal}
         onEdit={handleSceneEdit}
         onRegenerate={handleSceneRegenerate}
+      />
+
+      {/* 씬 편집 모달 */}
+      <ConteEditModal
+        open={editModalOpen}
+        onClose={handleEditModalClose}
+        conte={editingScene}
+        onSave={handleSaveScene}
+        onRegenerateImage={handleRegenerateImage}
+        onRegenerateConte={handleRegenerateScene}
       />
     </Box>
   )

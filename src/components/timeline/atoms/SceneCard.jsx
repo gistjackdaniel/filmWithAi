@@ -128,13 +128,31 @@ const SceneCard = React.memo(({
 
   // 시간 기반 너비 계산
   const sceneDuration = scene?.duration || 0
-  const baseWidth = 280 // 기본 너비
-  const minWidth = calculateMinSceneWidth(zoomLevel, 100) // 최소 너비
-  const timeBasedWidth = Math.max(
-    sceneDuration / timeScale, // 시간 기반 너비
-    minWidth // 최소 너비
-  )
-  const cardWidth = timeScale > 0 ? timeBasedWidth : baseWidth
+  const baseWidth = 120 // 기본 너비를 120px로 축소
+  const minWidth = Math.max(calculateMinSceneWidth(zoomLevel, 40), 80) // 최소 너비를 80px로 축소
+  
+  // 시간 기반 너비 계산 개선
+  let cardWidth = baseWidth
+  
+  if (timeScale > 0 && sceneDuration > 0) {
+    // 시간을 픽셀로 변환 (1초당 픽셀 수)
+    const pixelsPerSecond = 1 / timeScale // timeScale이 작을수록 더 많은 픽셀 필요
+    const timeBasedWidth = sceneDuration * pixelsPerSecond
+    
+    // 최소 너비와 최대 너비 제한 - 줌 레벨에 따라 동적 조정
+    const maxWidth = Math.max(800, (1 / timeScale) * 200) // 줌 레벨에 따라 최대 너비 조정
+    cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
+    
+    // 디버깅 로그
+    console.log(`Scene ${scene.scene}: duration=${sceneDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
+  } else if (sceneDuration > 0) {
+    // timeScale이 0이지만 duration이 있는 경우 기본 계산
+    const estimatedWidth = Math.max(sceneDuration * 4, minWidth) // 1초당 4픽셀로 조정
+    cardWidth = Math.min(estimatedWidth, 200) // 최대 200픽셀로 축소
+    
+    // 디버깅 로그
+    console.log(`Scene ${scene.scene}: duration=${sceneDuration}s, fallback width=${cardWidth}px`)
+  }
 
   // 시간 정보 포맷팅
   const durationText = formatTimeShort(sceneDuration)
@@ -182,7 +200,7 @@ const SceneCard = React.memo(({
       aria-describedby={`scene-${scene.id}-type`}
       sx={{
         width: cardWidth,
-        minHeight: 200,
+        minHeight: scene.imageUrl && (scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action') ? 240 : 160,
         backgroundColor: 'var(--color-card-bg)',
         borderRadius: '12px',
         border: selected 
@@ -190,10 +208,10 @@ const SceneCard = React.memo(({
           : isMultiSelected
           ? '2px solid var(--color-success)'
           : `1px solid ${typeInfo.borderColor}`,
-        p: 2,
+        p: 1.5,
         display: 'flex',
         flexDirection: 'column',
-        gap: 1,
+        gap: 0.5,
         cursor: isDraggable ? 'grab' : 'pointer',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', // 성능 최적화된 이징
         position: 'relative',
@@ -323,6 +341,48 @@ const SceneCard = React.memo(({
           />
         </Box>
       </Box>
+
+      {/* 씬 이미지 (실사 촬영 타입에만 표시) */}
+      {scene.imageUrl && (scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action') && (
+        <Box sx={{ 
+          width: '100%', 
+          height: 80, 
+          borderRadius: 1,
+          overflow: 'hidden',
+          border: '1px solid rgba(212, 175, 55, 0.3)',
+          position: 'relative',
+          mb: 1
+        }}>
+          <img 
+            src={scene.imageUrl} 
+            alt={`씬 ${scene.components?.sceneNumber || scene.scene} 이미지`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
+            onError={(e) => {
+              console.error('씬 이미지 로딩 실패:', scene.imageUrl)
+              e.target.style.display = 'none'
+            }}
+          />
+          {/* 이미지 오버레이 - 씬 번호 표시 */}
+          <Box sx={{
+            position: 'absolute',
+            top: 4,
+            left: 4,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            borderRadius: '4px',
+            px: 1,
+            py: 0.5,
+            fontSize: '0.75rem',
+            fontWeight: 'bold'
+          }}>
+            씬 {scene.components?.sceneNumber || scene.scene}
+          </Box>
+        </Box>
+      )}
 
       {/* 씬 설명 */}
       <Typography 

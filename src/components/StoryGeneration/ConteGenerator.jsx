@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material'
 import { generateConteWithRetry, generateSceneImage } from '../../services/storyGenerationApi'
 import ConteResult from './ConteResult'
+import ConteEditModal from './ConteEditModal'
 import useStoryGenerationStore from '../../stores/storyGenerationStore'
 import toast from 'react-hot-toast'
 
@@ -58,6 +59,18 @@ const ConteGenerator = ({
   const [showResult, setShowResult] = useState(false) // 결과 표시 여부
   const [generatingImages, setGeneratingImages] = useState(false) // 이미지 생성 중 상태
   const [imageGenerationProgress, setImageGenerationProgress] = useState(0) // 이미지 생성 진행률
+  const [editModalOpen, setEditModalOpen] = useState(false) // 편집 모달 열림 상태
+  const [editingConte, setEditingConte] = useState(null) // 편집 중인 콘티
+  const [editingIndex, setEditingIndex] = useState(-1) // 편집 중인 콘티 인덱스
+
+  // 편집 모달 상태 디버깅
+  useEffect(() => {
+    console.log('🔍 편집 모달 상태 변경:', {
+      editModalOpen,
+      editingConte: editingConte?.title,
+      editingIndex
+    })
+  }, [editModalOpen, editingConte, editingIndex])
 
   // 콘티 생성 설정 옵션
   const genreOptions = [
@@ -299,9 +312,23 @@ const ConteGenerator = ({
   }
 
   /**
-   * 캡션 카드 재생성 핸들러
+   * 타임라인 보기 핸들러
    */
-  const handleRegenerateConte = () => {
+  const handleViewTimeline = () => {
+    // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
+    if (generatedConte && generatedConte.length > 0) {
+      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      // 프로젝트 페이지로 이동 (navigate 함수가 필요하므로 window.location 사용)
+      window.location.href = '/project/temp-project-id'
+    } else {
+      toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
+    }
+  }
+
+  /**
+   * 전체 캡션 카드 재생성 핸들러
+   */
+  const handleRegenerateAllConte = () => {
     setShowResult(false)
     handleGenerateConte()
   }
@@ -312,8 +339,103 @@ const ConteGenerator = ({
    * @param {number} cardIndex - 카드 인덱스
    */
   const handleEditConte = (card, cardIndex) => {
-    // TODO: 캡션 카드 편집 모달 구현
-    console.log('캡션 카드 편집:', { card, cardIndex })
+    console.log('✏️ 편집 시작:', { card, cardIndex })
+    setEditingConte(card)
+    setEditingIndex(cardIndex)
+    setEditModalOpen(true)
+    console.log('✅ 편집 모달 상태 설정 완료')
+  }
+
+  /**
+   * 편집 모달 닫기 핸들러
+   */
+  const handleEditModalClose = () => {
+    console.log('🔒 편집 모달 닫기')
+    setEditModalOpen(false)
+    setEditingConte(null)
+    setEditingIndex(-1)
+  }
+
+  /**
+   * 편집된 콘티 저장 핸들러
+   * @param {Object} editedConte - 편집된 콘티 데이터
+   */
+  const handleSaveConte = (editedConte) => {
+    console.log('💾 handleSaveConte 호출됨')
+    console.log('editingIndex:', editingIndex)
+    console.log('generatedConte.length:', generatedConte.length)
+    console.log('editedConte:', editedConte)
+    
+    if (editingIndex >= 0 && editingIndex < generatedConte.length) {
+      console.log('✅ 유효한 편집 인덱스')
+      const updatedConteList = [...generatedConte]
+      updatedConteList[editingIndex] = editedConte
+      
+      console.log('📝 업데이트된 콘티 리스트:', updatedConteList)
+      
+      // 스토어 업데이트
+      completeConteGeneration(updatedConteList)
+      
+      toast.success('캡션 카드가 저장되었습니다.')
+    } else {
+      console.error('❌ 유효하지 않은 편집 인덱스:', editingIndex)
+      toast.error('저장에 실패했습니다. 편집 인덱스가 유효하지 않습니다.')
+    }
+    handleEditModalClose()
+  }
+
+  /**
+   * 콘티 재생성 핸들러
+   * @param {Object} conte - 재생성할 콘티
+   */
+  const handleRegenerateConte = (conte) => {
+    // TODO: 개별 콘티 재생성 로직 구현
+    console.log('개별 콘티 재생성:', conte)
+    toast.info('개별 콘티 재생성 기능은 준비 중입니다.')
+  }
+
+  /**
+   * 이미지 재생성 핸들러
+   * @param {Object} conte - 이미지를 재생성할 콘티
+   */
+  const handleRegenerateImage = async (conte) => {
+    try {
+      // 이미지 생성 프롬프트 구성
+      const imagePrompt = `${conte.title}: ${conte.description}. ${conte.visualDescription || ''} ${conte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
+      
+      console.log('🎨 이미지 재생성 시작:', imagePrompt)
+      
+      // 이미지 생성 API 호출
+      const imageResponse = await generateSceneImage({
+        sceneDescription: imagePrompt,
+        style: 'cinematic',
+        genre: conte.genre || '일반',
+        size: '1024x1024'
+      })
+      
+      // 생성된 이미지 URL을 콘티에 추가
+      const updatedConte = {
+        ...conte,
+        imageUrl: imageResponse.imageUrl,
+        imagePrompt: imagePrompt,
+        imageGeneratedAt: imageResponse.generatedAt,
+        imageModel: imageResponse.model,
+        isFreeTier: imageResponse.isFreeTier
+      }
+      
+      // 스토어 업데이트
+      if (editingIndex >= 0 && editingIndex < generatedConte.length) {
+        const updatedConteList = [...generatedConte]
+        updatedConteList[editingIndex] = updatedConte
+        completeConteGeneration(updatedConteList)
+      }
+      
+      toast.success('이미지가 재생성되었습니다.')
+      
+    } catch (error) {
+      console.error('❌ 이미지 재생성 실패:', error)
+      toast.error('이미지 재생성에 실패했습니다.')
+    }
   }
 
   /**
@@ -330,14 +452,27 @@ const ConteGenerator = ({
   // 생성된 캡션 카드가 있으면 결과 표시
   if (showResult && generatedConte.length > 0) {
     return (
-      <ConteResult 
-        conteList={generatedConte}
-        onEdit={handleEditConte}
-        onRegenerate={handleRegenerateConte}
-        isGenerating={isGenerating}
-        generatingImages={generatingImages}
-        imageGenerationProgress={imageGenerationProgress}
-      />
+      <>
+        <ConteResult 
+          conteList={generatedConte}
+          onEdit={handleEditConte}
+          onRegenerate={handleRegenerateAllConte}
+          isGenerating={isGenerating}
+          generatingImages={generatingImages}
+          imageGenerationProgress={imageGenerationProgress}
+          onViewTimeline={handleViewTimeline}
+        />
+        
+        {/* 편집 모달 */}
+        <ConteEditModal
+          open={editModalOpen}
+          onClose={handleEditModalClose}
+          conte={editingConte}
+          onSave={handleSaveConte}
+          onRegenerateImage={handleRegenerateImage}
+          onRegenerateConte={handleRegenerateConte}
+        />
+      </>
     )
   }
 
