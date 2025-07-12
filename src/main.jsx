@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { Toaster } from 'react-hot-toast'
 import App from './App.jsx'
 import theme from './theme/theme.js'
+import useAuthStore from './stores/authStore.js'
 import './index.css'
 
 /**
@@ -28,4 +29,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
-) 
+)
+
+// 앱 시작 시 인증 상태 초기화
+useAuthStore.getState().initialize() 

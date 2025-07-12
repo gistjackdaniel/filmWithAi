@@ -8,8 +8,8 @@ import {
   CircularProgress
 } from '@mui/material'
 import { Google } from '@mui/icons-material'
-import { useGoogleLogin } from '@google-oauth/google'
-import { useAuthStore } from '../stores/authStore'
+import { useGoogleLogin } from '@react-oauth/google'
+import useAuthStore from '../stores/authStore'
 import toast from 'react-hot-toast'
 
 /**
