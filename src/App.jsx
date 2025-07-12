@@ -1,53 +1,69 @@
 import { Routes, Route } from 'react-router-dom'
-import { useAuthStore } from './stores/authStore'
-import SplashScreen from './components/SplashScreen'
+import { ThemeProvider } from '@mui/material/styles'
+import { CssBaseline } from '@mui/material'
+import { Toaster } from 'react-hot-toast'
+import theme from './theme/theme'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import ProjectPage from './pages/ProjectPage'
+import StoryGenerationPage from './pages/StoryGenerationPage' // 스토리 생성 페이지 추가
+import DirectStoryPage from './pages/DirectStoryPage' // 직접 스토리 작성 페이지 추가
 import ProtectedRoute from './components/ProtectedRoute'
+import JsonParserTest from './pages/JsonParserTest' // JSON 파싱 테스트 페이지 추가
+import SimpleTest from './pages/SimpleTest' // 간단한 테스트 페이지 추가
 
 /**
- * SceneForge 메인 앱 컴포넌트
- * 인증 상태에 따라 적절한 페이지를 렌더링하고 라우팅을 관리
+ * 메인 App 컴포넌트
+ * 라우팅 설정과 전역 테마를 관리하는 최상위 컴포넌트
  */
 function App() {
-  // Zustand 스토어에서 인증 상태 가져오기
-  const { isAuthenticated, loading } = useAuthStore()
-
-  // 로딩 중일 때 스플래시 화면 표시
-  if (loading) {
-    return <SplashScreen />
-  }
-
   return (
-    <Routes>
-      {/* 메인 라우트 - 인증 상태에 따라 대시보드 또는 로그인 페이지 표시 */}
-      <Route 
-        path="/" 
-        element={
-          isAuthenticated ? (
-            // 인증된 사용자: 보호된 대시보드 표시
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          ) : (
-            // 미인증 사용자: 로그인 페이지 표시
-            <LoginPage />
-          )
-        } 
-      />
-      
-      {/* 프로젝트 상세 페이지 라우트 */}
-      <Route 
-        path="/project/:projectId" 
-        element={
-          // 인증된 사용자만 접근 가능한 보호된 프로젝트 페이지
+    <>
+      {/* 라우팅 설정 */}
+      <Routes>
+        {/* 공개 라우트 */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* 테스트 페이지들 (개발용) */}
+        <Route path="/test-parser" element={<JsonParserTest />} />
+        <Route path="/simple-test" element={<SimpleTest />} />
+        
+        {/* 보호된 라우트 */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/story-generation" element={
+          <ProtectedRoute>
+            <StoryGenerationPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/direct-story" element={
+          <ProtectedRoute>
+            <DirectStoryPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/project/:projectId" element={
           <ProtectedRoute>
             <ProjectPage />
           </ProtectedRoute>
-        } 
+        } />
+      </Routes>
+      
+      {/* 전역 토스트 알림 */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: 'var(--color-card-bg)',
+            color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
+          },
+        }}
       />
-    </Routes>
+    </>
   )
 }
 

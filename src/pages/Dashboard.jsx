@@ -18,9 +18,11 @@ import {
   Add, 
   Folder, 
   AccountCircle,
-  Logout 
+  Logout,
+  AutoStories,
+  Edit
 } from '@mui/icons-material'
-import { useAuthStore } from '../stores/authStore'
+import useAuthStore from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
@@ -64,6 +66,20 @@ const Dashboard = () => {
    */
   const handleCreateProject = () => {
     toast.success('새 프로젝트 기능은 개발 중입니다.')
+  }
+
+  /**
+   * AI 스토리 생성 페이지로 이동 핸들러
+   */
+  const handleStoryGeneration = () => {
+    navigate('/story-generation')
+  }
+
+  /**
+   * 직접 스토리 작성 페이지로 이동 핸들러
+   */
+  const handleDirectStory = () => {
+    navigate('/direct-story')
   }
 
   /**
@@ -146,6 +162,48 @@ const Dashboard = () => {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   새로운 영화 프로젝트를 시작하세요
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* AI 스토리 생성 카드 */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Card 
+              sx={{ 
+                cursor: 'pointer',
+                '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
+              }}
+              onClick={handleStoryGeneration}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                <AutoStories sx={{ fontSize: 48, color: 'warning.main', mb: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  AI 스토리 생성
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  시놉시스로 AI 스토리 생성하기
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* 직접 스토리 작성 카드 */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Card 
+              sx={{ 
+                cursor: 'pointer',
+                '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
+              }}
+              onClick={handleDirectStory}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                <Edit sx={{ fontSize: 48, color: 'info.main', mb: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  직접 스토리 작성
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  직접 스토리를 작성하고 콘티 생성하기
                 </Typography>
               </CardContent>
             </Card>

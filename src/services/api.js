@@ -5,7 +5,7 @@ import axios from 'axios'
  * SceneForge 백엔드 API와의 통신을 위한 HTTP 클라이언트
  */
 const api = axios.create({
-  baseURL: '/api', // API 기본 URL (Vite 프록시 설정과 연동)
+  baseURL: 'http://localhost:5000/api', // 백엔드 서버 직접 연결
   timeout: 10000, // 요청 타임아웃 (10초)
   headers: {
     'Content-Type': 'application/json', // JSON 데이터 전송

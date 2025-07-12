@@ -1,91 +1,276 @@
 import { createTheme } from '@mui/material/styles'
 
 /**
- * SceneForge Material-UI 테마 설정
- * 앱 전체의 일관된 디자인 시스템을 정의
+ * SceneForge Design System 기반 Material-UI 테마
+ * Design System의 색상, 타이포그래피, 컴포넌트 스타일을 적용
  */
 const theme = createTheme({
-  // ===== 색상 팔레트 =====
+  // 색상 팔레트 설정
   palette: {
-    // 주요 색상 (파란색 계열)
+    mode: 'dark', // 다크 테마 기본
     primary: {
-      main: '#1976d2', // 메인 파란색
-      light: '#42a5f5', // 밝은 파란색
-      dark: '#1565c0', // 어두운 파란색
+      main: '#3498DB', // 밝은 블루 (기존 #2E3A59에서 변경)
+      light: '#5DADE2', // 더 밝은 블루
+      dark: '#2980B9', // 더 어두운 블루
+      contrastText: '#F5F5F5',
     },
-    // 보조 색상 (빨간색 계열)
     secondary: {
-      main: '#dc004e', // 메인 빨간색
-      light: '#ff5983', // 밝은 빨간색
-      dark: '#9a0036', // 어두운 빨간색
+      main: '#D4AF37', // Cinematic Gold
+      light: '#E6C866',
+      dark: '#B8941F',
+      contrastText: '#1B1B1E',
     },
-    // 배경 색상
     background: {
-      default: '#f5f5f5', // 기본 배경색 (연한 회색)
-      paper: '#ffffff', // 카드/페이퍼 배경색 (흰색)
+      default: '#1B1B1E', // Charcoal Black
+      paper: '#2F2F37', // Slate Gray
+    },
+    text: {
+      primary: '#F5F5F5', // Ivory White
+      secondary: '#A0A3B1', // Cool Gray
+    },
+    success: {
+      main: '#2ECC71', // Emerald Green
+      light: '#58D68D',
+      dark: '#27AE60',
+    },
+    error: {
+      main: '#E74C3C', // Cinematic Red
+      light: '#EC7063',
+      dark: '#C0392B',
+    },
+    warning: {
+      main: '#F39C12',
+      light: '#F7DC6F',
+      dark: '#D68910',
+    },
+    info: {
+      main: '#3498DB',
+      light: '#5DADE2',
+      dark: '#2980B9',
     },
   },
-  
-  // ===== 타이포그래피 =====
+
+  // 타이포그래피 설정
   typography: {
-    // 시스템 폰트 스택 (크로스 플랫폼 호환성)
-    fontFamily: [
-      '-apple-system', // macOS, iOS
-      'BlinkMacSystemFont', // macOS
-      '"Segoe UI"', // Windows
-      'Roboto', // Android, Material Design
-      '"Helvetica Neue"', // 폴백
-      'Arial', // 최종 폴백
-      'sans-serif', // 제네릭 폴백
-    ].join(','),
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
     
-    // 제목 스타일 정의
+    // Design System 타이포그래피 적용
     h1: {
-      fontSize: '2.5rem', // 40px
-      fontWeight: 600, // Semi-bold
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '24px',
+      fontWeight: 700,
+      lineHeight: '32px',
+      letterSpacing: '-0.02em',
     },
     h2: {
-      fontSize: '2rem', // 32px
-      fontWeight: 600,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '20px',
+      fontWeight: 500,
+      lineHeight: '28px',
+      letterSpacing: '-0.01em',
     },
     h3: {
-      fontSize: '1.75rem', // 28px
-      fontWeight: 600,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '18px',
+      fontWeight: 500,
+      lineHeight: '24px',
     },
     h4: {
-      fontSize: '1.5rem', // 24px
-      fontWeight: 600,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      fontWeight: 500,
+      lineHeight: '24px',
     },
     h5: {
-      fontSize: '1.25rem', // 20px
-      fontWeight: 600,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '14px',
+      fontWeight: 500,
+      lineHeight: '20px',
     },
     h6: {
-      fontSize: '1rem', // 16px
-      fontWeight: 600,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '12px',
+      fontWeight: 500,
+      lineHeight: '16px',
+    },
+    body1: {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      fontWeight: 400,
+      lineHeight: '24px',
+    },
+    body2: {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '14px',
+      fontWeight: 400,
+      lineHeight: '20px',
+    },
+    button: {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '14px',
+      fontWeight: 500,
+      lineHeight: '20px',
+      textTransform: 'none', // 대문자 변환 비활성화
+    },
+    caption: {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '12px',
+      fontWeight: 400,
+      lineHeight: '16px',
     },
   },
-  
-  // ===== 컴포넌트 스타일 오버라이드 =====
+
+  // 컴포넌트 스타일 오버라이드
   components: {
-    // 버튼 컴포넌트 커스터마이징
+    // AppBar 스타일
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#2E3A59',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+        },
+      },
+    },
+
+    // Button 스타일
     MuiButton: {
       styleOverrides: {
         root: {
-          textTransform: 'none', // 대문자 변환 비활성화
-          borderRadius: 8, // 둥근 모서리
+          borderRadius: '8px',
+          padding: '12px 20px',
+          textTransform: 'none',
+          fontWeight: 500,
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-1px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+          },
+        },
+        contained: {
+          backgroundColor: '#2E3A59',
+          color: '#F5F5F5',
+          '&:hover': {
+            backgroundColor: '#D4AF37',
+            color: '#1B1B1E',
+          },
+        },
+        outlined: {
+          borderColor: '#444',
+          color: '#F5F5F5',
+          '&:hover': {
+            borderColor: '#D4AF37',
+            backgroundColor: 'rgba(212, 175, 55, 0.1)',
+          },
         },
       },
     },
-    // 카드 컴포넌트 커스터마이징
+
+    // TextField 스타일
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: '#1B1B1E',
+            color: '#F5F5F5',
+            '& fieldset': {
+              borderColor: '#444',
+            },
+            '&:hover fieldset': {
+              borderColor: '#D4AF37',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#D4AF37',
+            },
+          },
+          '& .MuiInputBase-input': {
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '16px',
+          },
+          '& .MuiFormHelperText-root': {
+            color: '#E74C3C',
+          },
+        },
+      },
+    },
+
+    // Card 스타일
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12, // 더 둥근 모서리
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)', // 부드러운 그림자
+          backgroundColor: '#2F2F37',
+          borderRadius: '12px',
+          border: '1px solid #444',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+          },
         },
       },
     },
+
+    // Chip 스타일
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 500,
+        },
+        filled: {
+          backgroundColor: '#D4AF37',
+          color: '#1B1B1E',
+          '&.MuiChip-colorSuccess': {
+            backgroundColor: '#2ECC71',
+            color: '#1B1B1E',
+          },
+        },
+        outlined: {
+          borderColor: '#444',
+          color: '#A0A3B1',
+        },
+      },
+    },
+
+    // IconButton 스타일
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          color: '#A0A3B1',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            backgroundColor: 'rgba(212, 175, 55, 0.1)',
+            color: '#D4AF37',
+          },
+        },
+      },
+    },
+
+    // CircularProgress 스타일
+    MuiCircularProgress: {
+      styleOverrides: {
+        root: {
+          color: '#D4AF37',
+        },
+      },
+    },
+  },
+
+  // 스페이싱 설정
+  spacing: 8,
+
+  // 그림자 설정
+  shadows: [
+    'none',
+    '0 2px 4px rgba(0, 0, 0, 0.1)',
+    '0 4px 8px rgba(0, 0, 0, 0.1)',
+    '0 8px 16px rgba(0, 0, 0, 0.1)',
+    '0 16px 32px rgba(0, 0, 0, 0.1)',
+    ...Array(20).fill('none'),
+  ],
+
+  // 모양 설정
+  shape: {
+    borderRadius: 8,
   },
 })
 

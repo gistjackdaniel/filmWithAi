@@ -112,6 +112,20 @@ const useAuthStore = create(
        * 앱 시작 시 저장된 인증 정보로 인증 상태 확인
        */
       initialize: async () => {
+        // 개발 모드에서는 자동으로 로그인 상태로 설정
+        if (import.meta.env.DEV) {
+          set({ 
+            loading: false, 
+            isAuthenticated: true,
+            user: {
+              id: 'dev-user',
+              name: '개발자',
+              email: 'dev@example.com'
+            }
+          })
+          return
+        }
+        
         await get().checkAuth()
       }
     }),

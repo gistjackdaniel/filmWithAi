@@ -268,8 +268,8 @@ Authorization: Bearer jwt_token
 
 ## 4. AI 생성 API
 
-### 4.1 스토리 생성
-**POST** `/ai/generate-story`
+### 4.1 스토리 생성 (무료 버전)
+**POST** `/api/story/generate`
 
 **헤더**:
 ```
@@ -280,7 +280,9 @@ Authorization: Bearer jwt_token
 ```json
 {
   "synopsis": "시놉시스 내용",
-  "projectId": "project_id"
+  "maxLength": 1500,
+  "genre": "드라마",
+  "isFreeTier": true
 }
 ```
 
@@ -290,14 +292,28 @@ Authorization: Bearer jwt_token
   "success": true,
   "data": {
     "story": "AI가 생성한 스토리 내용...",
-    "projectId": "project_id"
+    "generatedAt": "2024-01-01T00:00:00.000Z",
+    "tokenCount": 850,
+    "model": "gemini-pro",
+    "isFreeTier": true,
+    "usageInfo": {
+      "requestsPerMinute": 15,
+      "remainingRequests": 12,
+      "resetTime": "2024-01-01T00:01:00.000Z"
+    }
   },
   "message": "스토리 생성 성공"
 }
 ```
 
-### 4.2 콘티 생성
-**POST** `/ai/generate-conte`
+**무료 버전 제한사항**:
+- 분당 15회 요청 제한
+- 최대 1,500자 스토리 생성
+- 토큰당 1,000 토큰 제한
+- 실시간 사용량 정보 제공
+
+### 4.2 콘티 생성 (무료 버전)
+**POST** `/api/conte/generate`
 
 **헤더**:
 ```
@@ -308,7 +324,7 @@ Authorization: Bearer jwt_token
 ```json
 {
   "story": "스토리 내용",
-  "projectId": "project_id"
+  "isFreeTier": true
 }
 ```
 
@@ -331,9 +347,42 @@ Authorization: Bearer jwt_token
         "details": "실사 촬영 정보 (장소, 장비 등)"
       }
     ],
-    "projectId": "project_id"
+    "isFreeTier": true,
+    "usageInfo": {
+      "requestsPerMinute": 15,
+      "remainingRequests": 11,
+      "resetTime": "2024-01-01T00:01:00.000Z"
+    }
   },
   "message": "콘티 생성 성공"
+}
+```
+
+### 4.3 사용량 확인
+**GET** `/api/usage/status`
+
+**헤더**:
+```
+Authorization: Bearer jwt_token
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "isFreeTier": true,
+    "currentUsage": {
+      "requestsThisMinute": 3,
+      "remainingRequests": 12,
+      "resetTime": "2024-01-01T00:01:00.000Z"
+    },
+    "limits": {
+      "requestsPerMinute": 15,
+      "maxTokensPerRequest": 1000,
+      "maxStoryLength": 1500
+    }
+  }
 }
 ```
 
