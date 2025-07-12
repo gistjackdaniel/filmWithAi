@@ -28,32 +28,26 @@ const TimeRuler = ({
     return calculateTimeScale(zoomLevel, baseScale)
   }, [zoomLevel, baseScale])
 
-  // 눈금 간격 계산 (줌 레벨에 따라 조정)
-  const tickInterval = useMemo(() => {
-    if (zoomLevel >= 8) return 1 // 1초 간격
-    if (zoomLevel >= 4) return 5 // 5초 간격
-    if (zoomLevel >= 2) return 10 // 10초 간격
-    if (zoomLevel >= 1) return 30 // 30초 간격
-    return 60 // 1분 간격
-  }, [zoomLevel])
+    // 눈금 간격 계산 - 10초 간격으로 고정
+    const tickInterval = useMemo(() => {
+      return 10 // 10초 간격으로 고정
+    }, [])
+  
 
   // 눈금 위치 계산
   const ticks = useMemo(() => {
     if (totalDuration <= 0) return []
     
-    const tickCount = Math.ceil(totalDuration / tickInterval)
     const ticks = []
     
-    for (let i = 0; i <= tickCount; i++) {
-      const time = i * tickInterval
-      if (time <= totalDuration) {
-        const position = timeToPixels(time, timeScale)
-        ticks.push({
-          time,
-          position,
-          isMajor: time % (tickInterval * 5) === 0 // 주요 눈금 (5배 간격)
-        })
-      }
+    // 0초부터 시작하여 10초 간격으로 눈금 생성
+    for (let time = 0; time <= totalDuration; time += tickInterval) {
+      const position = timeToPixels(time, timeScale)
+      ticks.push({
+        time,
+        position,
+        isMajor: Math.abs(time % 60) < 0.0001 // 1분 단위 굵은 눈금
+      })
     }
     
     return ticks

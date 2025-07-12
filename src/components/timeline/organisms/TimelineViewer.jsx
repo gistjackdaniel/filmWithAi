@@ -91,9 +91,12 @@ const TimelineViewer = (props) => {
   const [totalDuration, setTotalDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
 
-  // 시간 기반 계산 로직
+  // 시간 기반 계산 로직 - 줌 레벨에 따라 동적 timeScale 계산
   const calculatedTimeScale = useMemo(() => {
-    return calculateTimeScale(currentZoomLevel, baseScale)
+    // 줌 레벨에 따라 timeScale 계산 (1픽셀당 시간)
+    const scale = calculateTimeScale(currentZoomLevel, baseScale)
+    console.log(`TimelineViewer calculatedTimeScale: zoomLevel=${currentZoomLevel}, baseScale=${baseScale}, result=${scale}`)
+    return Math.max(scale, 0.1) // 최소 0.1픽셀/초 보장
   }, [currentZoomLevel, baseScale])
 
   const calculatedTotalDuration = useMemo(() => {
@@ -102,7 +105,10 @@ const TimelineViewer = (props) => {
 
   const timelineWidth = useMemo(() => {
     if (calculatedTotalDuration <= 0 || calculatedTimeScale <= 0) return 0
-    return timeToPixels(calculatedTotalDuration, calculatedTimeScale)
+    // 타임라인 너비 계산 - 시간 기반으로 정확히 계산
+    const baseWidth = timeToPixels(calculatedTotalDuration, calculatedTimeScale)
+    const padding = 32 // 좌우 패딩 16px * 2
+    return Math.max(baseWidth + padding, 800) // 최소 800px 보장
   }, [calculatedTotalDuration, calculatedTimeScale])
 
   // 시간 기반 스크롤 위치 계산
@@ -482,6 +488,7 @@ const TimelineViewer = (props) => {
           currentTime={timeBasedScrollPosition}
           zoomLevel={currentZoomLevel}
           baseScale={baseScale}
+          timeScale={calculatedTimeScale}
           height={40}
           showCurrentTime={true}
           showGrid={true}
@@ -495,7 +502,8 @@ const TimelineViewer = (props) => {
         onScrollPositionChange={handleScrollPositionChange}
         sx={{
           flex: 1,
-          minHeight: 300
+          minHeight: 300,
+          width: '100%'
         }}
       >
         {/* 드래그 앤 드롭 컨텍스트 */}
@@ -516,12 +524,10 @@ const TimelineViewer = (props) => {
           >
             <Box
               sx={{
-                display: 'flex',
-                gap: 2,
-                p: 2,
-                minWidth: 'fit-content',
-                minHeight: 250, // 드롭 영역 확보
                 position: 'relative',
+                width: timelineWidth > 0 ? timelineWidth : 'fit-content',
+                height: 280, // 고정 높이로 설정
+                p: 2,
                 '&::before': {
                   content: '""',
                   position: 'absolute',
@@ -540,32 +546,53 @@ const TimelineViewer = (props) => {
                 }
               }}
             >
-              {safeFilteredScenes.map((scene, index) => (
-                <SceneCard
-                  key={scene.id}
-                  scene={scene}
-                  onClick={(event) => handleSceneMultiSelect(scene, event)}
-                  onEdit={() => handleSceneEdit(scene)}
-                  onInfo={() => handleSceneInfo(scene)}
-                  selected={selectedSceneId === scene.id || selectedScenes.has(scene.id)}
-                  isMultiSelected={selectedScenes.has(scene.id)}
-                  onMouseEnter={() => {
-                    if (scene && scene.id) {
-                      setHoveredSceneId(scene.id)
-                    }
-                  }}
-                  onMouseLeave={() => {
-                    if (scene && scene.id) {
-                      setHoveredSceneId(null)
-                    }
-                  }}
-                  isDraggable={true} // 드래그 가능 표시
-                  // 시간 기반 타임라인 props
-                  timeScale={calculatedTimeScale}
-                  zoomLevel={currentZoomLevel}
-                  showTimeInfo={showTimeInfo}
-                />
-              ))}
+              {safeFilteredScenes.map((scene, index) => {
+                // 씬의 시작 시간 계산 (이전 씬들의 duration 합계)
+                const sceneStartTime = safeFilteredScenes
+                  .slice(0, index)
+                  .reduce((total, prevScene) => total + (prevScene.duration || 0), 0)
+                
+                // 씬의 시작 위치 계산 (픽셀 단위)
+                const sceneStartPosition = timeToPixels(sceneStartTime, calculatedTimeScale)
+                
+                return (
+                  <Box
+                    key={scene.id}
+                    sx={{
+                      position: 'absolute',
+                      left: sceneStartPosition,
+                      top: 16, // 패딩 고려
+                      bottom: 16,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <SceneCard
+                      scene={scene}
+                      onClick={(event) => handleSceneMultiSelect(scene, event)}
+                      onEdit={() => handleSceneEdit(scene)}
+                      onInfo={() => handleSceneInfo(scene)}
+                      selected={selectedSceneId === scene.id || selectedScenes.has(scene.id)}
+                      isMultiSelected={selectedScenes.has(scene.id)}
+                      onMouseEnter={() => {
+                        if (scene && scene.id) {
+                          setHoveredSceneId(scene.id)
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        if (scene && scene.id) {
+                          setHoveredSceneId(null)
+                        }
+                      }}
+                      isDraggable={true} // 드래그 가능 표시
+                      // 시간 기반 타임라인 props - 줌 레벨에 따라 동적 조정
+                      timeScale={calculatedTimeScale}
+                      zoomLevel={currentZoomLevel}
+                      showTimeInfo={showTimeInfo}
+                    />
+                  </Box>
+                )
+              })}
             </Box>
           </SortableContext>
         </DndContext>

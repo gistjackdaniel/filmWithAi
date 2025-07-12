@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useAuthStore } from './authStore'
 
 /**
  * 스토리 생성 상태 관리 스토어
@@ -60,6 +61,95 @@ const useStoryGenerationStore = create((set, get) => ({
   // ===== 액션 정의 =====
 
   /**
+   * 사용자별 데이터 로드
+   * @param {string} userId - 사용자 ID
+   */
+  loadUserData: (userId) => {
+    if (!userId) return
+    
+    try {
+      const savedData = localStorage.getItem(`story-data-${userId}`)
+      if (savedData) {
+        const data = JSON.parse(savedData)
+        set(data)
+        console.log('User story data loaded for:', userId)
+      }
+    } catch (error) {
+      console.warn('Failed to load user story data:', error)
+    }
+  },
+
+  /**
+   * 사용자별 데이터 저장
+   * @param {string} userId - 사용자 ID
+   */
+  saveUserData: (userId) => {
+    if (!userId) return
+    
+    try {
+      const currentState = get()
+      const dataToSave = {
+        synopsis: currentState.synopsis,
+        generatedStory: currentState.generatedStory,
+        storyHistory: currentState.storyHistory,
+        storySettings: currentState.storySettings,
+        templateSelection: currentState.templateSelection,
+        qualityEnhancement: currentState.qualityEnhancement,
+        conteGeneration: currentState.conteGeneration
+      }
+      
+      localStorage.setItem(`story-data-${userId}`, JSON.stringify(dataToSave))
+      console.log('User story data saved for:', userId)
+    } catch (error) {
+      console.warn('Failed to save user story data:', error)
+    }
+  },
+
+  /**
+   * 모든 데이터 초기화
+   */
+  clearAllData: () => {
+    set({
+      synopsis: '',
+      synopsisError: '',
+      generatedStory: '',
+      isGenerating: false,
+      generationError: '',
+      storyHistory: [],
+      currentHistoryIndex: -1,
+      storySettings: {
+        maxLength: 2000,
+        genre: '일반',
+        style: '드라마',
+      },
+      templateSelection: {
+        selectedGenre: '',
+        selectedLength: 'medium',
+        selectedTone: '',
+        activeTab: 0,
+      },
+      qualityEnhancement: {
+        lengthMultiplier: 1,
+        selectedStyle: '',
+        customPrompt: '',
+        showAdvancedOptions: false,
+        enhancementProgress: 0,
+      },
+      conteGeneration: {
+        isGenerating: false,
+        generatedConte: [],
+        generationError: '',
+        conteSettings: {
+          maxScenes: 2,
+          genre: '일반',
+          focus: '균형'
+        }
+      }
+    })
+    console.log('All story data cleared')
+  },
+
+  /**
    * 시놉시스 설정
    * @param {string} synopsis - 시놉시스 텍스트
    */
@@ -68,6 +158,12 @@ const useStoryGenerationStore = create((set, get) => ({
       synopsis,
       synopsisError: '' // 에러 초기화
     })
+    
+    // 사용자별 데이터 저장
+    const { user } = useAuthStore.getState()
+    if (user && user.id) {
+      get().saveUserData(user.id)
+    }
   },
 
   /**
@@ -110,6 +206,12 @@ const useStoryGenerationStore = create((set, get) => ({
       storyHistory: [historyEntry, ...state.storyHistory],
       currentHistoryIndex: 0,
     }))
+    
+    // 사용자별 데이터 저장
+    const { user } = useAuthStore.getState()
+    if (user && user.id) {
+      get().saveUserData(user.id)
+    }
   },
 
   /**
@@ -187,6 +289,12 @@ const useStoryGenerationStore = create((set, get) => ({
         generationError: ''
       }
     }))
+    
+    // 사용자별 데이터 저장
+    const { user } = useAuthStore.getState()
+    if (user && user.id) {
+      get().saveUserData(user.id)
+    }
   },
 
   /**

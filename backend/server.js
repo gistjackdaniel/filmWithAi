@@ -210,6 +210,105 @@ app.post('/api/story/generate', async (req, res) => {
 })
 
 /**
+ * 장면의 특성에 따라 예상 시간을 계산하는 함수
+ * @param {Object} sceneData - 장면 데이터
+ * @returns {string} 예상 시간 (예: "3분", "1분 30초")
+ */
+const calculateSceneDuration = (sceneData) => {
+  let baseDuration = 2 // 기본 2분
+  
+  // 대사 길이에 따른 시간 계산 (더 정교한 계산)
+  if (sceneData.dialogue) {
+    const dialogueLength = sceneData.dialogue.length
+    const wordCount = sceneData.dialogue.split(/\s+/).length
+    
+    // 대사가 있는 경우 기본 시간 증가
+    if (dialogueLength > 0) {
+      baseDuration += 0.5
+    }
+    
+    // 대사 길이에 따른 추가 시간
+    if (dialogueLength > 100) {
+      baseDuration += 1 // 긴 대사
+    } else if (dialogueLength > 50) {
+      baseDuration += 0.5 // 중간 길이 대사
+    }
+    
+    // 단어 수에 따른 추가 시간 (한국어 기준)
+    if (wordCount > 20) {
+      baseDuration += 0.5 // 많은 단어
+    } else if (wordCount > 10) {
+      baseDuration += 0.25 // 중간 단어 수
+    }
+    
+    // 감정적 대사는 시간 증가
+    if (sceneData.dialogue.includes('!') || 
+        sceneData.dialogue.includes('?') ||
+        sceneData.dialogue.includes('...') ||
+        sceneData.dialogue.includes('ㅠ') ||
+        sceneData.dialogue.includes('ㅜ')) {
+      baseDuration += 0.25
+    }
+  }
+  
+  // 특수효과나 CG가 필요한 장면은 시간 증가
+  if (sceneData.visualEffects && (
+    sceneData.visualEffects.includes('CG') ||
+    sceneData.visualEffects.includes('특수효과') ||
+    sceneData.visualEffects.includes('AI')
+  )) {
+    baseDuration += 1
+  }
+  
+  // 액션 장면은 시간 증가
+  if (sceneData.description && (
+    sceneData.description.includes('액션') ||
+    sceneData.description.includes('싸움') ||
+    sceneData.description.includes('추격') ||
+    sceneData.description.includes('달리기')
+  )) {
+    baseDuration += 1
+  }
+  
+  // 감정적 장면은 시간 증가
+  if (sceneData.description && (
+    sceneData.description.includes('감정') ||
+    sceneData.description.includes('눈물') ||
+    sceneData.description.includes('고백') ||
+    sceneData.description.includes('이별')
+  )) {
+    baseDuration += 1
+  }
+  
+  // 단순한 자연 풍경은 시간 감소
+  if (sceneData.visualDescription && (
+    sceneData.visualDescription.includes('하늘') ||
+    sceneData.visualDescription.includes('바다') ||
+    sceneData.visualDescription.includes('구름')
+  )) {
+    baseDuration = Math.max(1, baseDuration - 1)
+  }
+  
+  // AI 생성 비디오는 일반적으로 시간 감소
+  if (sceneData.type === 'generated_video') {
+    baseDuration = Math.max(1, baseDuration - 0.5)
+  }
+  
+  // 최소 1분, 최대 8분으로 제한
+  baseDuration = Math.max(1, Math.min(8, baseDuration))
+  
+  // 분과 초로 변환
+  const minutes = Math.floor(baseDuration)
+  const seconds = Math.round((baseDuration - minutes) * 60)
+  
+  if (seconds === 0) {
+    return `${minutes}분`
+  } else {
+    return `${minutes}분 ${seconds}초`
+  }
+}
+
+/**
  * AI 이미지 생성 API
  * POST /api/image/generate
  */
@@ -324,7 +423,7 @@ app.post('/api/conte/generate', async (req, res) => {
 각 캡션 카드는 다음 12개 구성 요소를 모두 포함해야 합니다:
 
 1. **인물들이 처한 상황에 대한 대략적인 설명**: 등장인물들의 현재 상황과 감정 상태
-2. **해당 장면을 대표하는 대사**: 핵심 대사나 내레이션
+2. **해당 장면을 대표하는 대사**: 장면의 전체 시간 동안 나올 모든 대사, 내레이션, 음성 효과를 포함 (예상 시간에 맞는 충분한 대사량)
 3. **카메라/그림 앵글과 구도를 설명하는 배치도**: 카메라 위치, 앵글, 구도 설명
 4. **카메라 워크 및 그림의 장면 전환을 설명하는 화살표들**: 카메라 이동과 전환 효과
 5. **인물 배치도와 인물의 동선을 설명하는 화살표**: 등장인물들의 위치와 움직임
@@ -336,9 +435,50 @@ app.post('/api/conte/generate', async (req, res) => {
 11. **렌즈 길이, 요구되는 카메라의 특성 등 촬영 방식**: 기술적 촬영 정보
 12. **사용할 그래픽 툴, 넣어야하는 시각효과**: 후반 작업 정보
 
-그리고 각 카드의 타입을 다음 중 하나로 분류해주세요:
-- "generated_video": 생성형 AI로 영상 생성 가능한 장면
-- "live_action": 실사 촬영이 필요한 장면
+그리고 각 카드의 타입을 다음 기준에 따라 분류해주세요:
+
+**"generated_video" (AI 생성 비디오)로 분류하는 경우:**
+- 특수효과나 CG가 필요한 장면
+- 환상적이거나 초자연적인 요소가 포함된 장면 (마법, 미래, 우주, 초자연적 현상 등)
+- AI 시각효과가 포함된 장면
+- 실제로 촬영하기 어려운 장면들
+- 단순한 자연 풍경 장면 (하늘, 바다, 자연 풍경)
+
+**"live_action" (실사 촬영)로 분류하는 경우:**
+- 실제 배우의 연기가 중요한 장면
+- 실제 소품과 물리적 상호작용이 필요한 장면
+- 자연광이나 실제 조명 효과가 중요한 장면
+- 특정 실제 장소에서 촬영이 필요한 장면
+- 실제 감정 표현이나 인간적 상호작용이 중심인 장면
+
+분류 시 각 장면의 특성을 분석하여 가장 적합한 방식을 선택해주세요.
+
+**예상 시간 계산 기준:**
+- 기본 시간: 2분
+- 대사가 있는 장면: +0.5분
+- 긴 대사 (100자 이상): +1분
+- 중간 길이 대사 (50자 이상): +0.5분
+- 많은 단어 (20개 이상): +0.5분
+- 중간 단어 수 (10개 이상): +0.25분
+- 감정적 대사 (!, ?, ..., ㅠ, ㅜ): +0.25분
+- 특수효과/CG 장면: +1분  
+- 액션 장면: +1분
+- 감정적 장면: +1분
+- 단순 자연 풍경: -1분
+- AI 생성 비디오: -0.5분
+- 최소 1분, 최대 8분으로 제한
+
+**대사 생성 지침:**
+- 각 장면의 예상 시간에 맞는 충분한 대사량을 생성해주세요
+- 1분당 약 150-200자 정도의 대사가 적절합니다
+- 대사는 자연스러운 대화 흐름을 따라야 합니다
+- 내레이션, 음성 효과, 배경 음성도 포함해주세요
+- 대사가 없는 장면도 있지만, 대부분의 장면에는 적절한 대사가 있어야 합니다
+- 대사 형식 예시:
+  * "안녕하세요, 어떻게 지내세요?" (대화)
+  * "그 순간, 모든 것이 바뀌었다..." (내레이션)
+  * "[배경음: 차량 소음]" (음성 효과)
+  * "아... 정말 힘들어..." (감정 표현)
 
 반드시 다음 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요:
 
@@ -361,7 +501,8 @@ app.post('/api/conte/generate', async (req, res) => {
       "lensSpecs": "렌즈 길이, 요구되는 카메라의 특성 등 촬영 방식",
       "visualEffects": "사용할 그래픽 툴, 넣어야하는 시각효과",
       "type": "generated_video",
-      "estimatedDuration": "5분",
+      "typeReason": "AI 시각효과와 특수효과가 필요한 장면으로 판단됨",
+      "estimatedDuration": "3분",
       "keywords": {
         "userInfo": "기본 사용자",
         "location": "기본 장소",
@@ -478,7 +619,13 @@ app.post('/api/conte/generate', async (req, res) => {
                 lensSpecs: '기본 렌즈 사양',
                 visualEffects: '기본 시각효과',
                 type: 'live_action',
-                estimatedDuration: '5분',
+                typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
+                estimatedDuration: calculateSceneDuration({
+                  dialogue: '기본 대사',
+                  visualEffects: '기본 시각효과',
+                  description: '스토리 기반 기본 씬',
+                  type: 'live_action'
+                }),
                 keywords: {
                   userInfo: '기본 사용자',
                   location: '기본 장소',
@@ -720,7 +867,13 @@ app.post('/api/conte/generate', async (req, res) => {
           lensSpecs: '',
           visualEffects: '',
           type: 'live_action',
-          estimatedDuration: '5분',
+          typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
+          estimatedDuration: calculateSceneDuration({
+            dialogue: '',
+            visualEffects: '',
+            description: content.length > 200 ? content.substring(0, 200) + '...' : content,
+            type: 'live_action'
+          }),
           keywords: {
             userInfo: '기본 사용자',
             location: '기본 장소',
@@ -876,9 +1029,15 @@ app.post('/api/conte/generate', async (req, res) => {
         visualDescription: '',
         transition: '',
         lensSpecs: '',
-        visualEffects: '',
-        type: 'live_action',
-        estimatedDuration: '5분',
+                  visualEffects: '',
+          type: 'live_action',
+          typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
+          estimatedDuration: calculateSceneDuration({
+            dialogue: '',
+            visualEffects: '',
+            description: content.length > 200 ? content.substring(0, 200) + '...' : content,
+            type: 'live_action'
+          }),
         keywords: {
           userInfo: '기본 사용자',
           location: '기본 장소',

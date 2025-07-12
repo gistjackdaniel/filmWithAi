@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore } from './stores/authStore'
 import SplashScreen from './components/SplashScreen'
@@ -14,6 +14,7 @@ import DebugPanel from './components/DebugPanel'
 /**
  * SceneForge 메인 앱 컴포넌트
  * 인증 상태에 따라 적절한 페이지를 렌더링하고 라우팅을 관리
+ * designSystem.txt 기준으로 다크 테마 적용
  */
 function App() {
   // Zustand 스토어에서 인증 상태 가져오기
@@ -22,6 +23,20 @@ function App() {
   // 앱 초기화 (인증 상태 확인)
   useEffect(() => {
     initialize()
+    
+    // 다크 테마를 강제로 설정
+    document.documentElement.setAttribute('data-theme', 'dark')
+    document.documentElement.style.colorScheme = 'dark'
+    
+    // body에도 다크 모드 스타일 강제 적용
+    document.body.style.backgroundColor = '#1B1B1E'
+    document.body.style.color = '#F5F5F5'
+    
+    // MUI 테마도 다크 모드로 설정
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', '#1B1B1E')
+    }
   }, [initialize])
 
   // 로딩 중일 때 스플래시 화면 표시
@@ -41,6 +56,20 @@ function App() {
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
+            ) : (
+              // 미인증 사용자: 로그인 페이지 표시
+              <LoginPage />
+            )
+          } 
+        />
+        
+        {/* 로그인 페이지 라우트 - 명시적 경로 */}
+        <Route 
+          path="/login" 
+          element={
+            isAuthenticated ? (
+              // 이미 로그인된 사용자는 대시보드로 리다이렉트
+              <Navigate to="/" replace />
             ) : (
               // 미인증 사용자: 로그인 페이지 표시
               <LoginPage />
@@ -77,6 +106,7 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        
       </Routes>
 
       {/* 개발자 디버그 패널 */}

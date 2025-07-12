@@ -28,7 +28,8 @@ import {
   Movie,
   ExpandMore,
   Close,
-  Edit
+  Edit,
+  Timeline
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -84,7 +85,10 @@ const StoryGenerationPage = () => {
     updateStorySettings,
     updateTemplateSelection,
     updateQualityEnhancement,
-    getCurrentError
+    getCurrentError,
+    completeConteGeneration,
+    startConteGeneration,
+    failConteGeneration
   } = useStoryGenerationStore()
 
   // 히스토리 스토어
@@ -373,6 +377,19 @@ const StoryGenerationPage = () => {
   }
 
   /**
+   * 타임라인 보기 핸들러
+   */
+  const handleViewTimeline = () => {
+    // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
+    if (generatedConte && generatedConte.length > 0) {
+      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      navigate('/project/temp-project-id')
+    } else {
+      toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
+    }
+  }
+
+  /**
    * 이미지 재시도 핸들러
    * @param {Object} conte - 콘티 객체
    */
@@ -608,12 +625,35 @@ const StoryGenerationPage = () => {
                 {/* 생성된 콘티 결과 표시 */}
                 {generatedConte && generatedConte.length > 0 && (
                   <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" gutterBottom>
-                      생성된 콘티 리스트
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      총 {generatedConte.length}개의 씬이 생성되었습니다.
-                    </Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      mb: 2 
+                    }}>
+                      <Box>
+                        <Typography variant="h6" gutterBottom>
+                          생성된 콘티 리스트
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          총 {generatedConte.length}개의 씬이 생성되었습니다.
+                        </Typography>
+                      </Box>
+                      
+                      <Button
+                        variant="contained"
+                        startIcon={<Timeline />}
+                        onClick={handleViewTimeline}
+                        sx={{
+                          backgroundColor: 'var(--color-success)',
+                          '&:hover': {
+                            backgroundColor: 'var(--color-success-dark)',
+                          }
+                        }}
+                      >
+                        타임라인 보기
+                      </Button>
+                    </Box>
                     
                     {generatedConte.map((conte, index) => (
                       <Box 

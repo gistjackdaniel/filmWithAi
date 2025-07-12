@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useAuthStore } from './authStore'
 
 /**
  * 스토리 생성 히스토리 관리 스토어
@@ -26,6 +27,57 @@ const useStoryHistoryStore = create(
       history: [], // 스토리 생성 히스토리 배열
       maxHistorySize: 50, // 최대 히스토리 개수
       currentHistoryId: null, // 현재 선택된 히스토리 ID
+
+      /**
+       * 사용자별 데이터 로드
+       * @param {string} userId - 사용자 ID
+       */
+      loadUserData: (userId) => {
+        if (!userId) return
+        
+        try {
+          const savedData = localStorage.getItem(`history-data-${userId}`)
+          if (savedData) {
+            const data = JSON.parse(savedData)
+            set(data)
+            console.log('User history data loaded for:', userId)
+          }
+        } catch (error) {
+          console.warn('Failed to load user history data:', error)
+        }
+      },
+
+      /**
+       * 사용자별 데이터 저장
+       * @param {string} userId - 사용자 ID
+       */
+      saveUserData: (userId) => {
+        if (!userId) return
+        
+        try {
+          const currentState = get()
+          const dataToSave = {
+            history: currentState.history,
+            currentHistoryId: currentState.currentHistoryId
+          }
+          
+          localStorage.setItem(`history-data-${userId}`, JSON.stringify(dataToSave))
+          console.log('User history data saved for:', userId)
+        } catch (error) {
+          console.warn('Failed to save user history data:', error)
+        }
+      },
+
+      /**
+       * 모든 데이터 초기화
+       */
+      clearAllData: () => {
+        set({
+          history: [],
+          currentHistoryId: null
+        })
+        console.log('All history data cleared')
+      },
 
       /**
        * 새 스토리 생성 결과를 히스토리에 추가
@@ -58,6 +110,12 @@ const useStoryHistoryStore = create(
           history: limitedHistory,
           currentHistoryId: newHistoryItem.id
         })
+
+        // 사용자별 데이터 저장
+        const { user } = useAuthStore.getState()
+        if (user && user.id) {
+          get().saveUserData(user.id)
+        }
 
         return newHistoryItem.id
       },

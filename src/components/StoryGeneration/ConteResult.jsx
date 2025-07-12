@@ -18,7 +18,9 @@ import {
   ListItemText,
   ListItemIcon,
   Skeleton,
-  LinearProgress
+  LinearProgress,
+  Alert,
+  Collapse
 } from '@mui/material'
 import { 
   ExpandMore,
@@ -34,7 +36,10 @@ import {
   Lightbulb,
   WbSunny,
   AccessTime,
-  Star
+  Star,
+  Info,
+  Help,
+  Timeline
 } from '@mui/icons-material'
 import toast from 'react-hot-toast'
 import { CAPTION_CARD_TYPES, GRAPH_RELATIONSHIPS, groupCaptionCards } from '../../data/conteCardStructure'
@@ -50,11 +55,13 @@ const ConteResult = ({
   onRegenerate,
   isGenerating = false,
   generatingImages = false,
-  imageGenerationProgress = 0
+  imageGenerationProgress = 0,
+  onViewTimeline = null
 }) => {
   // 로컬 상태 관리
   const [expandedScene, setExpandedScene] = useState(0) // 확장된 씬 인덱스
   const [groupBy, setGroupBy] = useState('none') // 그룹화 기준
+  const [showTypeReason, setShowTypeReason] = useState({}) // 타입 분류 이유 표시 상태
 
   /**
    * 씬 확장/축소 핸들러
@@ -69,8 +76,12 @@ const ConteResult = ({
    * @param {number} sceneIndex - 편집할 씬 인덱스
    */
   const handleEditConte = (sceneIndex) => {
+    console.log('🎬 ConteResult 편집 핸들러 호출:', { sceneIndex, onEdit: !!onEdit })
     if (onEdit) {
+      console.log('✅ onEdit 함수 호출:', { card: conteList[sceneIndex], sceneIndex })
       onEdit(conteList[sceneIndex], sceneIndex)
+    } else {
+      console.error('❌ onEdit 함수가 없습니다!')
     }
     toast.success('캡션 카드 편집 모드로 전환되었습니다.')
   }
@@ -90,6 +101,17 @@ const ConteResult = ({
   const handleSaveConte = () => {
     // TODO: 캡션 카드 저장 API 연동
     toast.success('캡션 카드가 저장되었습니다.')
+  }
+
+  /**
+   * 타입 분류 이유 토글 핸들러
+   * @param {number} sceneIndex - 씬 인덱스
+   */
+  const handleToggleTypeReason = (sceneIndex) => {
+    setShowTypeReason(prev => ({
+      ...prev,
+      [sceneIndex]: !prev[sceneIndex]
+    }))
   }
 
   /**
@@ -122,6 +144,259 @@ const ConteResult = ({
       default:
         return '미분류'
     }
+  }
+
+  /**
+   * 씬 타입 분류 이유 분석 및 반환
+   * @param {Object} card - 캡션 카드 데이터
+   * @returns {Object} 분류 이유 정보
+   */
+  const analyzeTypeReason = (card) => {
+    const reasons = {
+      generated_video: [],
+      live_action: []
+    }
+
+    // AI 생성 비디오로 분류되는 이유들
+    if (card.visualEffects && (
+      card.visualEffects.includes('AI') ||
+      card.visualEffects.includes('CG') ||
+      card.visualEffects.includes('특수효과')
+    )) {
+      reasons.generated_video.push('AI 시각효과나 특수효과가 포함된 장면')
+    }
+    
+    if (card.visualDescription && (
+      card.visualDescription.includes('환상') || 
+      card.visualDescription.includes('초자연') ||
+      card.visualDescription.includes('미래') ||
+      card.visualDescription.includes('우주') ||
+      card.visualDescription.includes('마법') ||
+      card.visualDescription.includes('초능력') ||
+      card.visualDescription.includes('시간여행')
+    )) {
+      reasons.generated_video.push('환상적이거나 초자연적인 요소가 포함된 장면')
+    }
+    
+    if (card.description && (
+      card.description.includes('특수효과') ||
+      card.description.includes('CG') ||
+      card.description.includes('애니메이션') ||
+      card.description.includes('디지털')
+    )) {
+      reasons.generated_video.push('특수효과나 CG가 필요한 장면')
+    }
+
+    // 단순한 자연 풍경 장면 (AI 생성이 적합)
+    if (card.visualDescription && (
+      card.visualDescription.includes('하늘') ||
+      card.visualDescription.includes('바다') ||
+      card.visualDescription.includes('구름') ||
+      card.visualDescription.includes('자연 풍경') ||
+      card.visualDescription.includes('숲') ||
+      card.visualDescription.includes('산')
+    )) {
+      reasons.generated_video.push('단순한 자연 풍경 장면 (AI 생성이 적합)')
+    }
+
+    // 실사 촬영으로 분류되는 이유들
+    if (card.characterLayout && (
+      card.characterLayout.includes('실제 배우') ||
+      card.characterLayout.includes('배우') ||
+      card.characterLayout.includes('연기')
+    )) {
+      reasons.live_action.push('실제 배우의 연기가 중요한 장면')
+    }
+    
+    if (card.props && (
+      card.props.includes('실제 소품') ||
+      card.props.includes('물리적') ||
+      card.props.includes('접촉')
+    )) {
+      reasons.live_action.push('실제 소품과 물리적 상호작용이 필요한 장면')
+    }
+    
+    if (card.lighting && (
+      card.lighting.includes('자연광') ||
+      card.lighting.includes('실제 조명') ||
+      card.lighting.includes('태양광') ||
+      card.lighting.includes('실내 조명')
+    )) {
+      // 실내 장면 감지 (더 포괄적으로)
+      const isIndoorScene = (
+        (card.description && (
+          card.description.includes('실내') ||
+          card.description.includes('방') ||
+          card.description.includes('건물') ||
+          card.description.includes('집') ||
+          card.description.includes('사무실') ||
+          card.description.includes('카페') ||
+          card.description.includes('레스토랑') ||
+          card.description.includes('학교') ||
+          card.description.includes('병원') ||
+          card.description.includes('상점') ||
+          card.description.includes('극장') ||
+          card.description.includes('지하') ||
+          card.description.includes('엘리베이터') ||
+          card.description.includes('계단')
+        )) ||
+        (card.visualDescription && (
+          card.visualDescription.includes('실내') ||
+          card.visualDescription.includes('방') ||
+          card.visualDescription.includes('건물') ||
+          card.visualDescription.includes('집')
+        )) ||
+        (card.keywords && card.keywords.location && (
+          card.keywords.location.includes('실내') ||
+          card.keywords.location.includes('방') ||
+          card.keywords.location.includes('건물') ||
+          card.keywords.location.includes('집')
+        ))
+      )
+      
+      // 날씨 무관성 감지 (더 포괄적으로)
+      const isWeatherIrrelevant = card.weather && (
+        card.weather.includes('영향을 미치지 않음') ||
+        card.weather.includes('관계없음') ||
+        card.weather.includes('해당없음') ||
+        card.weather.includes('실내') ||
+        card.weather.includes('내부') ||
+        card.weather.includes('조명으로 대체') ||
+        card.weather.includes('인공 조명')
+      )
+      
+      // 실내 장면이거나 날씨가 무관한 경우 제외
+      if (!isIndoorScene && !isWeatherIrrelevant) {
+        reasons.live_action.push('특정 날씨 조건이 필요한 장면')
+      }
+    }
+    
+    if (card.keywords && card.keywords.location && card.keywords.location !== '기본 장소') {
+      reasons.live_action.push('특정 실제 장소에서 촬영이 필요한 장면')
+    }
+    
+    if (card.location && card.location !== '기본 장소') {
+      reasons.live_action.push('특정 실제 장소에서 촬영이 필요한 장면')
+    }
+
+    // 감정 표현이나 인간적 상호작용이 중심인 장면
+    if (card.description && (
+      card.description.includes('감정') ||
+      card.description.includes('대화') ||
+      card.description.includes('표정') ||
+      card.description.includes('눈물') ||
+      card.description.includes('웃음')
+    )) {
+      reasons.live_action.push('실제 감정 표현이나 인간적 상호작용이 중심인 장면')
+    }
+
+    // 대사가 많은 장면은 실사 촬영이 적합
+    if (card.dialogue && card.dialogue.length > 50) {
+      reasons.live_action.push('대사가 많은 장면 (실제 배우의 연기가 필요)')
+    }
+
+    // 감정적 대사가 포함된 장면
+    if (card.dialogue && (
+      card.dialogue.includes('!') || 
+      card.dialogue.includes('?') ||
+      card.dialogue.includes('...') ||
+      card.dialogue.includes('ㅠ') ||
+      card.dialogue.includes('ㅜ')
+    )) {
+      reasons.live_action.push('감정적 대사가 포함된 장면')
+    }
+
+    // 기본 분류 이유 (분석 결과가 없는 경우)
+    if (reasons.generated_video.length === 0 && reasons.live_action.length === 0) {
+      if (card.type === CAPTION_CARD_TYPES.GENERATED_VIDEO) {
+        reasons.generated_video.push('AI 생성이 적합한 장면으로 판단됨')
+      } else {
+        reasons.live_action.push('실사 촬영이 적합한 장면으로 판단됨')
+      }
+    }
+
+    return reasons
+  }
+
+  /**
+   * 타입 분류 이유 표시 컴포넌트
+   * @param {Object} card - 캡션 카드 데이터
+   * @param {number} sceneIndex - 씬 인덱스
+   * @returns {JSX.Element} 타입 분류 이유 표시
+   */
+  const renderTypeReason = (card, sceneIndex) => {
+    const reasons = analyzeTypeReason(card)
+    const currentType = card.type
+    const currentReasons = reasons[currentType] || []
+
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Alert 
+          severity="info" 
+          icon={<Info />}
+          action={
+            <IconButton
+              size="small"
+              onClick={() => handleToggleTypeReason(sceneIndex)}
+            >
+              <Help />
+            </IconButton>
+          }
+        >
+          <Typography variant="subtitle2" gutterBottom>
+            🤖 AI 분류 이유
+          </Typography>
+          <Typography variant="body2">
+            이 씬이 <strong>{getSceneTypeLabel(card.type)}</strong>으로 분류된 이유를 확인하려면 
+            <Button 
+              size="small" 
+              onClick={() => handleToggleTypeReason(sceneIndex)}
+              sx={{ ml: 1, minWidth: 'auto' }}
+            >
+              {showTypeReason[sceneIndex] ? '숨기기' : '자세히 보기'}
+            </Button>
+          </Typography>
+        </Alert>
+
+        <Collapse in={showTypeReason[sceneIndex]}>
+          <Box sx={{ mt: 2, p: 2, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }}>
+            <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
+              📋 분류 근거
+            </Typography>
+            
+            {currentReasons.length > 0 ? (
+              <List dense>
+                {currentReasons.map((reason, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: '24px' }}>
+                      <Typography variant="body2">•</Typography>
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={reason}
+                      primaryTypographyProps={{ variant: 'body2' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                AI가 장면의 특성을 분석하여 {getSceneTypeLabel(card.type)}로 분류했습니다.
+              </Typography>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+            
+            <Typography variant="caption" color="text.secondary">
+              💡 <strong>AI 생성 비디오</strong>: 특수효과, 환상적 요소, CG, 단순 자연 풍경이 필요한 장면
+            </Typography>
+            <br />
+            <Typography variant="caption" color="text.secondary">
+              🎬 <strong>실사 촬영</strong>: 실제 배우, 소품, 자연광, 특정 장소, 감정 표현이 중요한 장면
+            </Typography>
+          </Box>
+        </Collapse>
+      </Box>
+    )
   }
 
   /**
@@ -267,6 +542,69 @@ const ConteResult = ({
     </Box>
   )
 
+  /**
+   * 시간 문자열을 분으로 변환하는 함수
+   * @param {string} duration - 시간 문자열 (예: "3분", "1분 30초")
+   * @returns {number} 분 단위 시간
+   */
+  const parseDurationToMinutes = (duration) => {
+    if (!duration) return 0
+    
+    const minutesMatch = duration.match(/(\d+)분/)
+    const secondsMatch = duration.match(/(\d+)초/)
+    
+    const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0
+    const seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0
+    
+    return minutes + (seconds / 60)
+  }
+
+  /**
+   * 분을 시간 문자열로 변환하는 함수
+   * @param {number} totalMinutes - 총 분
+   * @returns {string} 시간 문자열
+   */
+  const formatDuration = (totalMinutes) => {
+    const minutes = Math.floor(totalMinutes)
+    const seconds = Math.round((totalMinutes - minutes) * 60)
+    
+    if (seconds === 0) {
+      return `${minutes}분`
+    } else {
+      return `${minutes}분 ${seconds}초`
+    }
+  }
+
+  /**
+   * 대사 분석 및 시간 계산 함수
+   * @param {string} dialogue - 대사 텍스트
+   * @returns {Object} 대사 분석 결과
+   */
+  const analyzeDialogue = (dialogue) => {
+    if (!dialogue) return { length: 0, wordCount: 0, estimatedTime: 0, hasEmotion: false }
+    
+    const length = dialogue.length
+    const wordCount = dialogue.split(/\s+/).length
+    const hasEmotion = dialogue.includes('!') || 
+                      dialogue.includes('?') || 
+                      dialogue.includes('...') || 
+                      dialogue.includes('ㅠ') || 
+                      dialogue.includes('ㅜ')
+    
+    // 대사 시간 계산 (1분당 약 150자 기준)
+    const estimatedTime = Math.ceil(length / 150)
+    
+    return {
+      length,
+      wordCount,
+      estimatedTime,
+      hasEmotion,
+      isShort: length < 50,
+      isMedium: length >= 50 && length < 100,
+      isLong: length >= 100
+    }
+  }
+
   if (!conteList || conteList.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -310,6 +648,21 @@ const ConteResult = ({
           >
             저장
           </Button>
+          {onViewTimeline && (
+            <Button
+              variant="contained"
+              startIcon={<Timeline />}
+              onClick={onViewTimeline}
+              sx={{
+                backgroundColor: 'var(--color-success)',
+                '&:hover': {
+                  backgroundColor: 'var(--color-success-dark)',
+                }
+              }}
+            >
+              타임라인 보기
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -390,10 +743,60 @@ const ConteResult = ({
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
                       💬 해당 장면을 대표하는 대사
+                      {card.dialogue && (
+                        <Chip 
+                          label={`${card.dialogue.length}자`} 
+                          size="small" 
+                          variant="outlined" 
+                          sx={{ ml: 1 }}
+                        />
+                      )}
                     </Typography>
-                    <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic' }}>
-                      "{card.dialogue || '대사 없음'}"
-                    </Typography>
+                    <Box sx={{ 
+                      mb: 2, 
+                      p: 2, 
+                      backgroundColor: 'rgba(0,0,0,0.05)', 
+                      borderRadius: 1,
+                      maxHeight: '200px',
+                      overflow: 'auto'
+                    }}>
+                      <Typography variant="body2" sx={{ fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
+                        {card.dialogue || '대사 없음'}
+                      </Typography>
+                    </Box>
+                    {card.dialogue && card.dialogue.length > 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        {(() => {
+                          const analysis = analyzeDialogue(card.dialogue)
+                          return `대사 길이: ${analysis.length}자 | 단어 수: ${analysis.wordCount}개 | 예상 발화 시간: ${analysis.estimatedTime}분${analysis.hasEmotion ? ' | 감정적 대사' : ''}`
+                        })()}
+                      </Typography>
+                    )}
+                    {(() => {
+                      const analysis = analyzeDialogue(card.dialogue)
+                      const sceneDuration = parseDurationToMinutes(card.estimatedDuration)
+                      
+                      if (!card.dialogue || analysis.length < 50) {
+                        return (
+                          <Alert severity="info" sx={{ mt: 1 }}>
+                            <Typography variant="caption">
+                              💡 이 장면에는 더 많은 대사가 필요할 수 있습니다. 
+                              장면의 시간({card.estimatedDuration})에 맞는 충분한 대사량을 생성해주세요.
+                            </Typography>
+                          </Alert>
+                        )
+                      } else if (analysis.estimatedTime < sceneDuration * 0.5) {
+                        return (
+                          <Alert severity="warning" sx={{ mt: 1 }}>
+                            <Typography variant="caption">
+                              ⚠️ 대사 시간이 장면 시간의 절반보다 짧습니다. 
+                              더 많은 대사를 추가하면 좋겠습니다.
+                            </Typography>
+                          </Alert>
+                        )
+                      }
+                      return null
+                    })()}
                   </Grid>
 
                   {/* 카메라/그림 앵글과 구도를 설명하는 배치도 */}
@@ -509,6 +912,9 @@ const ConteResult = ({
                       {renderWeights(card.weights)}
                     </Grid>
                   )}
+
+                  {/* 타입 분류 이유 정보 */}
+                  {renderTypeReason(card, index)}
                 </Grid>
               </AccordionDetails>
             </Accordion>
@@ -551,14 +957,127 @@ const ConteResult = ({
               예상 총 시간
             </Typography>
             <Typography variant="h6">
-              {conteList.reduce((total, card) => {
+              {formatDuration(conteList.reduce((total, card) => {
                 const duration = card.estimatedDuration ? 
-                  parseInt(card.estimatedDuration.match(/\d+/)?.[0] || 0) : 5
+                  parseDurationToMinutes(card.estimatedDuration) : 2
                 return total + duration
-              }, 0)}분
+              }, 0))}
             </Typography>
           </Grid>
         </Grid>
+
+        {/* 분류 기준 설명 */}
+        <Box sx={{ mt: 3, p: 2, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }}>
+          <Typography variant="subtitle1" color="var(--color-accent)" gutterBottom>
+            🤖 AI 분류 기준
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                💡 AI 생성 비디오로 분류되는 경우:
+              </Typography>
+              <List dense>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="특수효과나 CG가 필요한 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="환상적이거나 초자연적인 요소가 포함된 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="AI 시각효과나 특수효과가 포함된 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="단순한 자연 풍경 장면 (하늘, 바다, 구름 등)"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+              </List>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle2" color="secondary" gutterBottom>
+                🎬 실사 촬영으로 분류되는 경우:
+              </Typography>
+              <List dense>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="실제 배우의 연기가 중요한 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="실제 소품과 물리적 상호작용이 필요한 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="자연광이나 실제 조명 효과가 중요한 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="특정 실제 장소에서 촬영이 필요한 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                                 <ListItem sx={{ py: 0.5 }}>
+                   <ListItemIcon sx={{ minWidth: '24px' }}>
+                     <Typography variant="body2">•</Typography>
+                   </ListItemIcon>
+                   <ListItemText 
+                     primary="실제 감정 표현이나 인간적 상호작용이 중심인 장면"
+                     primaryTypographyProps={{ variant: 'body2' }}
+                   />
+                 </ListItem>
+                 <ListItem sx={{ py: 0.5 }}>
+                   <ListItemIcon sx={{ minWidth: '24px' }}>
+                     <Typography variant="body2">•</Typography>
+                   </ListItemIcon>
+                   <ListItemText 
+                     primary="대사가 많은 장면 (실제 배우의 연기가 필요)"
+                     primaryTypographyProps={{ variant: 'body2' }}
+                   />
+                 </ListItem>
+              </List>
+            </Grid>
+          </Grid>
+        </Box>
       </Box>
     </Box>
   )

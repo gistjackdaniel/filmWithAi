@@ -255,10 +255,17 @@ const ConteEditModal = ({
    * 저장 핸들러
    */
   const handleSave = () => {
+    console.log('💾 저장 버튼 클릭됨')
+    console.log('onSave 함수:', onSave)
+    console.log('editedConte:', editedConte)
+    
     if (onSave) {
+      console.log('✅ onSave 함수 호출')
       onSave(editedConte)
+      console.log('✅ onSave 함수 호출 완료')
+    } else {
+      console.error('❌ onSave 함수가 없습니다!')
     }
-    toast.success('콘티가 저장되었습니다.')
     onClose()
   }
 
