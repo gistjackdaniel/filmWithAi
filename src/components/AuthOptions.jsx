@@ -132,6 +132,10 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
+      aria-labelledby="auth-options-dialog-title"
+      aria-describedby="auth-options-dialog-description"
+      keepMounted={false}
+      disableRestoreFocus
       PaperProps={{
         sx: {
           backgroundColor: 'var(--color-card-bg)',
@@ -140,12 +144,15 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
         }
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        pb: 1
-      }}>
+      <DialogTitle 
+        id="auth-options-dialog-title"
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          pb: 1
+        }}
+      >
         <Typography variant="h5" component="h2" sx={{ fontWeight: 600 }}>
           로그인 방법 선택
         </Typography>
@@ -157,7 +164,10 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
         </Button>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2 }}>
+      <DialogContent 
+        id="auth-options-dialog-description"
+        sx={{ pt: 2 }}
+      >
         {/* 에러 메시지 */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>

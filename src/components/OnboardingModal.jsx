@@ -69,6 +69,10 @@ const OnboardingModal = ({ open, onClose, onComplete }) => {
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      aria-labelledby="onboarding-dialog-title"
+      aria-describedby="onboarding-dialog-description"
+      keepMounted={false}
+      disableRestoreFocus
       PaperProps={{
         sx: {
           backgroundColor: 'var(--color-card-bg)',
@@ -77,12 +81,15 @@ const OnboardingModal = ({ open, onClose, onComplete }) => {
         }
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        pb: 1
-      }}>
+      <DialogTitle 
+        id="onboarding-dialog-title"
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          pb: 1
+        }}
+      >
         <Typography variant="h5" component="h2" sx={{ fontWeight: 600 }}>
           SceneForge 시작하기
         </Typography>
@@ -94,7 +101,10 @@ const OnboardingModal = ({ open, onClose, onComplete }) => {
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2 }}>
+      <DialogContent 
+        id="onboarding-dialog-description"
+        sx={{ pt: 2 }}
+      >
         <Stepper activeStep={activeStep} orientation="vertical">
           {steps.map((step, index) => (
             <Step key={step.label}>

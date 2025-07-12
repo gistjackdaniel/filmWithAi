@@ -248,6 +248,10 @@ const UserProfile = () => {
         onClose={handleEditDialogClose}
         maxWidth="sm"
         fullWidth
+        aria-labelledby="profile-edit-dialog-title"
+        aria-describedby="profile-edit-dialog-description"
+        keepMounted={false}
+        disableRestoreFocus
         PaperProps={{
           sx: {
             backgroundColor: '#2F2F37',
@@ -255,11 +259,17 @@ const UserProfile = () => {
           },
         }}
       >
-        <DialogTitle sx={{ borderBottom: '1px solid rgba(212, 175, 55, 0.2)' }}>
+        <DialogTitle 
+          id="profile-edit-dialog-title"
+          sx={{ borderBottom: '1px solid rgba(212, 175, 55, 0.2)' }}
+        >
           프로필 편집
         </DialogTitle>
         
-        <DialogContent sx={{ pt: 2 }}>
+        <DialogContent 
+          id="profile-edit-dialog-description"
+          sx={{ pt: 2 }}
+        >
           <Box sx={{ mb: 3 }}>
             <Typography variant="body2" sx={{ mb: 2, color: '#A0A3B1' }}>
               프로필 정보를 수정할 수 있습니다.
