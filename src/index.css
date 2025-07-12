@@ -56,18 +56,91 @@ code {
  */
 @keyframes fadeIn {
   from {
-    opacity: 0; /* 투명 */
-    transform: translateY(20px); /* 아래에서 위로 */
+    opacity: 0;
+    transform: translateY(20px);
   }
   to {
-    opacity: 1; /* 불투명 */
-    transform: translateY(0); /* 원래 위치 */
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* 페이드인 애니메이션 클래스 */
+/**
+ * 슬라이드인 애니메이션
+ * 왼쪽에서 오른쪽으로 슬라이드
+ */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/**
+ * 스케일인 애니메이션
+ * 중앙에서 확대되는 효과
+ */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/**
+ * 펄스 애니메이션
+ * 로딩 상태나 강조 효과용
+ */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 애니메이션 클래스들 */
 .fade-in {
-  animation: fadeIn 0.3s ease-out; /* 0.3초 동안 부드럽게 */
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.4s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* 호버 효과 */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* 부드러운 전환 효과 */
+.smooth-transition {
+  transition: all 0.3s ease;
 }
 
 /* ===== 반응형 디자인 ===== */
