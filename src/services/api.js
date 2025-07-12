@@ -3,6 +3,7 @@ import axios from 'axios'
 /**
  * Axios 인스턴스 생성
  * SceneForge 백엔드 API와의 통신을 위한 HTTP 클라이언트
+ * MongoDB 연동으로 사용자별 데이터 영구 저장 지원
  */
 const api = axios.create({
   baseURL: 'http://localhost:5001/api', // 백엔드 서버 URL
@@ -11,6 +12,97 @@ const api = axios.create({
     'Content-Type': 'application/json', // JSON 데이터 전송
   },
 })
+
+// ===== API 서비스 함수들 =====
+
+/**
+ * 사용자 관리 API
+ */
+export const userAPI = {
+  // Google OAuth 로그인
+  googleAuth: (userData) => api.post('/users/auth/google', userData),
+  
+  // 사용자 프로필 조회
+  getProfile: () => api.get('/users/profile'),
+  
+  // 사용자 프로필 업데이트
+  updateProfile: (profileData) => api.put('/users/profile', profileData),
+  
+  // 토큰 검증
+  verifyToken: () => api.get('/users/verify')
+}
+
+/**
+ * 프로젝트 관리 API
+ */
+export const projectAPI = {
+  // 프로젝트 생성
+  createProject: (projectData) => api.post('/projects', projectData),
+  
+  // 사용자의 프로젝트 목록 조회
+  getProjects: (params = {}) => api.get('/projects', { params }),
+  
+  // 특정 프로젝트 조회
+  getProject: (projectId) => api.get(`/projects/${projectId}`),
+  
+  // 프로젝트 업데이트
+  updateProject: (projectId, updateData) => api.put(`/projects/${projectId}`, updateData),
+  
+  // 프로젝트 삭제 (소프트 삭제)
+  deleteProject: (projectId) => api.delete(`/projects/${projectId}`),
+  
+  // 프로젝트 복원
+  restoreProject: (projectId) => api.put(`/projects/${projectId}/restore`),
+  
+  // 프로젝트 통계 조회
+  getProjectStats: (projectId) => api.get(`/projects/${projectId}/stats`)
+}
+
+/**
+ * 콘티 관리 API
+ */
+export const conteAPI = {
+  // 콘티 생성
+  createConte: (projectId, conteData) => api.post(`/projects/${projectId}/contes`, conteData),
+  
+  // 프로젝트의 콘티 목록 조회
+  getContes: (projectId, params = {}) => api.get(`/projects/${projectId}/contes`, { params }),
+  
+  // 특정 콘티 조회
+  getConte: (projectId, conteId) => api.get(`/projects/${projectId}/contes/${conteId}`),
+  
+  // 콘티 업데이트
+  updateConte: (projectId, conteId, updateData) => api.put(`/projects/${projectId}/contes/${conteId}`, updateData),
+  
+  // 콘티 순서 변경
+  reorderContes: (projectId, conteOrders) => api.put(`/projects/${projectId}/contes/reorder`, { conteOrders }),
+  
+  // 콘티 삭제
+  deleteConte: (projectId, conteId) => api.delete(`/projects/${projectId}/contes/${conteId}`),
+  
+  // 같은 장소의 콘티들 조회
+  getContesByLocation: (projectId, location) => api.get(`/projects/${projectId}/contes/location/${location}`),
+  
+  // 같은 날짜의 콘티들 조회
+  getContesByDate: (projectId, date) => api.get(`/projects/${projectId}/contes/date/${date}`),
+  
+  // 같은 배우가 출연하는 콘티들 조회
+  getContesByCast: (projectId, castMember) => api.get(`/projects/${projectId}/contes/cast/${castMember}`)
+}
+
+/**
+ * AI 생성 API (기존)
+ */
+export const aiAPI = {
+  // AI 스토리 생성
+  generateStory: (synopsis, options = {}) => api.post('/story/generate', { synopsis, ...options }),
+  
+  // AI 이미지 생성
+  generateImage: (sceneDescription, options = {}) => api.post('/image/generate', { sceneDescription, ...options }),
+  
+  // AI 콘티 생성
+  generateConte: (story, options = {}) => api.post('/conte/generate', { story, ...options })
+}
 
 // ===== 요청 인터셉터 =====
 // 모든 API 요청이 전송되기 전에 실행되는 미들웨어

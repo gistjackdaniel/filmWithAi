@@ -42,8 +42,8 @@ const LoginPage = () => {
         // 디버깅: Google OAuth 응답 구조 확인
         console.log('Google OAuth Response:', response)
         
-        // 서버에 Google access_token 전송하여 JWT 토큰 받기
-        const result = await login(response.access_token)
+        // 서버에 Google access_token을 JSON 객체로 전송하여 JWT 토큰 받기
+        const result = await login({ access_token: response.access_token })
         
         if (result.success) {
           toast.success('로그인 성공! 환영합니다! 🎬')
