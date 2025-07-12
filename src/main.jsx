@@ -4,9 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { Toaster } from 'react-hot-toast'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App.jsx'
 import theme from './theme/theme.js'
-import useAuthStore from './stores/authStore.js'
 import './index.css'
 
 /**
@@ -16,20 +16,25 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')).render(
   // React Strict Mode로 개발 시 잠재적 문제 감지
   <React.StrictMode>
-    {/* SPA 라우팅을 위한 Browser Router */}
-    <BrowserRouter>
-      {/* Material-UI 테마 프로바이더 */}
-      <ThemeProvider theme={theme}>
-        {/* CSS 기본 스타일 리셋 */}
-        <CssBaseline />
-        {/* 메인 앱 컴포넌트 */}
-        <App />
-        {/* 토스트 알림 컴포넌트 */}
-        <Toaster position="top-right" />
-      </ThemeProvider>
-    </BrowserRouter>
+    {/* Google OAuth 프로바이더 */}
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || "your_google_client_id_here"}>
+      {/* SPA 라우팅을 위한 Browser Router */}
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
+        {/* Material-UI 테마 프로바이더 */}
+        <ThemeProvider theme={theme}>
+          {/* CSS 기본 스타일 리셋 */}
+          <CssBaseline />
+          {/* 메인 앱 컴포넌트 */}
+          <App />
+          {/* 토스트 알림 컴포넌트 */}
+          <Toaster position="top-right" />
+        </ThemeProvider>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   </React.StrictMode>,
-)
-
-// 앱 시작 시 인증 상태 초기화
-useAuthStore.getState().initialize() 
+) 
