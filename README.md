@@ -1,29 +1,46 @@
 # SceneForge - AI 영화 제작 타임라인 툴
 
-AI가 자동으로 스토리와 콘티를 생성하고, 이를 실사 촬영용과 AI 생성 비디오로 분류하여 타임라인 형태로 시각화하는 웹 애플리케이션입니다.
+AI가 자동으로 스토리와 콘티를 생성하고, 이를 실사 촬영용과 AI 생성 비디오로 분류하여 타임라인 형태로 시각화하는 완전한 영화 제작 웹 애플리케이션입니다.
 
 ## 🚀 주요 기능
 
+### 🎬 AI 스토리 생성
+- **시놉시스 기반 자동 스토리 생성**: 간단한 시놉시스로 완전한 스토리 생성
+- **직접 스토리 작성**: 사용자가 직접 스토리를 작성하고 편집
+- **JSON 파싱 테스트**: AI 응답의 구조화된 데이터 처리
+
+### 📊 타임라인 시각화
+- **직관적인 타임라인 UI**: 영화 제작 과정을 시각적으로 표현
+- **실사 촬영 vs AI 생성 분류**: 각 콘티를 적절한 카테고리로 분류
+- **드래그 앤 드롭**: 타임라인에서 콘티 순서 조정
+- **줌 컨트롤**: 타임라인 확대/축소 기능
+
+### 🔐 보안 인증 시스템
 - **Google OAuth 2.0 로그인**: 안전한 사용자 인증
-- **AI 스토리 생성**: 시놉시스 기반 자동 스토리 생성
-- **AI 콘티 생성**: 스토리 기반 자동 콘티 생성 및 분류
-- **타임라인 시각화**: 직관적인 타임라인 UI
-- **프로젝트 관리**: 사용자별 프로젝트 저장 및 관리
+- **JWT 토큰 관리**: 자동 토큰 갱신 및 만료 처리
+- **자동 로그아웃**: 보안 강화를 위한 자동 세션 관리
+- **에러 바운더리**: 안정적인 에러 처리
+
+### 🛠️ 개발자 도구
+- **디버그 패널**: 개발 중 상태 모니터링
+- **스플래시 스크린**: 앱 로딩 시 사용자 경험 개선
+- **토스트 알림**: 사용자 피드백 시스템
 
 ## 🛠️ 기술 스택
 
 ### Frontend
-- **React.js** (Vite 기반)
-- **Material-UI** (UI 라이브러리)
-- **Zustand** (상태 관리)
-- **React Router** (라우팅)
-- **Axios** (HTTP 클라이언트)
+- **React.js** (Vite 기반) - 빠른 개발 환경
+- **Material-UI** - 일관된 UI 디자인 시스템
+- **Zustand** - 간단하고 강력한 상태 관리
+- **React Router** - 클라이언트 사이드 라우팅
+- **Axios** - HTTP 클라이언트
+- **React Hot Toast** - 사용자 알림 시스템
 
 ### Backend (예정)
-- **Node.js** (Express)
-- **MongoDB** (데이터베이스)
-- **OpenAI GPT-3.5 Turbo** (AI API)
-- **Google OAuth 2.0** (인증)
+- **Node.js** (Express) - 서버 사이드 로직
+- **MongoDB** - 데이터베이스
+- **OpenAI GPT-3.5 Turbo** - AI 스토리 생성
+- **Google OAuth 2.0** - 인증 시스템
 
 ## 📦 설치 및 실행
 
@@ -34,7 +51,6 @@ npm install
 
 ### 2. 환경 변수 설정
 `.env` 파일을 생성하고 다음 내용을 추가하세요:
-
 ```env
 VITE_API_URL=http://localhost:5000
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
@@ -52,18 +68,32 @@ npm run dev
 ```
 src/
 ├── components/          # 재사용 가능한 컴포넌트
-│   ├── SplashScreen.jsx
-│   └── ProtectedRoute.jsx
+│   ├── timeline/       # 타임라인 관련 컴포넌트
+│   │   ├── atoms/     # 기본 UI 컴포넌트
+│   │   ├── molecules/ # 복합 컴포넌트
+│   │   └── organisms/ # 완전한 기능 컴포넌트
+│   ├── StoryGeneration/ # 스토리 생성 관련 컴포넌트
+│   ├── ErrorBoundary.jsx
+│   ├── DebugPanel.jsx
+│   └── SplashScreen.jsx
 ├── pages/              # 페이지 컴포넌트
 │   ├── LoginPage.jsx
 │   ├── Dashboard.jsx
-│   └── ProjectPage.jsx
+│   ├── ProjectPage.jsx
+│   ├── StoryGenerationPage.jsx
+│   └── DirectStoryPage.jsx
 ├── stores/             # Zustand 상태 관리
-│   └── authStore.js
+│   ├── authStore.js
+│   └── timelineStore.js
 ├── services/           # API 서비스
-│   └── api.js
+│   ├── api.js
+│   └── timelineService.js
 ├── theme/              # Material-UI 테마
-│   └── theme.js
+│   ├── theme.js
+│   ├── colors.js
+│   └── typography.js
+├── types/              # TypeScript 타입 정의
+├── utils/              # 유틸리티 함수
 ├── App.jsx             # 메인 앱 컴포넌트
 ├── main.jsx           # 앱 진입점
 └── index.css          # 전역 스타일
@@ -79,6 +109,9 @@ src/
 
 ### API 호출
 `src/services/api.js`를 통해 백엔드 API와 통신하세요.
+
+### 상태 관리
+Zustand 스토어는 `src/stores/` 디렉토리에 정의하세요.
 
 ## 🎯 개발 일정
 
@@ -105,3 +138,12 @@ src/
 ## 📞 문의
 
 프로젝트에 대한 문의사항이 있으시면 이슈를 생성해 주세요.
+
+## 🎬 SceneForge의 미래
+
+SceneForge는 영화 제작의 모든 단계를 지원하는 완전한 AI 기반 영화 제작 플랫폼으로 발전할 예정입니다:
+
+- **AI 비디오 생성**: 텍스트 기반 비디오 자동 생성
+- **협업 기능**: 팀원들과의 실시간 협업
+- **프로젝트 관리**: 완전한 프로젝트 라이프사이클 관리
+- **배포 지원**: 완성된 영화의 배포 및 마케팅 지원
