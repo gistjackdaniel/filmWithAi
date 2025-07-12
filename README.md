@@ -1,149 +1,87 @@
-# SceneForge - AI 영화 제작 타임라인 툴
+# SceneForge 문서
 
-AI가 자동으로 스토리와 콘티를 생성하고, 이를 실사 촬영용과 AI 생성 비디오로 분류하여 타임라인 형태로 시각화하는 완전한 영화 제작 웹 애플리케이션입니다.
+이 폴더는 SceneForge 프로젝트의 모든 문서를 포함합니다.
 
-## 🚀 주요 기능
+## 📁 문서 구조
 
-### 🎬 AI 스토리 생성
-- **시놉시스 기반 자동 스토리 생성**: 간단한 시놉시스로 완전한 스토리 생성
-- **직접 스토리 작성**: 사용자가 직접 스토리를 작성하고 편집
-- **JSON 파싱 테스트**: AI 응답의 구조화된 데이터 처리
-
-### 📊 타임라인 시각화
-- **직관적인 타임라인 UI**: 영화 제작 과정을 시각적으로 표현
-- **실사 촬영 vs AI 생성 분류**: 각 콘티를 적절한 카테고리로 분류
-- **드래그 앤 드롭**: 타임라인에서 콘티 순서 조정
-- **줌 컨트롤**: 타임라인 확대/축소 기능
-
-### 🔐 보안 인증 시스템
-- **Google OAuth 2.0 로그인**: 안전한 사용자 인증
-- **JWT 토큰 관리**: 자동 토큰 갱신 및 만료 처리
-- **자동 로그아웃**: 보안 강화를 위한 자동 세션 관리
-- **에러 바운더리**: 안정적인 에러 처리
-
-### 🛠️ 개발자 도구
-- **디버그 패널**: 개발 중 상태 모니터링
-- **스플래시 스크린**: 앱 로딩 시 사용자 경험 개선
-- **토스트 알림**: 사용자 피드백 시스템
-
-## 🛠️ 기술 스택
-
-### Frontend
-- **React.js** (Vite 기반) - 빠른 개발 환경
-- **Material-UI** - 일관된 UI 디자인 시스템
-- **Zustand** - 간단하고 강력한 상태 관리
-- **React Router** - 클라이언트 사이드 라우팅
-- **Axios** - HTTP 클라이언트
-- **React Hot Toast** - 사용자 알림 시스템
-
-### Backend (예정)
-- **Node.js** (Express) - 서버 사이드 로직
-- **MongoDB** - 데이터베이스
-- **OpenAI GPT-3.5 Turbo** - AI 스토리 생성
-- **Google OAuth 2.0** - 인증 시스템
-
-## 📦 설치 및 실행
-
-### 1. 의존성 설치
-```bash
-npm install
+```
+docs/
+├── README.md                           # 이 파일 - 문서 개요
+├── PRD/                               # 제품 요구사항 문서
+│   ├── SceneForge_PRD.txt            # 메인 PRD 문서
+│   └── User_Authentication_Flow.md    # 인증 플로우 설계
+├── API/                               # API 문서
+│   └── API_Specification.md           # API 명세서
+├── UI/                                # UI/UX 문서
+│   └── Wireframes.md                  # UI 와이어프레임
+├── Development/                       # 개발 가이드
+│   ├── Setup_Guide.md                 # 개발 환경 설정 가이드
+│   └── External_Documentation.md      # 외부 공식 문서 링크
+└── Notes/                             # 개발 노트
+    └── Quick_Reference.txt            # 빠른 참조 노트
 ```
 
-### 2. 환경 변수 설정
-`.env` 파일을 생성하고 다음 내용을 추가하세요:
-```env
-VITE_API_URL=http://localhost:5000
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-```
+## 📋 문서 목록
 
-### 3. 개발 서버 실행
+### 제품 문서
+- **PRD**: 제품 요구사항 및 기능 명세
+- **인증 플로우**: 사용자 로그인 프로세스 설계
+
+### 기술 문서
+- **API 명세**: 백엔드 API 엔드포인트 문서
+- **아키텍처**: 시스템 구조 및 설계 문서
+
+### 개발 가이드
+- **설정 가이드**: 개발 환경 설정 방법
+- **외부 문서**: React, Next.js, Tailwind CSS 등 공식 문서 링크
+- **빠른 참조**: 자주 사용하는 코드 스니펫과 명령어
+
+## 🔗 외부 공식 문서 링크
+
+### 주요 기술 스택
+- **[React 공식 문서](https://react.dev/)** - React 개발 참고
+- **[Next.js 공식 문서](https://nextjs.org/docs)** - Next.js 기능 및 API
+- **[Tailwind CSS 공식 문서](https://tailwindcss.com/docs)** - 스타일링 가이드
+
+### 상세 문서
+- **React**: 컴포넌트, 훅, 상태 관리
+- **Next.js**: 라우팅, 데이터 페칭, 최적화
+- **Tailwind CSS**: 유틸리티 클래스, 반응형 디자인
+- **개발 도구**: Vite, Zustand, Material-UI
+- **데이터베이스**: MongoDB, Mongoose
+- **API 서비스**: OpenAI, Google OAuth
+- **테스트**: Jest, React Testing Library, Playwright
+
+자세한 링크 목록은 [External_Documentation.md](./Development/External_Documentation.md)를 참조하세요.
+
+## 🔄 문서 업데이트
+
+새로운 문서를 추가할 때는:
+1. 적절한 폴더에 배치
+2. 이 README.md 파일 업데이트
+3. 문서 버전 관리
+
+## 📝 빠른 참조
+
+### 자주 사용하는 명령어
 ```bash
+# 개발 서버 시작
 npm run dev
+
+# 빌드
+npm run build
+
+# 테스트
+npm test
 ```
 
-브라우저에서 `http://localhost:3000`으로 접속하세요.
+### 주요 파일 위치
+- **프론트엔드**: `src/` 폴더
+- **백엔드**: `backend/` 폴더
+- **설정 파일**: 루트 디렉토리
+- **문서**: `docs/` 폴더
 
-## 📁 프로젝트 구조
+---
 
-```
-src/
-├── components/          # 재사용 가능한 컴포넌트
-│   ├── timeline/       # 타임라인 관련 컴포넌트
-│   │   ├── atoms/     # 기본 UI 컴포넌트
-│   │   ├── molecules/ # 복합 컴포넌트
-│   │   └── organisms/ # 완전한 기능 컴포넌트
-│   ├── StoryGeneration/ # 스토리 생성 관련 컴포넌트
-│   ├── ErrorBoundary.jsx
-│   ├── DebugPanel.jsx
-│   └── SplashScreen.jsx
-├── pages/              # 페이지 컴포넌트
-│   ├── LoginPage.jsx
-│   ├── Dashboard.jsx
-│   ├── ProjectPage.jsx
-│   ├── StoryGenerationPage.jsx
-│   └── DirectStoryPage.jsx
-├── stores/             # Zustand 상태 관리
-│   ├── authStore.js
-│   └── timelineStore.js
-├── services/           # API 서비스
-│   ├── api.js
-│   └── timelineService.js
-├── theme/              # Material-UI 테마
-│   ├── theme.js
-│   ├── colors.js
-│   └── typography.js
-├── types/              # TypeScript 타입 정의
-├── utils/              # 유틸리티 함수
-├── App.jsx             # 메인 앱 컴포넌트
-├── main.jsx           # 앱 진입점
-└── index.css          # 전역 스타일
-```
-
-## 🔧 개발 가이드
-
-### 컴포넌트 추가
-새로운 컴포넌트는 `src/components/` 디렉토리에 추가하세요.
-
-### 페이지 추가
-새로운 페이지는 `src/pages/` 디렉토리에 추가하고 `App.jsx`에 라우트를 추가하세요.
-
-### API 호출
-`src/services/api.js`를 통해 백엔드 API와 통신하세요.
-
-### 상태 관리
-Zustand 스토어는 `src/stores/` 디렉토리에 정의하세요.
-
-## 🎯 개발 일정
-
-- **Day 1**: 기술 세팅, API 스펙 정의
-- **Day 2**: Google OAuth, DB 연결
-- **Day 3**: 시놉시스 → AI 스토리 생성
-- **Day 4**: 스토리 → AI 콘티 생성
-- **Day 5**: 타임라인 UI 개발
-- **Day 6**: 데이터 저장/조회, UI 개선
-- **Day 7**: 통합 테스트, 발표 준비
-
-## 📝 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다.
-
-## 🤝 기여하기
-
-1. 이 저장소를 포크하세요
-2. 새로운 브랜치를 생성하세요 (`git checkout -b feature/amazing-feature`)
-3. 변경사항을 커밋하세요 (`git commit -m 'Add some amazing feature'`)
-4. 브랜치에 푸시하세요 (`git push origin feature/amazing-feature`)
-5. Pull Request를 생성하세요
-
-## 📞 문의
-
-프로젝트에 대한 문의사항이 있으시면 이슈를 생성해 주세요.
-
-## 🎬 SceneForge의 미래
-
-SceneForge는 영화 제작의 모든 단계를 지원하는 완전한 AI 기반 영화 제작 플랫폼으로 발전할 예정입니다:
-
-- **AI 비디오 생성**: 텍스트 기반 비디오 자동 생성
-- **협업 기능**: 팀원들과의 실시간 협업
-- **프로젝트 관리**: 완전한 프로젝트 라이프사이클 관리
-- **배포 지원**: 완성된 영화의 배포 및 마케팅 지원
+**마지막 업데이트**: 2024년
+**문서 관리자**: SceneForge 개발팀 

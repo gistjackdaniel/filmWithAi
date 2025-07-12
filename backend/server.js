@@ -9,7 +9,7 @@ require('dotenv').config()
  */
 
 const app = express()
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 5001
 
 // 미들웨어 설정
 app.use(cors()) // CORS 허용
@@ -22,6 +22,9 @@ if (!OPENAI_API_KEY) {
   console.log('📝 .env 파일에 OPENAI_API_KEY를 추가해주세요.')
   process.exit(1)
 }
+
+const authRoutes = require('./routes/auth'); // 인증 라우트
+app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
 
 /**
  * AI 스토리 생성 API
