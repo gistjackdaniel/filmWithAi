@@ -45,7 +45,7 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000`으로 접속하세요.
+브라우저에서 `http://localhost:3002`으로 접속하세요.
 
 ## 📁 프로젝트 구조
 
