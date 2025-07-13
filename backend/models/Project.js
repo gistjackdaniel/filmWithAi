@@ -40,7 +40,7 @@ const projectSchema = new mongoose.Schema({
   // 프로젝트 상태
   status: {
     type: String,
-    enum: ['draft', 'story_generated', 'conte_generated', 'completed'],
+    enum: ['draft', 'story_ready', 'conte_ready', 'production_ready'],
     default: 'draft'
   },
   
@@ -125,8 +125,11 @@ projectSchema.index({ tags: 1 });
 projectSchema.pre('save', function(next) {
   // 스토리가 생성되면 상태 업데이트
   if (this.story && this.story.length > 0 && this.status === 'draft') {
-    this.status = 'story_generated';
+    this.status = 'story_ready';
   }
+  
+  // 콘티가 생성되면 상태 업데이트 (콘티 수는 가상 필드이므로 별도 처리 필요)
+  // 실제 콘티 생성 시에는 별도 API에서 상태 업데이트
   next();
 });
 

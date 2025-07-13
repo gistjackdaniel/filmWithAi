@@ -183,6 +183,9 @@ const ConteGenerator = ({
       return
     }
 
+    let processedConteList = null
+    let conteWithImages = null
+
     try {
       startConteGeneration()
       if (onGenerationStart) {
@@ -229,7 +232,7 @@ const ConteGenerator = ({
       }
 
       // API 응답 데이터를 그대로 사용 (서버에서 올바른 형식으로 제공됨)
-      const processedConteList = conteList.map((card, index) => ({
+      processedConteList = conteList.map((card, index) => ({
         ...card,
         id: card.id || `scene_${index + 1}`,
         scene: card.scene || index + 1,
@@ -261,7 +264,7 @@ const ConteGenerator = ({
       }
       
       try {
-        const conteWithImages = await generateSceneImages(processedConteList)
+        conteWithImages = await generateSceneImages(processedConteList)
         
         // 이미지가 추가된 콘티 리스트를 스토어에 업데이트
         completeConteGeneration(conteWithImages)
@@ -284,13 +287,29 @@ const ConteGenerator = ({
         
         toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.')
       } finally {
-        // 이미지 생성 완료 후에는 onGenerationComplete를 호출하지 않음
-        // 이미 콘티 생성 완료 시점에 호출되었기 때문
-        console.log('✅ 이미지 생성 완료 - onGenerationComplete 호출하지 않음')
+        // 이미지 생성 완료 후 onGenerationComplete 호출
+        console.log('✅ 이미지 생성 완료 - onGenerationComplete 호출')
         
         // 이미지 생성 완료 시 부모 컴포넌트에 알림
         if (onImageGenerationUpdate) {
           onImageGenerationUpdate(false, 0)
+        }
+        
+        // 콘티 생성 완료 후 자동 저장을 위해 onGenerationComplete 호출
+        // 이미지가 포함된 최신 콘티 데이터를 전달 (실패 시에는 기본 콘티)
+        console.log('🔗 onGenerationComplete 호출 준비...')
+        console.log('🔗 전달할 데이터:', {
+          conteWithImages: conteWithImages?.length || 0,
+          processedConteList: processedConteList?.length || 0,
+          finalData: (conteWithImages || processedConteList)?.length || 0
+        })
+        
+        if (onGenerationComplete) {
+          console.log('✅ onGenerationComplete 함수 존재, 호출 시작...')
+          onGenerationComplete(conteWithImages || processedConteList)
+          console.log('✅ onGenerationComplete 호출 완료')
+        } else {
+          console.warn('⚠️ onGenerationComplete 함수가 없습니다!')
         }
       }
 

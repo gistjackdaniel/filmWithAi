@@ -1,378 +1,329 @@
 import { create } from 'zustand'
-import { projectAPI, conteAPI } from '../services/api'
+import { createProject as createProjectApi, createConte as createConteApi, getProjects, getProject } from '../services/projectApi'
+import { useAuthStore } from './authStore'
 
 /**
- * 프로젝트 관리 스토어
- * Zustand를 사용하여 프로젝트 및 콘티 데이터를 전역적으로 관리
- * MongoDB 연동으로 사용자별 프로젝트 데이터 영구 저장
+ * 프로젝트 상태 관리 스토어
+ * 스토리와 콘티를 하나의 프로젝트로 통합 관리
+ * PRD 2.1.5 프로젝트 관리 기능의 상태 관리
  */
 const useProjectStore = create((set, get) => ({
-  // ===== 상태 (State) =====
-  projects: [], // 사용자의 프로젝트 목록
-  currentProject: null, // 현재 선택된 프로젝트
-  contes: [], // 현재 프로젝트의 콘티 목록
-  loading: false, // 로딩 상태
-  error: null, // 오류 상태
+  // ===== 상태 정의 =====
+  
+  // 프로젝트 목록
+  projects: [],
+  isLoading: false,
+  error: null,
+  
+  // 현재 프로젝트
+  currentProject: null,
+  
+  // 프로젝트 생성 상태
+  isCreating: false,
+  createError: null,
+  
+  // 콘티 저장 상태
+  isSavingConte: false,
+  saveConteError: null,
+  
+  // 실시간 업데이트 상태
+  isRealtimeEnabled: false,
+  lastUpdateTime: null,
 
-  // ===== 액션 (Actions) =====
+  // ===== 액션 정의 =====
 
   /**
-   * 로딩 상태 설정
-   * @param {boolean} loading - 로딩 상태
+   * 프로젝트 목록 로드
    */
-  setLoading: (loading) => set({ loading }),
+  loadProjects: async () => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      const response = await getProjects()
+      set({ 
+        projects: response.data || [],
+        isLoading: false 
+      })
+      console.log('✅ 프로젝트 목록 로드 완료:', response.data?.length || 0, '개')
+    } catch (error) {
+      console.error('❌ 프로젝트 목록 로드 실패:', error)
+      set({ 
+        error: error.message || '프로젝트 목록을 불러오는데 실패했습니다.',
+        isLoading: false 
+      })
+    }
+  },
 
   /**
-   * 오류 상태 설정
-   * @param {string|null} error - 오류 메시지
-   */
-  setError: (error) => set({ error }),
-
-  /**
-   * 프로젝트 목록 설정
-   * @param {Array} projects - 프로젝트 목록
-   */
-  setProjects: (projects) => set({ projects }),
-
-  /**
-   * 현재 프로젝트 설정
-   * @param {Object|null} project - 프로젝트 정보
-   */
-  setCurrentProject: (project) => set({ currentProject: project }),
-
-  /**
-   * 콘티 목록 설정
-   * @param {Array} contes - 콘티 목록
-   */
-  setContes: (contes) => set({ contes }),
-
-  /**
-   * 프로젝트 생성
+   * 프로젝트 생성 (시놉시스 선택적 입력)
    * @param {Object} projectData - 프로젝트 데이터
-   * @returns {Promise<Object>} 생성 결과
+   * @param {Array} conteList - 콘티 리스트 (선택사항)
    */
-  createProject: async (projectData) => {
+  createProject: async (projectData, conteList = null) => {
+    set({ isCreating: true, createError: null })
+    
     try {
-      set({ loading: true, error: null })
-      
-      const response = await projectAPI.createProject(projectData)
-      const newProject = response.data.data.project
-      
-      // 프로젝트 목록에 새 프로젝트 추가
-      const currentProjects = get().projects
-      set({ projects: [newProject, ...currentProjects] })
-      
-      set({ loading: false })
-      return { success: true, project: newProject }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
-  },
+      console.log('💾 프로젝트 생성 시작:', {
+        title: projectData.projectTitle,
+        hasSynopsis: !!projectData.synopsis,
+        synopsis: projectData.synopsis?.substring(0, 100) + '...',
+        conteCount: conteList?.length || 0,
+        status: projectData.status || 'draft'
+      })
 
-  /**
-   * 사용자의 프로젝트 목록 조회
-   * @param {Object} params - 조회 파라미터
-   * @returns {Promise<Object>} 조회 결과
-   */
-  fetchProjects: async (params = {}) => {
-    try {
-      set({ loading: true, error: null })
-      
-      const response = await projectAPI.getProjects(params)
-      const projects = response.data.data.projects
-      
-      set({ projects, loading: false })
-      return { success: true, projects }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
-  },
+      // 시놉시스 선택적 처리
+      const finalProjectData = {
+        ...projectData,
+        synopsis: projectData.synopsis || '', // 빈 문자열로 기본값 설정
+        status: projectData.status || 'draft' // 기본 상태 설정
+      }
 
-  /**
-   * 특정 프로젝트 조회
-   * @param {string} projectId - 프로젝트 ID
-   * @returns {Promise<Object>} 조회 결과
-   */
-  fetchProject: async (projectId) => {
-    try {
-      set({ loading: true, error: null })
+      // 프로젝트 생성
+      const projectResponse = await createProjectApi(finalProjectData)
+      const newProject = projectResponse.data || projectResponse
       
-      const response = await projectAPI.getProject(projectId)
-      const { project, contes } = response.data.data
+      console.log('✅ 프로젝트 생성 성공:', newProject._id || newProject.id)
+      
+      // 콘티가 있으면 함께 저장
+      if (conteList && conteList.length > 0) {
+        console.log('💾 콘티 저장 시작:', conteList.length, '개')
+        
+        // 프로젝트 ID 안전하게 추출
+        const projectId = newProject._id || newProject.id || projectResponse._id || projectResponse.id || newProject.id
+        console.log('🔍 프로젝트 ID 확인:', { 
+          newProject: newProject,
+          projectResponse: projectResponse,
+          newProjectId: newProject._id || newProject.id,
+          responseId: projectResponse._id || projectResponse.id,
+          finalId: projectId
+        })
+        
+        if (!projectId) {
+          console.error('❌ 프로젝트 ID 추출 실패:', { newProject, projectResponse })
+          throw new Error('프로젝트 ID를 찾을 수 없습니다.')
+        }
+        
+        for (const conte of conteList) {
+          try {
+            await createConteApi(projectId, conte)
+            console.log('✅ 콘티 저장 완료:', conte.title)
+          } catch (conteError) {
+            console.error('❌ 콘티 저장 실패:', conte.title, conteError)
+          }
+        }
+      }
+      
+      // 프로젝트 목록 새로고침
+      await get().loadProjects()
       
       set({ 
-        currentProject: project, 
-        contes: contes || [],
-        loading: false 
+        currentProject: newProject,
+        isCreating: false 
       })
       
-      return { success: true, project, contes }
+      return newProject
+      
     } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
+      console.error('❌ 프로젝트 생성 실패:', error)
+      set({ 
+        createError: error.message || '프로젝트 생성에 실패했습니다.',
+        isCreating: false 
+      })
+      throw error
     }
   },
 
   /**
-   * 프로젝트 업데이트
-   * @param {string} projectId - 프로젝트 ID
-   * @param {Object} updateData - 업데이트 데이터
-   * @returns {Promise<Object>} 업데이트 결과
-   */
-  updateProject: async (projectId, updateData) => {
-    try {
-      set({ loading: true, error: null })
-      
-      const response = await projectAPI.updateProject(projectId, updateData)
-      const updatedProject = response.data.data.project
-      
-      // 프로젝트 목록에서 해당 프로젝트 업데이트
-      const currentProjects = get().projects
-      const updatedProjects = currentProjects.map(project => 
-        project.id === projectId ? updatedProject : project
-      )
-      
-      // 현재 프로젝트도 업데이트
-      const currentProject = get().currentProject
-      if (currentProject && currentProject.id === projectId) {
-        set({ currentProject: updatedProject })
-      }
-      
-      set({ projects: updatedProjects, loading: false })
-      return { success: true, project: updatedProject }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
-  },
-
-  /**
-   * 프로젝트 삭제
-   * @param {string} projectId - 프로젝트 ID
-   * @returns {Promise<Object>} 삭제 결과
-   */
-  deleteProject: async (projectId) => {
-    try {
-      set({ loading: true, error: null })
-      
-      await projectAPI.deleteProject(projectId)
-      
-      // 프로젝트 목록에서 해당 프로젝트 제거
-      const currentProjects = get().projects
-      const filteredProjects = currentProjects.filter(project => project.id !== projectId)
-      
-      // 현재 프로젝트가 삭제된 프로젝트라면 초기화
-      const currentProject = get().currentProject
-      if (currentProject && currentProject.id === projectId) {
-        set({ currentProject: null, contes: [] })
-      }
-      
-      set({ projects: filteredProjects, loading: false })
-      return { success: true }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
-  },
-
-  /**
-   * 콘티 생성
+   * 콘티 저장
    * @param {string} projectId - 프로젝트 ID
    * @param {Object} conteData - 콘티 데이터
-   * @returns {Promise<Object>} 생성 결과
    */
-  createConte: async (projectId, conteData) => {
+  saveConte: async (projectId, conteData) => {
+    set({ isSavingConte: true, saveConteError: null })
+    
     try {
-      set({ loading: true, error: null })
+      console.log('💾 콘티 저장 시작:', {
+        projectId,
+        scene: conteData.scene,
+        title: conteData.title
+      })
+
+      const response = await createConteApi(projectId, conteData)
       
-      const response = await conteAPI.createConte(projectId, conteData)
-      const newConte = response.data.data.conte
+      console.log('✅ 콘티 저장 완료:', response.data)
       
-      // 콘티 목록에 새 콘티 추가
-      const currentContes = get().contes
-      set({ contes: [...currentContes, newConte] })
+      set({ isSavingConte: false })
+      return response.data
       
-      set({ loading: false })
-      return { success: true, conte: newConte }
     } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
+      console.error('❌ 콘티 저장 실패:', error)
+      set({ 
+        saveConteError: error.message || '콘티 저장에 실패했습니다.',
+        isSavingConte: false 
+      })
+      throw error
     }
   },
 
   /**
-   * 프로젝트의 콘티 목록 조회
+   * 프로젝트 로드
    * @param {string} projectId - 프로젝트 ID
-   * @param {Object} params - 조회 파라미터
-   * @returns {Promise<Object>} 조회 결과
    */
-  fetchContes: async (projectId, params = {}) => {
+  loadProject: async (projectId) => {
+    set({ isLoading: true, error: null })
+    
     try {
-      set({ loading: true, error: null })
-      
-      const response = await conteAPI.getContes(projectId, params)
-      const contes = response.data.data.contes
-      
-      set({ contes, loading: false })
-      return { success: true, contes }
+      const response = await getProject(projectId)
+      set({ 
+        currentProject: response.data,
+        isLoading: false 
+      })
+      console.log('✅ 프로젝트 로드 완료:', response.data.projectTitle)
     } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
+      console.error('❌ 프로젝트 로드 실패:', error)
+      set({ 
+        error: error.message || '프로젝트를 불러오는데 실패했습니다.',
+        isLoading: false 
+      })
     }
   },
 
   /**
-   * 콘티 업데이트
+   * 실시간 업데이트 활성화
+   */
+  enableRealtimeUpdates: () => {
+    set({ isRealtimeEnabled: true })
+    console.log('🔄 실시간 업데이트 활성화')
+  },
+
+  /**
+   * 실시간 업데이트 비활성화
+   */
+  disableRealtimeUpdates: () => {
+    set({ isRealtimeEnabled: false })
+    console.log('🔄 실시간 업데이트 비활성화')
+  },
+
+  /**
+   * 프로젝트 상태 실시간 업데이트
    * @param {string} projectId - 프로젝트 ID
-   * @param {string} conteId - 콘티 ID
-   * @param {Object} updateData - 업데이트 데이터
-   * @returns {Promise<Object>} 업데이트 결과
    */
-  updateConte: async (projectId, conteId, updateData) => {
+  updateProjectStatus: async (projectId) => {
     try {
-      set({ loading: true, error: null })
+      const response = await getProject(projectId)
+      const updatedProject = response.data
       
-      const response = await conteAPI.updateConte(projectId, conteId, updateData)
-      const updatedConte = response.data.data.conte
+      // 현재 프로젝트 목록에서 해당 프로젝트 업데이트
+      set(state => ({
+        projects: state.projects.map(project => 
+          project._id === projectId || project.id === projectId 
+            ? updatedProject 
+            : project
+        ),
+        currentProject: state.currentProject?._id === projectId || state.currentProject?.id === projectId
+          ? updatedProject
+          : state.currentProject,
+        lastUpdateTime: new Date().toISOString()
+      }))
       
-      // 콘티 목록에서 해당 콘티 업데이트
-      const currentContes = get().contes
-      const updatedContes = currentContes.map(conte => 
-        conte.id === conteId ? updatedConte : conte
-      )
-      
-      set({ contes: updatedContes, loading: false })
-      return { success: true, conte: updatedConte }
+      console.log('✅ 프로젝트 상태 실시간 업데이트 완료:', projectId)
     } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
+      console.error('❌ 프로젝트 상태 업데이트 실패:', error)
     }
   },
 
   /**
-   * 콘티 순서 변경
+   * 자동 저장 기능 강화
    * @param {string} projectId - 프로젝트 ID
-   * @param {Array} conteOrders - 콘티 순서 배열
-   * @returns {Promise<Object>} 변경 결과
+   * @param {Object} data - 저장할 데이터
    */
-  reorderContes: async (projectId, conteOrders) => {
+  autoSaveProject: async (projectId, data) => {
     try {
-      set({ loading: true, error: null })
+      console.log('💾 자동 저장 시작:', projectId)
       
-      await conteAPI.reorderContes(projectId, conteOrders)
+      // 프로젝트 업데이트
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+      })
       
-      // 콘티 목록 다시 조회
-      await get().fetchContes(projectId)
-      
-      set({ loading: false })
-      return { success: true }
+      if (response.ok) {
+        console.log('✅ 자동 저장 완료')
+        set({ lastUpdateTime: new Date().toISOString() })
+      } else {
+        throw new Error('자동 저장에 실패했습니다.')
+      }
     } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
+      console.error('❌ 자동 저장 실패:', error)
     }
   },
 
   /**
-   * 콘티 삭제
-   * @param {string} projectId - 프로젝트 ID
-   * @param {string} conteId - 콘티 ID
-   * @returns {Promise<Object>} 삭제 결과
+   * 스토리와 콘티를 통합하여 프로젝트로 저장
+   * @param {string} synopsis - 시놉시스
+   * @param {string} story - 생성된 스토리
+   * @param {Array} conteList - 생성된 콘티 리스트
+   * @param {Object} settings - 프로젝트 설정
    */
-  deleteConte: async (projectId, conteId) => {
+  saveStoryAndConteAsProject: async (synopsis, story, conteList, settings = {}) => {
     try {
-      set({ loading: true, error: null })
+      // 프로젝트 데이터 구성
+      const projectData = {
+        projectTitle: settings.projectTitle || `스토리 프로젝트 - ${new Date().toLocaleDateString()}`,
+        synopsis: synopsis,
+        story: story,
+        storyLength: story.length,
+        storyCreatedAt: new Date().toISOString(),
+        conteCount: conteList.length,
+        conteCreatedAt: new Date().toISOString(),
+        settings: {
+          genre: settings.genre || '일반',
+          type: 'story_with_conte',
+          estimatedDuration: settings.estimatedDuration || '미정',
+          ...settings
+        }
+      }
+
+      console.log('🎬 스토리와 콘티를 프로젝트로 저장 시작:', {
+        title: projectData.projectTitle,
+        synopsisLength: synopsis.length,
+        storyLength: story.length,
+        conteCount: conteList.length
+      })
+
+      // 프로젝트 생성 (콘티 포함)
+      const newProject = await get().createProject(projectData, conteList)
       
-      await conteAPI.deleteConte(projectId, conteId)
+      console.log('✅ 프로젝트 저장 완료:', newProject._id)
       
-      // 콘티 목록에서 해당 콘티 제거
-      const currentContes = get().contes
-      const filteredContes = currentContes.filter(conte => conte.id !== conteId)
+      return {
+        success: true,
+        projectId: newProject._id || newProject.id,
+        project: newProject
+      }
       
-      set({ contes: filteredContes, loading: false })
-      return { success: true }
     } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
+      console.error('❌ 프로젝트 저장 실패:', error)
+      throw error
     }
   },
 
   /**
-   * 같은 장소의 콘티들 조회
-   * @param {string} projectId - 프로젝트 ID
-   * @param {string} location - 장소
-   * @returns {Promise<Object>} 조회 결과
+   * 현재 프로젝트 초기화
    */
-  fetchContesByLocation: async (projectId, location) => {
-    try {
-      set({ loading: true, error: null })
-      
-      const response = await conteAPI.getContesByLocation(projectId, location)
-      const contes = response.data.data.contes
-      
-      set({ loading: false })
-      return { success: true, contes }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
+  clearCurrentProject: () => {
+    set({ currentProject: null })
   },
 
   /**
-   * 같은 날짜의 콘티들 조회
-   * @param {string} projectId - 프로젝트 ID
-   * @param {string} date - 날짜
-   * @returns {Promise<Object>} 조회 결과
+   * 에러 초기화
    */
-  fetchContesByDate: async (projectId, date) => {
-    try {
-      set({ loading: true, error: null })
-      
-      const response = await conteAPI.getContesByDate(projectId, date)
-      const contes = response.data.data.contes
-      
-      set({ loading: false })
-      return { success: true, contes }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
-  },
-
-  /**
-   * 같은 배우가 출연하는 콘티들 조회
-   * @param {string} projectId - 프로젝트 ID
-   * @param {string} castMember - 배우명
-   * @returns {Promise<Object>} 조회 결과
-   */
-  fetchContesByCast: async (projectId, castMember) => {
-    try {
-      set({ loading: true, error: null })
-      
-      const response = await conteAPI.getContesByCast(projectId, castMember)
-      const contes = response.data.data.contes
-      
-      set({ loading: false })
-      return { success: true, contes }
-    } catch (error) {
-      set({ loading: false, error: error.message })
-      return { success: false, error: error.message }
-    }
-  },
-
-  /**
-   * 스토어 초기화
-   * 로그아웃 시 호출
-   */
-  reset: () => {
-    set({
-      projects: [],
-      currentProject: null,
-      contes: [],
-      loading: false,
-      error: null
-    })
+  clearError: () => {
+    set({ error: null, createError: null, saveConteError: null })
   }
 }))
 

@@ -154,6 +154,26 @@ export const autoSaveProject = async (projectId, projectData) => {
 }
 
 /**
+ * 콘티 생성
+ * @param {string} projectId - 프로젝트 ID
+ * @param {Object} conteData - 콘티 데이터
+ * @returns {Promise<Object>} 생성된 콘티 정보
+ */
+export const createConte = async (projectId, conteData) => {
+  try {
+    const response = await api.post(`/api/projects/${projectId}/contes`, conteData, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data
+  } catch (error) {
+    handleProjectError(error, '콘티 생성')
+  }
+}
+
+/**
  * 프로젝트 복사
  * @param {string} projectId - 복사할 프로젝트 ID
  * @param {string} newTitle - 새 프로젝트 제목

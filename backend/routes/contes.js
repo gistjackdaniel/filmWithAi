@@ -105,8 +105,18 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       order
     } = req.body;
 
+    console.log('💾 콘티 저장 요청 시작:', { 
+      projectId, 
+      scene, 
+      title: title?.substring(0, 50) + '...',
+      hasDescription: !!description,
+      type,
+      requestBody: req.body
+    });
+
     // 필수 필드 검증
     if (!scene || !title || !description) {
+      console.error('❌ 콘티 저장 실패: 필수 필드 누락', { scene, title, description });
       return res.status(400).json({
         success: false,
         message: '씬 번호, 제목, 설명은 필수입니다.'
@@ -137,7 +147,18 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       order: order || scene
     });
 
+    console.log('💾 콘티 저장 중...');
     await conte.save();
+    console.log('✅ 콘티 저장 완료:', { id: conte._id, scene: conte.scene, title: conte.title });
+
+    // 프로젝트 상태를 conte_ready로 업데이트
+    const Project = require('../models/Project');
+    const project = await Project.findById(projectId);
+    if (project && project.status !== 'conte_ready') {
+      project.status = 'conte_ready';
+      await project.save();
+      console.log('✅ 프로젝트 상태 업데이트 완료: draft -> conte_ready');
+    }
 
     res.status(201).json({
       success: true,
@@ -157,7 +178,7 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
     });
 
   } catch (error) {
-    console.error('콘티 생성 오류:', error);
+    console.error('❌ 콘티 생성 오류:', error);
     res.status(500).json({
       success: false,
       message: '콘티 생성 중 오류가 발생했습니다.'
@@ -531,6 +552,136 @@ router.get('/:projectId/contes/cast/:castMember', authenticateToken, checkProjec
     res.status(500).json({
       success: false,
       message: '배우별 콘티 조회 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+/**
+ * AI 콘티 생성
+ * POST /api/conte/generate
+ */
+router.post('/generate', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      projectId, 
+      synopsis, 
+      story, 
+      settings = {},
+      conteCount = 5 
+    } = req.body;
+
+    console.log('🤖 AI 콘티 생성 요청:', { 
+      projectId, 
+      hasSynopsis: !!synopsis,
+      hasStory: !!story,
+      conteCount,
+      settings 
+    });
+
+    // 프로젝트 ID 필수 검증
+    if (!projectId) {
+      console.error('❌ AI 콘티 생성 실패: 프로젝트 ID 누락');
+      return res.status(400).json({
+        success: false,
+        message: '프로젝트 ID는 필수입니다.'
+      });
+    }
+
+    // 프로젝트 존재 및 권한 확인
+    const project = await Project.findOne({
+      _id: projectId,
+      userId: req.user._id,
+      isDeleted: false
+    });
+
+    if (!project) {
+      console.error('❌ AI 콘티 생성 실패: 프로젝트를 찾을 수 없음', { projectId });
+      return res.status(404).json({
+        success: false,
+        message: '프로젝트를 찾을 수 없습니다.'
+      });
+    }
+
+    // 시놉시스 또는 스토리 중 하나는 필수
+    if (!synopsis && !story) {
+      console.error('❌ AI 콘티 생성 실패: 시놉시스 또는 스토리 누락');
+      return res.status(400).json({
+        success: false,
+        message: '시놉시스 또는 스토리는 필수입니다.'
+      });
+    }
+
+    // AI 콘티 생성 로직 (실제 구현은 OpenAI API 사용)
+    const generatedContes = [];
+    const content = story || synopsis;
+    
+    // 임시로 간단한 콘티 생성 (실제로는 OpenAI API 호출)
+    for (let i = 1; i <= conteCount; i++) {
+      const conte = {
+        projectId,
+        scene: i,
+        title: `씬 ${i}: ${content.substring(0, 20)}...`,
+        description: `AI가 생성한 씬 ${i}의 설명입니다. ${content.substring(0, 100)}...`,
+        dialogue: `씬 ${i}의 대사입니다.`,
+        cameraAngle: '중간 샷',
+        cameraWork: '정적',
+        characterLayout: '중앙 배치',
+        props: '기본 소품',
+        weather: '맑음',
+        lighting: '자연광',
+        visualDescription: `씬 ${i}의 시각적 묘사입니다.`,
+        transition: '컷',
+        lensSpecs: '50mm',
+        visualEffects: '없음',
+        type: i % 2 === 0 ? 'generated_video' : 'live_action', // 번갈아가며 생성
+        estimatedDuration: '5분',
+        keywords: {
+          location: '실내',
+          mood: '일반',
+          time: '낮'
+        },
+        weights: {
+          priority: 1,
+          complexity: 2
+        },
+        order: i,
+        status: 'draft'
+      };
+
+      // 콘티 저장
+      const newConte = new Conte(conte);
+      await newConte.save();
+      generatedContes.push(newConte);
+    }
+
+    console.log('✅ AI 콘티 생성 완료:', { 
+      projectId, 
+      generatedCount: generatedContes.length 
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'AI 콘티가 생성되었습니다.',
+      data: {
+        projectId,
+        contes: generatedContes.map(conte => ({
+          id: conte._id,
+          scene: conte.scene,
+          title: conte.title,
+          description: conte.description,
+          type: conte.type,
+          order: conte.order,
+          status: conte.status,
+          createdAt: conte.createdAt
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ AI 콘티 생성 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: 'AI 콘티 생성 중 오류가 발생했습니다.'
     });
   }
 });

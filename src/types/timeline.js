@@ -28,6 +28,26 @@ export const CaptionCardType = {
 }
 
 /**
+ * 프로젝트 상태 타입
+ */
+export const ProjectStatus = {
+  DRAFT: 'draft',                     // 초안
+  STORY_GENERATED: 'story_generated', // 스토리 생성됨
+  CONTE_GENERATED: 'conte_generated', // 콘티 생성됨
+  IN_PROGRESS: 'in_progress',         // 진행 중
+  COMPLETED: 'completed',             // 완료
+}
+
+/**
+ * 콘티 생성 플로우 타입
+ */
+export const ConteGenerationFlow = {
+  PROJECT_BASED: 'project_based',     // 프로젝트 기반 생성
+  DIRECT_INPUT: 'direct_input',       // 직접 입력 생성
+  TEMPLATE_BASED: 'template_based',   // 템플릿 기반 생성
+}
+
+/**
  * 캡션카드 노드 인터페이스
  */
 export const CaptionCardNode = {
@@ -167,9 +187,65 @@ export const TimelineTimeSettings = {
   timeUnit: String,               // 시간 단위 ('seconds', 'minutes', 'hours')
 }
 
+/**
+ * API 응답 타입
+ */
+export const ApiResponse = {
+  success: Boolean,
+  message: String,
+  data: Object,
+  error: String,
+}
+
+/**
+ * 프로젝트 API 응답 타입
+ */
+export const ProjectApiResponse = {
+  success: Boolean,
+  message: String,
+  data: {
+    project: {
+      id: String,
+      projectTitle: String,
+      synopsis: String,
+      story: String,
+      status: ProjectStatus,
+      settings: Object,
+      tags: [String],
+      createdAt: Date,
+      updatedAt: Date,
+      conteCount: Number,
+      generatedConteCount: Number,
+      liveActionConteCount: Number,
+    }
+  }
+}
+
+/**
+ * 콘티 API 응답 타입
+ */
+export const ConteApiResponse = {
+  success: Boolean,
+  message: String,
+  data: {
+    conte: {
+      id: String,
+      scene: Number,
+      title: String,
+      description: String,
+      type: CaptionCardType,
+      order: Number,
+      status: String,
+      createdAt: Date,
+    }
+  }
+}
+
 export default {
   NodeType,
   CaptionCardType,
+  ProjectStatus,
+  ConteGenerationFlow,
   CaptionCardNode,
   CaptionCardComponents,
   CaptionCard,
@@ -178,4 +254,7 @@ export default {
   TimelineSort,
   SchedulingResult,
   TimelineTimeSettings,
+  ApiResponse,
+  ProjectApiResponse,
+  ConteApiResponse,
 } 

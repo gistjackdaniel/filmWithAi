@@ -66,6 +66,16 @@ const Dashboard = () => {
     }
   }, [])
 
+  // 페이지 포커스 시 프로젝트 목록 새로고침
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchProjects()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
   /**
    * 서버에서 사용자의 프로젝트 목록을 가져오는 함수
    */
@@ -82,10 +92,37 @@ const Dashboard = () => {
 
   /**
    * 새 프로젝트 생성 버튼 클릭 핸들러
-   * 프로젝트 선택 모달을 표시
+   * 프로젝트 제목 입력 모달 표시
    */
   const handleCreateProject = () => {
     setShowProjectSelection(true)
+  }
+
+  /**
+   * 프로젝트 생성 확인 핸들러
+   * @param {Object} projectData - 프로젝트 데이터
+   */
+  const handleConfirmProjectCreation = async (projectData) => {
+    try {
+      const response = await api.post('/projects', {
+        projectTitle: projectData.title,
+        synopsis: projectData.synopsis || '',
+        status: 'draft'
+      })
+      
+      if (response.data.success) {
+        const projectId = response.data.project._id
+        toast.success('새 프로젝트가 생성되었습니다!')
+        
+        // 프로젝트 생성 후 콘티 생성 페이지로 이동
+        navigate(`/project/${projectId}/conte`)
+      } else {
+        throw new Error(response.data.message || '프로젝트 생성에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('프로젝트 생성 실패:', error)
+      toast.error('프로젝트 생성에 실패했습니다.')
+    }
   }
 
   /**
@@ -131,6 +168,34 @@ const Dashboard = () => {
    */
   const handleProjectClick = (projectId) => {
     navigate(`/project/${projectId}`)
+  }
+
+  /**
+   * 프로젝트 상태 라벨 반환
+   * @param {Object} project - 프로젝트 객체
+   * @returns {string} 상태 라벨
+   */
+  const getProjectStatusLabel = (project) => {
+    if (project.status === 'production_ready') return '촬영 준비 완료'
+    if (project.status === 'conte_ready') return '콘티 준비 완료'
+    if (project.status === 'story_ready') return '스토리 준비 완료'
+    if (project.conteCount > 0) return '콘티 생성됨'
+    if (project.story) return '스토리 완성'
+    return '초안'
+  }
+
+  /**
+   * 프로젝트 상태 색상 반환
+   * @param {Object} project - 프로젝트 객체
+   * @returns {string} 상태 색상
+   */
+  const getProjectStatusColor = (project) => {
+    if (project.status === 'production_ready') return 'success'
+    if (project.status === 'conte_ready') return 'info'
+    if (project.status === 'story_ready') return 'warning'
+    if (project.conteCount > 0) return 'info'
+    if (project.story) return 'primary'
+    return 'default'
   }
 
   /**
@@ -264,13 +329,13 @@ const Dashboard = () => {
           {projects.length > 0 ? (
             // 프로젝트가 있는 경우: 프로젝트 카드들 표시
             projects.map((project) => (
-              <Grid item xs={12} sm={6} md={4} key={project.id || project._id}>
+              <Grid item xs={12} sm={6} md={4} key={project._id || project.id}>
                 <Card 
                   sx={{ 
                     cursor: 'pointer',
                     '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
                   }}
-                  onClick={() => handleProjectClick(project.id || project._id)}
+                  onClick={() => handleProjectClick(project._id || project.id)}
                 >
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -284,9 +349,9 @@ const Dashboard = () => {
                         수정일: {new Date(project.updatedAt || project.createdAt).toLocaleDateString()}
                       </Typography>
                       <Chip 
-                        label={project.story ? '스토리 완성' : '진행 중'} 
+                        label={getProjectStatusLabel(project)} 
                         size="small" 
-                        color={project.story ? 'success' : 'warning'}
+                        color={getProjectStatusColor(project)}
                       />
                     </Box>
                   </CardContent>
@@ -326,12 +391,11 @@ const Dashboard = () => {
         onComplete={handleOnboardingComplete}
       />
 
-      {/* 프로젝트 선택 모달 */}
+      {/* 프로젝트 생성 모달 */}
       <ProjectSelectionModal
         open={showProjectSelection}
         onClose={handleProjectSelectionClose}
-        onSelectStoryGeneration={handleSelectStoryGeneration}
-        onSelectConteGeneration={handleSelectConteGeneration}
+        onConfirm={handleConfirmProjectCreation}
       />
     </Box>
   )

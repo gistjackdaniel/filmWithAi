@@ -277,8 +277,8 @@ const HistoryList = ({ onSelectHistory, onReuseHistory }) => {
               >
                 <ListItemText
                   primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" component="span" sx={{ fontWeight: 500 }}>
                         {item.synopsis.length > 50 
                           ? `${item.synopsis.substring(0, 50)}...` 
                           : item.synopsis
@@ -290,16 +290,18 @@ const HistoryList = ({ onSelectHistory, onReuseHistory }) => {
                     </Box>
                   }
                   secondary={
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
+                    <Box component="span">
+                      <Typography variant="body2" color="text.secondary" component="span">
                         {formatDate(item.createdAt)} • {item.generationTime}초 • {item.story.length}자
                       </Typography>
                       {item.settings?.genre && (
-                        <Chip 
-                          label={item.settings.genre} 
-                          size="small" 
-                          sx={{ mt: 0.5, fontSize: '0.7rem' }}
-                        />
+                        <Box component="span" sx={{ display: 'inline-block', mt: 0.5 }}>
+                          <Chip 
+                            label={item.settings.genre} 
+                            size="small" 
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        </Box>
                       )}
                     </Box>
                   }

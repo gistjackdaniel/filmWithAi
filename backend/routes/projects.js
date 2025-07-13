@@ -50,45 +50,102 @@ const authenticateToken = async (req, res, next) => {
  */
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { projectTitle, synopsis, settings, tags } = req.body;
+    const { projectTitle, synopsis, settings, tags, conteList, story } = req.body;
 
-    // 필수 필드 검증
-    if (!projectTitle || !synopsis) {
+    console.log('📝 프로젝트 생성 요청:', { 
+      userId: req.user._id,
+      projectTitle: projectTitle?.substring(0, 50) + '...',
+      hasSynopsis: !!synopsis,
+      hasStory: !!story,
+      conteCount: conteList?.length || 0,
+      settings 
+    });
+
+    // 필수 필드 검증 (시놉시스는 선택적)
+    if (!projectTitle) {
+      console.error('❌ 프로젝트 생성 실패: 프로젝트 제목 누락', { projectTitle });
       return res.status(400).json({
         success: false,
-        message: '프로젝트 제목과 시놉시스는 필수입니다.'
+        message: '프로젝트 제목은 필수입니다.'
       });
     }
 
-    // 새 프로젝트 생성
+    // 새 프로젝트 생성 (기본 상태: draft)
     const project = new Project({
       userId: req.user._id,
       projectTitle,
-      synopsis,
+      synopsis: synopsis || '',
+      story: story || '',
+      status: 'draft', // 기본 상태 추가
       settings: settings || {},
       tags: tags || []
     });
 
+    console.log('💾 프로젝트 저장 중...');
     await project.save();
+    console.log('✅ 프로젝트 저장 완료:', { id: project._id, title: project.projectTitle });
+
+    // 콘티 리스트가 있는 경우 함께 저장
+    if (conteList && Array.isArray(conteList) && conteList.length > 0) {
+      console.log('📝 콘티 리스트 저장 중...', conteList.length, '개');
+      console.log('📝 콘티 데이터 샘플:', conteList[0]);
+      
+      try {
+        const contePromises = conteList.map((conte, index) => {
+          console.log(`📝 콘티 ${index + 1} 저장 중:`, {
+            scene: conte.scene || index + 1,
+            title: conte.title || `씬 ${index + 1}`,
+            type: conte.type || 'live_action',
+            hasImage: !!conte.imageUrl
+          });
+          
+          const newConte = new Conte({
+            projectId: project._id,
+            scene: conte.scene || index + 1,
+            title: conte.title || `씬 ${index + 1}`,
+            description: conte.description || '',
+            type: conte.type || 'live_action',
+            order: index + 1,
+            status: 'draft',
+            estimatedDuration: conte.estimatedDuration || '5분',
+            imageUrl: conte.imageUrl || null
+          });
+          return newConte.save();
+        });
+
+        const savedContes = await Promise.all(contePromises);
+        console.log('✅ 콘티 리스트 저장 완료:', savedContes.length, '개');
+        
+        // 저장된 콘티 ID들 로깅
+        savedContes.forEach((conte, index) => {
+          console.log(`✅ 콘티 ${index + 1} 저장됨:`, conte._id);
+        });
+      } catch (conteError) {
+        console.error('❌ 콘티 저장 중 오류:', conteError);
+        // 콘티 저장 실패해도 프로젝트는 생성됨
+        console.log('⚠️ 콘티 저장 실패했지만 프로젝트는 생성됨');
+      }
+    } else {
+      console.log('📝 콘티 리스트가 없어서 콘티 저장 건너뜀');
+    }
 
     res.status(201).json({
       success: true,
       message: '프로젝트가 생성되었습니다.',
-      data: {
-        project: {
-          id: project._id,
-          projectTitle: project.projectTitle,
-          synopsis: project.synopsis,
-          status: project.status,
-          settings: project.settings,
-          tags: project.tags,
-          createdAt: project.createdAt
-        }
+      project: {
+        _id: project._id,
+        projectTitle: project.projectTitle,
+        synopsis: project.synopsis,
+        story: project.story,
+        status: project.status,
+        settings: project.settings,
+        tags: project.tags,
+        createdAt: project.createdAt
       }
     });
 
   } catch (error) {
-    console.error('프로젝트 생성 오류:', error);
+    console.error('❌ 프로젝트 생성 오류:', error);
     res.status(500).json({
       success: false,
       message: '프로젝트 생성 중 오류가 발생했습니다.'

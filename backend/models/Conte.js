@@ -126,6 +126,13 @@ const conteSchema = new mongoose.Schema({
     default: '5분'
   },
   
+  // 이미지 URL (AI 생성 이미지)
+  imageUrl: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  
   // 키워드 노드 구조 (그래프 노드)
   keywords: {
     userInfo: {
@@ -168,7 +175,7 @@ const conteSchema = new mongoose.Schema({
     },
     timeOfDay: {
       type: String,
-      enum: ['새벽', '아침', '오후', '저녁', '밤'],
+      enum: ['새벽', '아침', '오후', '저녁', '밤', '낮'],
       default: '오후'
     },
     specialRequirements: [{

@@ -29,11 +29,12 @@ const LoginPage = () => {
   /**
    * Google OAuth 로그인 설정
    * react-oauth/google 라이브러리를 사용한 Google 로그인
+   * access token을 직접 받아서 서버에 전송
    */
   const googleLogin = useGoogleLogin({
     // 리디렉션 URI 명시적 설정
     redirect_uri: import.meta.env.VITE_REDIRECT_URI || 'http://localhost:3002',
-    // 로그인 성공 시 콜백
+    // access token을 직접 받기 위한 설정
     onSuccess: async (response) => {
       try {
         setIsLoading(true)

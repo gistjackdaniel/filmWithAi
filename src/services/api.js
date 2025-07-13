@@ -108,19 +108,34 @@ export const aiAPI = {
 // 모든 API 요청이 전송되기 전에 실행되는 미들웨어
 api.interceptors.request.use(
   (config) => {
-    // 로컬 스토리지에서 인증 토큰 가져오기
-    const token = localStorage.getItem('auth-storage')
-    if (token) {
-      try {
-        const parsedToken = JSON.parse(token)
-        // Zustand persist에서 저장된 토큰이 있으면 헤더에 추가
-        if (parsedToken.state?.token) {
-          config.headers.Authorization = `Bearer ${parsedToken.state.token}`
+    // 먼저 세션 스토리지에서 토큰 확인
+    let token = sessionStorage.getItem('auth-token')
+    
+    // 세션 스토리지에 없으면 로컬 스토리지에서 확인
+    if (!token) {
+      const authStorage = localStorage.getItem('auth-storage')
+      if (authStorage) {
+        try {
+          const parsedToken = JSON.parse(authStorage)
+          if (parsedToken.state?.token) {
+            token = parsedToken.state.token
+            // 세션 스토리지에도 저장
+            sessionStorage.setItem('auth-token', token)
+          }
+        } catch (error) {
+          console.error('토큰 파싱 오류:', error)
         }
-      } catch (error) {
-        console.error('토큰 파싱 오류:', error)
       }
     }
+    
+    // 토큰이 있으면 헤더에 추가
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+      console.log('🔐 인증 토큰 추가됨:', token.substring(0, 20) + '...')
+    } else {
+      console.warn('⚠️ 인증 토큰이 없습니다.')
+    }
+    
     return config
   },
   (error) => {

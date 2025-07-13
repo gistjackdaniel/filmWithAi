@@ -59,6 +59,16 @@ const ProjectPage = () => {
   // 프로젝트 ID가 변경될 때마다 프로젝트 정보와 타임라인 데이터 로드
   useEffect(() => {
     console.log('ProjectPage useEffect triggered with projectId:', projectId)
+    console.log('ProjectPage projectId type:', typeof projectId)
+    console.log('ProjectPage projectId value:', projectId)
+    
+    // projectId가 undefined이거나 빈 문자열인 경우 처리
+    if (!projectId || projectId === 'undefined' || projectId === '') {
+      console.error('ProjectPage: Invalid projectId:', projectId)
+      toast.error('유효하지 않은 프로젝트 ID입니다.')
+      navigate('/')
+      return
+    }
     
     // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
     if (projectId === 'temp-project-id') {
@@ -196,17 +206,27 @@ const ProjectPage = () => {
   const fetchProject = async () => {
     try {
       console.log('ProjectPage fetchProject started for projectId:', projectId)
+      console.log('ProjectPage API URL:', `/projects/${projectId}`)
       setLoading(true)
       const response = await api.get(`/projects/${projectId}`)
-      const projectData = response.data.project
+      console.log('ProjectPage API response:', response.data)
+      
+      // 백엔드 응답 구조에 따라 project 데이터 추출
+      const projectData = response.data?.data?.project || response.data?.project
       console.log('ProjectPage project data received:', projectData)
+      
+      // projectData가 존재하는지 확인
+      if (!projectData) {
+        throw new Error('프로젝트 데이터가 없습니다.')
+      }
+      
       setProject(projectData)
       
       // 타임라인 스토어에 프로젝트 ID 설정
       setCurrentProjectId(projectId)
       
       // 콘티 데이터가 있으면 타임라인 데이터 로드
-      if (projectData.conteList && projectData.conteList.length > 0) {
+      if (projectData.conteList && Array.isArray(projectData.conteList) && projectData.conteList.length > 0) {
         console.log('ProjectPage loading contes, count:', projectData.conteList.length)
         const result = await loadProjectContes(projectId)
         console.log('ProjectPage loadProjectContes result:', result)
@@ -214,11 +234,17 @@ const ProjectPage = () => {
           toast.error(result.error || '타임라인 데이터를 불러올 수 없습니다.')
         }
       } else {
-        console.log('ProjectPage no contes found in project data')
+        console.log('ProjectPage no contes found in project data, conteList:', projectData.conteList)
+        // 빈 배열로 초기화하여 타임라인 컴포넌트가 정상 작동하도록 함
+        const { setScenes } = useTimelineStore.getState()
+        setScenes([])
       }
     } catch (error) {
       console.error('프로젝트 조회 실패:', error)
       toast.error('프로젝트를 불러올 수 없습니다.')
+      // 에러 발생 시 빈 배열로 초기화
+      const { setScenes } = useTimelineStore.getState()
+      setScenes([])
     } finally {
       setLoading(false)
     }
@@ -234,18 +260,79 @@ const ProjectPage = () => {
 
   /**
    * 저장 버튼 핸들러
-   * 현재는 개발 중 메시지만 표시
+   * 프로젝트 정보 업데이트
    */
-  const handleSave = () => {
-    toast.success('프로젝트가 저장되었습니다.')
+  const handleSave = async () => {
+    try {
+      if (!project) {
+        toast.error('저장할 프로젝트 정보가 없습니다.')
+        return
+      }
+
+      // temp-project-id인 경우 새 프로젝트 생성
+      if (projectId === 'temp-project-id') {
+        console.log('Creating new project from temp data...')
+        
+        // 콘티가 있는지 확인하여 상태 결정
+        const hasContes = project.conteList && project.conteList.length > 0
+        const projectStatus = hasContes ? 'conte_ready' : 'story_ready'
+        
+        const response = await api.post('/projects', {
+          projectTitle: project.projectTitle,
+          synopsis: project.synopsis,
+          story: project.story,
+          conteList: project.conteList || [],
+          status: projectStatus
+        })
+
+        if (response.data.success) {
+          const newProjectId = response.data.project._id
+          toast.success('새 프로젝트가 생성되었습니다.')
+          
+          // 새 프로젝트 페이지로 이동
+          navigate(`/project/${newProjectId}`)
+        } else {
+          throw new Error(response.data.message || '프로젝트 생성에 실패했습니다.')
+        }
+      } else {
+        // 기존 프로젝트 업데이트
+        // 콘티가 있는지 확인하여 상태 결정
+        const hasContes = project.conteList && project.conteList.length > 0
+        const projectStatus = hasContes ? 'conte_ready' : 'story_ready'
+        
+        const response = await api.put(`/projects/${projectId}`, {
+          projectTitle: project.projectTitle,
+          synopsis: project.synopsis,
+          story: project.story,
+          status: projectStatus
+        })
+
+        if (response.data.success) {
+          toast.success('프로젝트가 저장되었습니다.')
+        } else {
+          throw new Error(response.data.message || '저장에 실패했습니다.')
+        }
+      }
+    } catch (error) {
+      console.error('프로젝트 저장 실패:', error)
+      toast.error('프로젝트 저장에 실패했습니다.')
+    }
   }
 
   /**
-   * AI 생성 버튼 핸들러
-   * 현재는 개발 중 메시지만 표시
+   * 콘티 생성 버튼 핸들러
+   * 콘티 생성 페이지로 이동
    */
-  const handleGenerate = () => {
-    toast.success('AI 생성 기능은 개발 중입니다.')
+  const handleGenerateConte = () => {
+    navigate(`/project/${projectId}/conte`)
+  }
+
+  /**
+   * 프로젝트 정보 편집 핸들러
+   */
+  const handleEditProject = () => {
+    // 프로젝트 정보 편집 모달 또는 페이지로 이동
+    toast.info('프로젝트 정보 편집 기능은 개발 중입니다.')
   }
 
   /**
@@ -408,52 +495,80 @@ const ProjectPage = () => {
             저장
           </Button>
           
-          {/* AI 생성 버튼 */}
+          {/* 콘티 생성 버튼 */}
           <Button 
             color="inherit" 
             startIcon={<PlayArrow />}
-            onClick={handleGenerate}
+            onClick={handleGenerateConte}
             sx={{ ml: 1 }}
           >
-            AI 생성
+            콘티 생성
           </Button>
         </Toolbar>
       </AppBar>
 
       {/* 메인 컨텐츠 */}
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {/* 프로젝트 제목 */}
-        <Typography variant="h4" gutterBottom>
-          {project.projectTitle}
-        </Typography>
-
-        {/* 시놉시스 섹션 */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            시놉시스
+        {/* 프로젝트 정보 헤더 */}
+        <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+          <Typography variant="h4" gutterBottom>
+            {project.projectTitle}
           </Typography>
-          <Typography variant="body1" paragraph>
-            {project.synopsis}
-          </Typography>
-        </Box>
-
-        {/* 스토리 섹션 (있는 경우에만 표시) */}
-        {project.story && (
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              스토리
+          
+          {/* 프로젝트 상태 정보 */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              상태: {project.status || 'draft'}
             </Typography>
-            <Typography variant="body1" paragraph>
-              {project.story}
+            <Typography variant="body2" color="text.secondary">
+              생성일: {new Date(project.createdAt).toLocaleDateString()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              콘티 수: {project.conteList?.length || 0}개
             </Typography>
           </Box>
-        )}
+
+          {/* 시놉시스 섹션 */}
+          {project.synopsis && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                시놉시스
+              </Typography>
+              <Typography variant="body1" paragraph>
+                {project.synopsis}
+              </Typography>
+            </Box>
+          )}
+
+          {/* 스토리 섹션 (있는 경우에만 표시) */}
+          {project.story && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                스토리
+              </Typography>
+              <Typography variant="body1" paragraph>
+                {project.story}
+              </Typography>
+            </Box>
+          )}
+        </Box>
 
         {/* 타임라인 섹션 */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            타임라인
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              타임라인
+            </Typography>
+            <Button 
+              variant="outlined" 
+              startIcon={<PlayArrow />}
+              onClick={handleGenerateConte}
+              size="small"
+            >
+              콘티 추가
+            </Button>
+          </Box>
+          
           {/* 디버깅 로그 추가 */}
           {console.log('ProjectPage scenes before TimelineViewer:', scenes, 'type:', typeof scenes, 'isArray:', Array.isArray(scenes))}
           <TimelineViewer
@@ -474,7 +589,7 @@ const ProjectPage = () => {
 
         {/* 프로젝트가 완성되지 않은 경우 안내 메시지 */}
         {(!project.story || !project.conteList || project.conteList.length === 0) && (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Box sx={{ textAlign: 'center', py: 8, bgcolor: 'background.paper', borderRadius: 2 }}>
             <Typography variant="h6" gutterBottom>
               프로젝트가 아직 완성되지 않았습니다.
             </Typography>
@@ -484,10 +599,10 @@ const ProjectPage = () => {
             <Button 
               variant="contained" 
               startIcon={<PlayArrow />}
-              onClick={handleGenerate}
+              onClick={handleGenerateConte}
               size="large"
             >
-              AI로 스토리 생성하기
+              콘티 생성하기
             </Button>
           </Box>
         )}
