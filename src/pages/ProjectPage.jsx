@@ -18,7 +18,6 @@ import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
 import TimelineViewer from '../components/timeline/organisms/TimelineViewer'
-import SceneDetailModal from '../components/timeline/organisms/SceneDetailModal'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import useTimelineStore from '../stores/timelineStore'
 
@@ -47,7 +46,8 @@ const ProjectPage = () => {
     selectScene,
     openModal,
     closeModal,
-    disconnectRealtimeUpdates
+    disconnectRealtimeUpdates,
+    loadSceneDetails
   } = useTimelineStore()
   
   // 로컬 상태 관리
@@ -282,16 +282,12 @@ const ProjectPage = () => {
         toast.error('임시 프로젝트는 저장할 수 없습니다. 프로젝트를 먼저 저장해주세요.')
         return
       } else {
-        // 기존 프로젝트 업데이트
-        // 콘티가 있는지 확인하여 상태 결정
-        const hasContes = project.conteList && project.conteList.length > 0
-        const projectStatus = hasContes ? 'conte_ready' : 'story_ready'
-        
+        // 기존 프로젝트 업데이트 (상태는 기존 상태 유지)
         const response = await api.put(`/projects/${projectId}`, {
           projectTitle: project.projectTitle,
           synopsis: project.synopsis,
-          story: project.story,
-          status: projectStatus
+          story: project.story
+          // status는 제거하여 기존 상태 유지
         })
 
         if (response.data.success) {
@@ -325,10 +321,22 @@ const ProjectPage = () => {
   /**
    * 씬 클릭 핸들러
    */
-  const handleSceneClick = useCallback((scene) => {
-    selectScene(scene.id)
-    openModal(scene)
-  }, [selectScene, openModal])
+  const handleSceneClick = useCallback(async (scene) => {
+    try {
+      console.log('ProjectPage handleSceneClick called with scene:', scene)
+      
+      // 씬 선택
+      selectScene(scene.id)
+      
+      // ConteEditModal을 직접 열기 (SceneDetailModal 대신)
+      setEditingScene(scene)
+      setEditModalOpen(true)
+      
+    } catch (error) {
+      console.error('ProjectPage handleSceneClick error:', error)
+      toast.error('씬 정보를 불러오는데 실패했습니다.')
+    }
+  }, [selectScene])
 
   /**
    * 씬 편집 핸들러
@@ -597,23 +605,16 @@ const ProjectPage = () => {
         )}
       </Container>
 
-      {/* 씬 상세 모달 */}
-      <SceneDetailModal
-        open={modalOpen}
-        scene={currentScene}
-        onClose={closeModal}
-        onEdit={handleSceneEdit}
-        onRegenerate={handleSceneRegenerate}
-      />
-
-      {/* 씬 편집 모달 */}
+      {/* 통합된 씬 상세/편집 모달 */}
       <ConteEditModal
-        open={editModalOpen}
-        onClose={handleEditModalClose}
-        conte={editingScene}
+        open={modalOpen || editModalOpen}
+        onClose={modalOpen ? closeModal : handleEditModalClose}
+        conte={currentScene || editingScene}
         onSave={handleSaveScene}
         onRegenerateImage={handleRegenerateImage}
         onRegenerateConte={handleRegenerateScene}
+        onEdit={handleSceneEdit}
+        onRegenerate={handleSceneRegenerate}
       />
     </Box>
   )

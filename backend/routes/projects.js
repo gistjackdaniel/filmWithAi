@@ -148,9 +148,12 @@ router.post('/', authenticateToken, async (req, res) => {
           console.log(`✅ 콘티 ${index + 1} 저장됨:`, conte._id);
         });
         
-        // 콘티가 저장된 후 프로젝트 상태 업데이트
-        await project.updateStatusByConteCount();
-        console.log('✅ 프로젝트 상태 업데이트 완료:', project.status);
+        // 콘티가 저장된 후 프로젝트 상태를 conte_ready로 업데이트
+        if (project.status !== 'conte_ready' && project.status !== 'production_ready') {
+          project.status = 'conte_ready';
+          await project.save();
+          console.log('✅ 프로젝트 상태를 conte_ready로 업데이트 완료');
+        }
       } catch (conteError) {
         console.error('❌ 콘티 저장 중 오류:', conteError);
         // 콘티 저장 실패해도 프로젝트는 생성됨
@@ -385,13 +388,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // 업데이트할 필드 설정
+    // 업데이트할 필드 설정 (상태는 명시적으로 전달된 경우에만 업데이트)
     if (projectTitle) project.projectTitle = projectTitle;
     if (synopsis) project.synopsis = synopsis;
     if (story !== undefined) project.story = story;
     if (settings) project.settings = { ...project.settings, ...settings };
     if (tags) project.tags = tags;
-    if (status) project.status = status;
+    // status는 명시적으로 전달된 경우에만 업데이트 (기존 상태 유지)
+    if (status !== undefined) project.status = status;
 
     await project.save();
 

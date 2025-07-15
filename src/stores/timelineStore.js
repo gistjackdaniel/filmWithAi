@@ -243,19 +243,23 @@ const useTimelineStore = create((set, get) => ({
     }
 
     try {
+      console.log('timelineStore loadSceneDetails started for sceneId:', sceneId)
       const result = await timelineService.getSceneDetails(currentProjectId, sceneId)
       
       if (result.success) {
-        // 현재 씬 업데이트
-        set({ currentScene: result.data })
+        // 현재 씬 업데이트 및 모달 열기
+        set({ currentScene: result.data, modalOpen: true })
+        console.log('timelineStore scene details loaded and modal opened:', result.data)
         return { success: true, data: result.data }
       } else {
         set({ error: result.error })
+        console.error('timelineStore loadSceneDetails failed:', result.error)
         return { success: false, error: result.error }
       }
     } catch (error) {
       const errorMessage = '씬 상세 정보를 불러오는데 실패했습니다.'
       set({ error: errorMessage })
+      console.error('timelineStore loadSceneDetails error:', error)
       return { success: false, error: errorMessage }
     }
   },
