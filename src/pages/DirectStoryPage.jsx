@@ -985,6 +985,7 @@ const DirectStoryPage = () => {
               )}
               <ConteGenerator 
                 story={story}
+                projectId={null} // DirectStoryPage에서는 프로젝트 저장을 하지 않음
                 onConteGenerated={handleConteGenerationComplete}
                 onGenerationStart={handleConteGenerationStart}
                 onGenerationComplete={handleConteGenerationComplete}

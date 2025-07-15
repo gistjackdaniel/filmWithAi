@@ -144,8 +144,9 @@ export const generateSceneImage = async (requestData) => {
     } catch (apiError) {
       console.warn('⚠️ 실제 API 호출 실패, 모의 이미지 생성으로 대체:', apiError.message)
       
-      // 실제 API 실패 시 Unsplash API로 모의 이미지 생성
-      const mockImageUrl = `https://source.unsplash.com/1024x1024/?${encodeURIComponent(requestData.sceneDescription)}&${Date.now()}`
+      // 실제 API 실패 시 더 안정적인 이미지 URL 생성
+      const keywords = requestData.sceneDescription.split(' ').slice(0, 5).join(',')
+      const mockImageUrl = `https://picsum.photos/1024/1024?random=${Date.now()}&blur=2`
       
       const mockResponse = {
         imageUrl: mockImageUrl,

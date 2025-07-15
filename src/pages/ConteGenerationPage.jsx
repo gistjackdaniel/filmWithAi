@@ -107,6 +107,21 @@ const ConteGenerationPage = () => {
   const [projectInfo, setProjectInfo] = useState(null)
   const [loadingProject, setLoadingProject] = useState(true)
   
+  // 프로젝트 상태 실시간 업데이트를 위한 함수
+  const updateProjectInfo = async () => {
+    if (!projectId) return
+    
+    try {
+      const response = await api.get(`/projects/${projectId}`)
+      if (response.data.success) {
+        setProjectInfo(response.data.data.project)
+        console.log('🔄 프로젝트 정보 업데이트 완료:', response.data.data.project.status)
+      }
+    } catch (error) {
+      console.error('프로젝트 정보 업데이트 실패:', error)
+    }
+  }
+  
   // 프로젝트 정보 로드
   useEffect(() => {
     const loadProjectInfo = async () => {
@@ -223,6 +238,9 @@ const ConteGenerationPage = () => {
             status: 'story_ready'
           })
           console.log('✅ 스토리 저장 완료')
+          
+          // 프로젝트 정보 업데이트
+          await updateProjectInfo()
         } catch (saveError) {
           console.error('❌ 스토리 저장 실패:', saveError)
           // 저장 실패해도 스토리 생성은 성공으로 처리
@@ -314,70 +332,131 @@ const ConteGenerationPage = () => {
   /**
    * 콘티 생성 완료 핸들러
    * @param {Array} conteList - 생성된 콘티 리스트
+   * @param {boolean} isImageUpdate - 이미지 업데이트인지 여부 (중복 저장 방지)
    */
-  const handleConteGenerationComplete = async (conteList) => {
+  const handleConteGenerationComplete = async (conteList, isImageUpdate = false) => {
+    console.log('🎬 handleConteGenerationComplete 호출됨:', {
+      projectId,
+      conteListLength: conteList?.length,
+      isImageUpdate,
+      conteList: conteList
+    })
+    
     // 스토어에서 이미 처리됨
     
     // 생성된 콘티를 프로젝트에 저장
     if (projectId && conteList && conteList.length > 0) {
       try {
-        console.log('💾 생성된 콘티를 프로젝트에 저장 중...', conteList.length, '개')
-        
-        // 각 콘티를 개별적으로 저장
-        const { conteAPI } = await import('../services/api')
-        
-        const savedContes = await Promise.all(
-          conteList.map(async (conte, index) => {
-            try {
-              console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
-              
-              const conteData = {
-                scene: conte.scene,
-                title: conte.title,
-                description: conte.description,
-                dialogue: conte.dialogue || '',
-                cameraAngle: conte.cameraAngle || '',
-                cameraWork: conte.cameraWork || '',
-                characterLayout: conte.characterLayout || '',
-                props: conte.props || '',
-                weather: conte.weather || '',
-                lighting: conte.lighting || '',
-                visualDescription: conte.visualDescription || '',
-                transition: conte.transition || '',
-                lensSpecs: conte.lensSpecs || '',
-                visualEffects: conte.visualEffects || '',
-                type: conte.type || 'live_action',
-                estimatedDuration: conte.estimatedDuration || '5분',
-                keywords: conte.keywords || {},
-                weights: conte.weights || {},
-                order: conte.order || index + 1,
-                imageUrl: conte.imageUrl || null
+        if (isImageUpdate) {
+          // 이미지 생성 완료 시 - 이미지가 포함된 콘티를 DB에 저장
+          console.log('💾 이미지 생성 완료 - 콘티를 DB에 저장 중...', conteList.length, '개')
+          
+          // 이미지가 포함된 콘티만 필터링
+          const contesWithImages = conteList.filter(conte => conte.imageUrl)
+          
+          if (contesWithImages.length === 0) {
+            console.log('⚠️ 이미지가 포함된 콘티가 없어 저장을 건너뜀')
+            return
+          }
+          
+          const { conteAPI } = await import('../services/api')
+          
+          const savedContes = await Promise.all(
+            contesWithImages.map(async (conte, index) => {
+              try {
+                console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
+                
+                const conteData = {
+                  scene: conte.scene,
+                  title: conte.title,
+                  description: conte.description,
+                  dialogue: conte.dialogue || '',
+                  cameraAngle: conte.cameraAngle || '',
+                  cameraWork: conte.cameraWork || '',
+                  characterLayout: conte.characterLayout || '',
+                  props: conte.props || '',
+                  weather: conte.weather || '',
+                  lighting: conte.lighting || '',
+                  visualDescription: conte.visualDescription || '',
+                  transition: conte.transition || '',
+                  lensSpecs: conte.lensSpecs || '',
+                  visualEffects: conte.visualEffects || '',
+                  type: conte.type || 'live_action',
+                  estimatedDuration: conte.estimatedDuration || '5분',
+                  keywords: conte.keywords || {},
+                  weights: conte.weights || {},
+                  order: conte.order || index + 1,
+                  imageUrl: conte.imageUrl,
+                  imagePrompt: conte.imagePrompt || null,
+                  imageGeneratedAt: conte.imageGeneratedAt || null,
+                  imageModel: conte.imageModel || null,
+                  isFreeTier: conte.isFreeTier || false
+                }
+                
+                const response = await conteAPI.createConte(projectId, conteData)
+                console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
+                return response.data
+              } catch (error) {
+                console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
+                throw error
               }
-              
-              const response = await conteAPI.createConte(projectId, conteData)
-              console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
-              return response.data
-            } catch (error) {
-              console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
-              throw error
-            }
-          })
-        )
-        
-        console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
-        
-        // 프로젝트 상태를 conte_ready로 업데이트
-        await api.put(`/projects/${projectId}`, {
-          status: 'conte_ready'
-        })
-        
-        console.log('✅ 프로젝트 상태 업데이트 완료: conte_ready')
+            })
+          )
+          
+          console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
+          toast.success('콘티가 성공적으로 생성되고 저장되었습니다!')
+          
+          // 프로젝트 정보 업데이트
+          await updateProjectInfo()
+          
+        } else {
+          // 콘티 생성 완료 시 - 프로젝트 상태만 업데이트 (DB 저장은 이미지 생성 완료 후에)
+          console.log('💾 콘티 생성 완료 - 프로젝트 상태만 업데이트:', conteList.length, '개')
+          
+          // 프로젝트 상태를 즉시 conte_ready로 업데이트
+          console.log('🔄 프로젝트 상태를 conte_ready로 업데이트 중...')
+          try {
+            const statusResponse = await api.put(`/projects/${projectId}`, {
+              status: 'conte_ready'
+            })
+            console.log('✅ 프로젝트 상태 업데이트 완료:', statusResponse.data)
+            
+            // 성공 메시지 표시
+            toast.success('콘티가 생성되었습니다. 이미지 생성이 완료되면 저장됩니다.')
+            
+            // 프로젝트 정보 업데이트
+            await updateProjectInfo()
+          } catch (statusError) {
+            console.error('❌ 프로젝트 상태 업데이트 실패:', statusError)
+            toast.error('콘티는 생성되었지만 상태 업데이트에 실패했습니다.')
+          }
+        }
         
       } catch (conteError) {
-        console.error('❌ 콘티 저장 중 오류:', conteError)
-        // 콘티 저장 실패해도 스토리 생성은 성공으로 처리
-        toast.error('콘티 저장에 실패했지만 콘티는 정상적으로 생성되었습니다.')
+        console.error('❌ 콘티 저장/업데이트 중 오류:', conteError)
+        
+        if (!isImageUpdate) {
+          // 콘티 생성 실패 시에도 프로젝트 상태만 업데이트 시도
+          try {
+            console.log('🔄 콘티 생성 실패했지만 프로젝트 상태 업데이트 시도...')
+            await api.put(`/projects/${projectId}`, {
+              status: 'conte_ready'
+            })
+            console.log('✅ 프로젝트 상태 업데이트 완료 (콘티 생성 실패 후)')
+            toast.success('콘티는 생성되었지만 저장에 실패했습니다.')
+          } catch (statusError) {
+            console.error('❌ 프로젝트 상태 업데이트도 실패:', statusError)
+            toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
+          }
+        } else {
+          toast.error('콘티 저장에 실패했습니다.')
+        }
       }
+    } else {
+      console.log('⚠️ 콘티 리스트가 비어있거나 projectId가 없음:', {
+        projectId,
+        conteListLength: conteList?.length
+      })
     }
   }
 
@@ -387,6 +466,11 @@ const ConteGenerationPage = () => {
    */
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue)
+    
+    // 탭 변경 시 프로젝트 정보 업데이트 (특히 콘티 생성 탭으로 이동할 때)
+    if (newValue === 4) { // 콘티 생성 탭
+      updateProjectInfo()
+    }
   }
 
   /**
@@ -639,6 +723,12 @@ const ConteGenerationPage = () => {
                     variant="outlined" 
                     size="small" 
                   />
+                  <Chip 
+                    label={`최종 업데이트: ${new Date().toLocaleTimeString()}`} 
+                    variant="outlined" 
+                    size="small" 
+                    color="info"
+                  />
                 </Box>
               )}
               
@@ -836,6 +926,7 @@ const ConteGenerationPage = () => {
               <Box>
                 <ConteGenerator 
                   story={generatedStory}
+                  projectId={projectId}
                   onConteGenerated={handleConteGenerationComplete}
                   onGenerationStart={handleConteGenerationStart}
                   onGenerationComplete={handleConteGenerationComplete}

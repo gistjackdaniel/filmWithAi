@@ -187,6 +187,11 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       }
     }
 
+    // 이미지 URL이 있는 경우에만 콘티 생성 (선택적)
+    if (!imageUrl) {
+      console.log('⚠️ 이미지 URL이 없어 콘티를 생성합니다 (이미지 없음):', { scene, title });
+    }
+
     // 새 콘티 생성
     const conte = new Conte({
       projectId,

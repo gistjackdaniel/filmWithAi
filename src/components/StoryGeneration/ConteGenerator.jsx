@@ -39,6 +39,7 @@ import useProjectStore from '../../stores/projectStore'
  */
 const ConteGenerator = ({ 
   story = '', 
+  projectId = null,
   onConteGenerated,
   onGenerationStart,
   onGenerationComplete,
@@ -235,7 +236,7 @@ const ConteGenerator = ({
       // API 응답 데이터를 그대로 사용 (서버에서 올바른 형식으로 제공됨)
       processedConteList = conteList.map((card, index) => ({
         ...card,
-        id: card.id || `scene_${index + 1}`,
+        // 임시 ID는 제거하고 실제 DB 저장 후 받은 ID를 사용
         scene: card.scene || index + 1,
         title: card.title || `씬 ${card.scene || index + 1}`,
         canEdit: card.canEdit !== false,
@@ -245,61 +246,134 @@ const ConteGenerator = ({
 
       console.log('✅ 처리된 캡션 카드 리스트:', processedConteList)
 
-      // 콘티 데이터를 로컬 상태에만 저장 (부모 컴포넌트로 전달하지 않음)
+      // 콘티 생성 완료 - 즉시 부모 컴포넌트에 전달하여 프로젝트 상태 업데이트
+      console.log('🎬 콘티 생성 완료 - 즉시 부모 컴포넌트에 전달:', {
+        processedConteListLength: processedConteList?.length,
+        hasOnConteGenerated: !!onConteGenerated
+      })
+      
+      // 콘티 생성 완료 시 즉시 부모 컴포넌트에 알림 (프로젝트 상태 업데이트용)
+      if (onConteGenerated) {
+        console.log('📞 콘티 생성 완료 - onConteGenerated 콜백 즉시 호출 (프로젝트 상태 업데이트)...')
+        onConteGenerated(processedConteList, false) // isImageUpdate = false (프로젝트 상태 업데이트)
+        console.log('✅ 콘티 생성 완료 - onConteGenerated 콜백 호출 완료')
+      } else {
+        console.log('⚠️ 콘티 생성 완료 - onConteGenerated 콜백이 없음')
+      }
+      
+      // UI 업데이트
       setShowResult(true)
       completeConteGeneration(processedConteList)
-
       toast.success(`${processedConteList.length}개의 캡션 카드가 생성되었습니다.`)
 
-      // 씬 이미지 생성 시작 (선택적)
-      console.log('🎨 씬 이미지 생성 시작...')
+      // 씬 이미지 생성 시작 (백그라운드에서 진행)
+      console.log('🎨 씬 이미지 생성 시작 (백그라운드)...')
       
       // 이미지 생성 시작 시 부모 컴포넌트에 알림
       if (onImageGenerationUpdate) {
         onImageGenerationUpdate(true, 0)
       }
       
-      try {
-        conteWithImages = await generateSceneImages(processedConteList)
-        
-        // 이미지가 추가된 콘티 리스트를 로컬 상태에 업데이트
-        completeConteGeneration(conteWithImages)
-        
-        // 이미지 생성 완료 후에만 부모 컴포넌트에 콘티 데이터 전달
-        if (onConteGenerated) {
-          onConteGenerated(conteWithImages)
-        }
-        
-        // 이미지 생성 완료 후 부모 컴포넌트에서 프로젝트와 콘티를 함께 저장하도록 전달
-        console.log('✅ 이미지가 포함된 콘티 생성 완료 - 부모 컴포넌트에서 프로젝트와 함께 저장 예정')
-        
-        console.log('✅ 모든 씬 이미지 생성 완료')
-        toast.success('모든 씬 이미지가 생성되었습니다!')
-        
-      } catch (imageError) {
-        console.error('❌ 이미지 생성 실패:', imageError)
-        
-        // 이미지 생성 실패 시에도 기본 콘티는 전달 (저장하지 않고 데이터만 전달)
-        if (onConteGenerated) {
-          onConteGenerated(processedConteList)
-        }
-        
-        // 이미지 생성 실패 시에도 기본 콘티는 부모 컴포넌트에서 저장하도록 전달
-        console.log('⚠️ 이미지 생성 실패 - 기본 콘티는 부모 컴포넌트에서 저장 예정')
-        
-        toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.')
-      } finally {
-        // 이미지 생성 완료 후 onGenerationComplete 호출
-        console.log('✅ 이미지 생성 완료 - onGenerationComplete 호출')
-        
-        // 이미지 생성 완료 시 부모 컴포넌트에 알림
-        if (onImageGenerationUpdate) {
-          onImageGenerationUpdate(false, 0)
-        }
-        
-        // 이미지 생성 완료 후 콘티 데이터는 이미 onConteGenerated를 통해 전달됨
-        console.log('✅ 이미지 생성 완료 - 콘티 데이터 전달 완료')
-      }
+      // 이미지 생성을 백그라운드에서 비동기로 실행
+      generateSceneImages(processedConteList)
+        .then(async (conteWithImages) => {
+          console.log('✅ 백그라운드 이미지 생성 완료:', conteWithImages.length, '개')
+          
+          // 이미지가 추가된 콘티 리스트를 로컬 상태에 업데이트
+          completeConteGeneration(conteWithImages)
+          
+          // 이미지 생성 완료 후 콘티를 DB에 저장
+          try {
+            console.log('💾 이미지 생성 완료 - 콘티를 DB에 저장 중...', conteWithImages.length, '개')
+            
+            // 이미지가 포함된 콘티만 필터링
+            const contesWithImages = conteWithImages.filter(conte => conte.imageUrl)
+            
+            if (contesWithImages.length === 0) {
+              console.log('⚠️ 이미지가 포함된 콘티가 없어 저장을 건너뜀')
+              return
+            }
+            
+            // projectId가 없으면 저장할 수 없음
+            if (!projectId) {
+              console.error('❌ projectId가 없어 콘티를 저장할 수 없음')
+              toast.error('프로젝트 정보가 없어 콘티를 저장할 수 없습니다.')
+              return
+            }
+            
+            const { conteAPI } = await import('../../services/api')
+            
+            const savedContes = await Promise.all(
+              contesWithImages.map(async (conte, index) => {
+                try {
+                  console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
+                  
+                  const conteData = {
+                    scene: conte.scene,
+                    title: conte.title,
+                    description: conte.description,
+                    dialogue: conte.dialogue || '',
+                    cameraAngle: conte.cameraAngle || '',
+                    cameraWork: conte.cameraWork || '',
+                    characterLayout: conte.characterLayout || '',
+                    props: conte.props || '',
+                    weather: conte.weather || '',
+                    lighting: conte.lighting || '',
+                    visualDescription: conte.visualDescription || '',
+                    transition: conte.transition || '',
+                    lensSpecs: conte.lensSpecs || '',
+                    visualEffects: conte.visualEffects || '',
+                    type: conte.type || 'live_action',
+                    estimatedDuration: conte.estimatedDuration || '5분',
+                    keywords: conte.keywords || {},
+                    weights: conte.weights || {},
+                    order: conte.order || index + 1,
+                    imageUrl: conte.imageUrl,
+                    imagePrompt: conte.imagePrompt || null,
+                    imageGeneratedAt: conte.imageGeneratedAt || null,
+                    imageModel: conte.imageModel || null,
+                    isFreeTier: conte.isFreeTier || false
+                  }
+                  
+                  const response = await conteAPI.createConte(projectId, conteData)
+                  console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
+                  return response.data
+                } catch (error) {
+                  console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
+                  throw error
+                }
+              })
+            )
+            
+            console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
+            toast.success('콘티가 성공적으로 생성되고 저장되었습니다!')
+            
+          } catch (saveError) {
+            console.error('❌ 콘티 저장 실패:', saveError)
+            toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
+          }
+          
+          // 이미지 생성 완료 후 부모 컴포넌트에 업데이트된 콘티 데이터 전달 (DB 저장용)
+          if (onConteGenerated) {
+            console.log('📞 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 (DB 저장)...')
+            onConteGenerated(conteWithImages, true) // isImageUpdate = true (DB 저장)
+            console.log('✅ 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 완료')
+          }
+          
+          console.log('✅ 모든 씬 이미지 생성 완료')
+          toast.success('모든 씬 이미지가 생성되었습니다!')
+        })
+        .catch(imageError => {
+          console.error('❌ 백그라운드 이미지 생성 실패:', imageError)
+          toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.')
+        })
+        .finally(() => {
+          // 이미지 생성 완료 시 부모 컴포넌트에 알림
+          if (onImageGenerationUpdate) {
+            onImageGenerationUpdate(false, 0)
+          }
+          console.log('✅ 백그라운드 이미지 생성 프로세스 완료')
+        })
 
     } catch (error) {
       console.error('❌ 캡션 카드 생성 실패:', error)
@@ -307,11 +381,21 @@ const ConteGenerator = ({
       failConteGeneration(errorMessage)
       
       // 에러 발생 시에도 부모 컴포넌트에 알림
+      console.log('🎬 콘티 생성 실패 - 콜백 호출 준비:', {
+        hasOnGenerationComplete: !!onGenerationComplete,
+        hasOnConteGenerated: !!onConteGenerated
+      })
+      
       if (onGenerationComplete) {
+        console.log('📞 onGenerationComplete 콜백 호출 중...')
         onGenerationComplete()
+        console.log('✅ onGenerationComplete 콜백 호출 완료')
       }
+      
       if (onConteGenerated) {
+        console.log('📞 콘티 생성 실패 - onConteGenerated 콜백 호출 중... (null 전달)')
         onConteGenerated(null) // null 전달로 실패 상태 명시
+        console.log('✅ 콘티 생성 실패 - onConteGenerated 콜백 호출 완료')
       }
       
       toast.error(errorMessage)
