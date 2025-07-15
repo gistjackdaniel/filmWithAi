@@ -282,7 +282,7 @@ class TimelineService {
    */
   async updateScene(projectId, sceneId, sceneData) {
     try {
-      const response = await timelineAPI.put(`/projects/${projectId}/scenes/${sceneId}`, sceneData)
+      const response = await timelineAPI.put(`/projects/${projectId}/contes/${sceneId}`, sceneData)
       return {
         success: true,
         data: response.data,
@@ -306,7 +306,7 @@ class TimelineService {
    */
   async deleteScene(projectId, sceneId) {
     try {
-      await timelineAPI.delete(`/projects/${projectId}/scenes/${sceneId}`)
+      await timelineAPI.delete(`/projects/${projectId}/contes/${sceneId}`)
       return {
         success: true,
         data: null,
@@ -330,7 +330,7 @@ class TimelineService {
    */
   async createScene(projectId, sceneData) {
     try {
-      const response = await timelineAPI.post(`/projects/${projectId}/scenes`, sceneData)
+      const response = await timelineAPI.post(`/projects/${projectId}/contes`, sceneData)
       return {
         success: true,
         data: response.data,

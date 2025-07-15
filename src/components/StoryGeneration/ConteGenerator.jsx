@@ -264,7 +264,6 @@ const ConteGenerator = ({
       // UI 업데이트
       setShowResult(true)
       completeConteGeneration(processedConteList)
-      toast.success(`${processedConteList.length}개의 캡션 카드가 생성되었습니다.`)
 
       // 씬 이미지 생성 시작 (백그라운드에서 진행)
       console.log('🎨 씬 이미지 생성 시작 (백그라운드)...')
@@ -282,82 +281,32 @@ const ConteGenerator = ({
           // 이미지가 추가된 콘티 리스트를 로컬 상태에 업데이트
           completeConteGeneration(conteWithImages)
           
-          // 이미지 생성 완료 후 콘티를 DB에 저장
-          try {
-            console.log('💾 이미지 생성 완료 - 콘티를 DB에 저장 중...', conteWithImages.length, '개')
-            
-            // 이미지가 포함된 콘티만 필터링
-            const contesWithImages = conteWithImages.filter(conte => conte.imageUrl)
-            
-            if (contesWithImages.length === 0) {
-              console.log('⚠️ 이미지가 포함된 콘티가 없어 저장을 건너뜀')
-              return
-            }
-            
-            // projectId가 없으면 저장할 수 없음
-            if (!projectId) {
-              console.error('❌ projectId가 없어 콘티를 저장할 수 없음')
-              toast.error('프로젝트 정보가 없어 콘티를 저장할 수 없습니다.')
-              return
-            }
-            
-            const { conteAPI } = await import('../../services/api')
-            
-            const savedContes = await Promise.all(
-              contesWithImages.map(async (conte, index) => {
-                try {
-                  console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
-                  
-                  const conteData = {
-                    scene: conte.scene,
-                    title: conte.title,
-                    description: conte.description,
-                    dialogue: conte.dialogue || '',
-                    cameraAngle: conte.cameraAngle || '',
-                    cameraWork: conte.cameraWork || '',
-                    characterLayout: conte.characterLayout || '',
-                    props: conte.props || '',
-                    weather: conte.weather || '',
-                    lighting: conte.lighting || '',
-                    visualDescription: conte.visualDescription || '',
-                    transition: conte.transition || '',
-                    lensSpecs: conte.lensSpecs || '',
-                    visualEffects: conte.visualEffects || '',
-                    type: conte.type || 'live_action',
-                    estimatedDuration: conte.estimatedDuration || '5분',
-                    keywords: conte.keywords || {},
-                    weights: conte.weights || {},
-                    order: conte.order || index + 1,
-                    imageUrl: conte.imageUrl,
-                    imagePrompt: conte.imagePrompt || null,
-                    imageGeneratedAt: conte.imageGeneratedAt || null,
-                    imageModel: conte.imageModel || null,
-                    isFreeTier: conte.isFreeTier || false
-                  }
-                  
-                  const response = await conteAPI.createConte(projectId, conteData)
-                  console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
-                  return response.data
-                } catch (error) {
-                  console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
-                  throw error
-                }
-              })
-            )
-            
-            console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
-            toast.success('콘티가 성공적으로 생성되고 저장되었습니다!')
-            
-          } catch (saveError) {
-            console.error('❌ 콘티 저장 실패:', saveError)
-            toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
-          }
+          // 이미지 생성 완료 - 모든 콘티의 이미지 생성 상태 확인
+          const contesWithImages = conteWithImages.filter(conte => conte.imageUrl)
+          const totalContes = conteWithImages.length
+          const contesWithImagesCount = contesWithImages.length
           
-          // 이미지 생성 완료 후 부모 컴포넌트에 업데이트된 콘티 데이터 전달 (DB 저장용)
-          if (onConteGenerated) {
-            console.log('📞 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 (DB 저장)...')
-            onConteGenerated(conteWithImages, true) // isImageUpdate = true (DB 저장)
-            console.log('✅ 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 완료')
+          console.log('💾 이미지 생성 완료 상태 확인:', {
+            totalContes,
+            contesWithImagesCount,
+            allImagesGenerated: contesWithImagesCount === totalContes
+          })
+          
+          // 모든 콘티의 이미지가 생성된 경우에만 DB 저장 요청
+          if (contesWithImagesCount === totalContes) {
+            console.log('✅ 모든 콘티의 이미지 생성 완료 - DB 저장 요청')
+            if (onConteGenerated) {
+              console.log('📞 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 (DB 저장)...')
+              onConteGenerated(conteWithImages, true) // isImageUpdate = true (DB 저장)
+              console.log('✅ 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 완료')
+            }
+          } else {
+            console.log('⚠️ 일부 콘티의 이미지 생성 실패:', {
+              successCount: contesWithImagesCount,
+              totalCount: totalContes,
+              failedCount: totalContes - contesWithImagesCount
+            })
+            // 일부 실패 시 토스트 메시지 없이 조용히 처리
           }
           
           console.log('✅ 모든 씬 이미지 생성 완료')

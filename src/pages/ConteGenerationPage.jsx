@@ -348,15 +348,30 @@ const ConteGenerationPage = () => {
     if (projectId && conteList && conteList.length > 0) {
       try {
         if (isImageUpdate) {
-          // 이미지 생성 완료 시 - 이미지가 포함된 콘티를 DB에 저장
+          // 이미지 생성 완료 시 - 모든 콘티의 이미지 생성 상태 재확인
           console.log('💾 이미지 생성 완료 - 콘티를 DB에 저장 중...', conteList.length, '개')
           
           // 이미지가 포함된 콘티만 필터링
           const contesWithImages = conteList.filter(conte => conte.imageUrl)
+          const totalContes = conteList.length
+          const contesWithImagesCount = contesWithImages.length
           
-          if (contesWithImages.length === 0) {
-            console.log('⚠️ 이미지가 포함된 콘티가 없어 저장을 건너뜀')
-            return
+          console.log('💾 DB 저장 전 최종 확인:', {
+            totalContes,
+            contesWithImagesCount,
+            allImagesGenerated: contesWithImagesCount === totalContes
+          })
+          
+          // 모든 콘티의 이미지가 생성된 경우에만 DB 저장 진행
+          if (contesWithImagesCount === totalContes) {
+            console.log('✅ 모든 콘티의 이미지 생성 완료 - DB 저장 진행')
+          } else {
+            console.log('⚠️ 일부 콘티의 이미지 생성 실패 - DB 저장 건너뜀:', {
+              successCount: contesWithImagesCount,
+              totalCount: totalContes,
+              failedCount: totalContes - contesWithImagesCount
+            })
+            return // 일부 실패 시 DB 저장하지 않음
           }
           
           const { conteAPI } = await import('../services/api')
@@ -404,7 +419,7 @@ const ConteGenerationPage = () => {
           )
           
           console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
-          toast.success('콘티가 성공적으로 생성되고 저장되었습니다!')
+          toast.success('이미지 생성이 완료되어 콘티가 DB에 저장되었습니다!')
           
           // 프로젝트 정보 업데이트
           await updateProjectInfo()
@@ -421,8 +436,7 @@ const ConteGenerationPage = () => {
             })
             console.log('✅ 프로젝트 상태 업데이트 완료:', statusResponse.data)
             
-            // 성공 메시지 표시
-            toast.success('콘티가 생성되었습니다. 이미지 생성이 완료되면 저장됩니다.')
+            // 콘티 생성 완료 (조용히 처리)
             
             // 프로젝트 정보 업데이트
             await updateProjectInfo()
@@ -443,7 +457,6 @@ const ConteGenerationPage = () => {
               status: 'conte_ready'
             })
             console.log('✅ 프로젝트 상태 업데이트 완료 (콘티 생성 실패 후)')
-            toast.success('콘티는 생성되었지만 저장에 실패했습니다.')
           } catch (statusError) {
             console.error('❌ 프로젝트 상태 업데이트도 실패:', statusError)
             toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
