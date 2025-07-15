@@ -29,6 +29,7 @@ import ConteResult from './ConteResult'
 import ConteEditModal from './ConteEditModal'
 import useStoryGenerationStore from '../../stores/storyGenerationStore'
 import toast from 'react-hot-toast'
+import useProjectStore from '../../stores/projectStore'
 
 /**
  * AI 캡션 카드 생성 컴포넌트
@@ -244,14 +245,9 @@ const ConteGenerator = ({
 
       console.log('✅ 처리된 캡션 카드 리스트:', processedConteList)
 
-      // 스토어에 캡션 카드 결과 저장
-      completeConteGeneration(processedConteList)
+      // 콘티 데이터를 로컬 상태에만 저장 (부모 컴포넌트로 전달하지 않음)
       setShowResult(true)
-
-      // 생성된 캡션 카드를 부모 컴포넌트로 전달 (이미지 생성 전에 먼저 전달)
-      if (onConteGenerated) {
-        onConteGenerated(processedConteList)
-      }
+      completeConteGeneration(processedConteList)
 
       toast.success(`${processedConteList.length}개의 캡션 카드가 생성되었습니다.`)
 
@@ -266,13 +262,16 @@ const ConteGenerator = ({
       try {
         conteWithImages = await generateSceneImages(processedConteList)
         
-        // 이미지가 추가된 콘티 리스트를 스토어에 업데이트
+        // 이미지가 추가된 콘티 리스트를 로컬 상태에 업데이트
         completeConteGeneration(conteWithImages)
         
-        // 부모 컴포넌트에 최종 콘티 전달 (이미지 포함)
+        // 이미지 생성 완료 후에만 부모 컴포넌트에 콘티 데이터 전달
         if (onConteGenerated) {
           onConteGenerated(conteWithImages)
         }
+        
+        // 이미지 생성 완료 후 부모 컴포넌트에서 프로젝트와 콘티를 함께 저장하도록 전달
+        console.log('✅ 이미지가 포함된 콘티 생성 완료 - 부모 컴포넌트에서 프로젝트와 함께 저장 예정')
         
         console.log('✅ 모든 씬 이미지 생성 완료')
         toast.success('모든 씬 이미지가 생성되었습니다!')
@@ -280,10 +279,13 @@ const ConteGenerator = ({
       } catch (imageError) {
         console.error('❌ 이미지 생성 실패:', imageError)
         
-        // 이미지 생성 실패 시에도 기본 콘티는 전달
+        // 이미지 생성 실패 시에도 기본 콘티는 전달 (저장하지 않고 데이터만 전달)
         if (onConteGenerated) {
           onConteGenerated(processedConteList)
         }
+        
+        // 이미지 생성 실패 시에도 기본 콘티는 부모 컴포넌트에서 저장하도록 전달
+        console.log('⚠️ 이미지 생성 실패 - 기본 콘티는 부모 컴포넌트에서 저장 예정')
         
         toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.')
       } finally {
@@ -295,22 +297,8 @@ const ConteGenerator = ({
           onImageGenerationUpdate(false, 0)
         }
         
-        // 콘티 생성 완료 후 자동 저장을 위해 onGenerationComplete 호출
-        // 이미지가 포함된 최신 콘티 데이터를 전달 (실패 시에는 기본 콘티)
-        console.log('🔗 onGenerationComplete 호출 준비...')
-        console.log('🔗 전달할 데이터:', {
-          conteWithImages: conteWithImages?.length || 0,
-          processedConteList: processedConteList?.length || 0,
-          finalData: (conteWithImages || processedConteList)?.length || 0
-        })
-        
-        if (onGenerationComplete) {
-          console.log('✅ onGenerationComplete 함수 존재, 호출 시작...')
-          onGenerationComplete(conteWithImages || processedConteList)
-          console.log('✅ onGenerationComplete 호출 완료')
-        } else {
-          console.warn('⚠️ onGenerationComplete 함수가 없습니다!')
-        }
+        // 이미지 생성 완료 후 콘티 데이터는 이미 onConteGenerated를 통해 전달됨
+        console.log('✅ 이미지 생성 완료 - 콘티 데이터 전달 완료')
       }
 
     } catch (error) {

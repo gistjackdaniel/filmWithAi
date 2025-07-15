@@ -301,7 +301,7 @@ const SceneCard = React.memo(({
             color: 'var(--color-text-primary)'
           }}
         >
-          씬 {scene.components?.sceneNumber || scene.scene}
+          씬 {scene.scene}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           {/* 시간 정보 표시 */}

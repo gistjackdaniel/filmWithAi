@@ -104,12 +104,20 @@ const useTimelineStore = create((set, get) => ({
    */
   loadProjectContes: async (projectId) => {
     console.log('timelineStore loadProjectContes started for projectId:', projectId)
+    
+    // 이미 로딩 중이면 중복 요청 방지
+    const currentState = get()
+    if (currentState.loading && currentState.currentProjectId === projectId) {
+      console.log('timelineStore already loading, skipping duplicate request')
+      return { success: false, error: '이미 로딩 중입니다.' }
+    }
+    
     set({ loading: true, error: null })
     
     try {
-      // 캐시된 데이터 확인
+      // 캐시된 데이터 확인 (5분 이내)
       const cachedData = timelineService.getCachedData(`project_${projectId}`)
-      if (cachedData) {
+      if (cachedData && cachedData.length > 0) {
         console.log('timelineStore using cached data, count:', cachedData.length)
         set({ 
           scenes: cachedData, 
@@ -122,7 +130,6 @@ const useTimelineStore = create((set, get) => ({
       // API에서 데이터 가져오기
       console.log('timelineStore fetching data from API')
       const result = await timelineService.getProjectContes(projectId)
-      console.log('timelineStore API result:', result)
       
       if (result.success) {
         console.log('timelineStore API success, data count:', result.data.length)
@@ -264,9 +271,9 @@ const useTimelineStore = create((set, get) => ({
       websocketConnection.close()
     }
 
-    // 새로운 WebSocket 연결
+    // 새로운 WebSocket 연결 (현재 비활성화됨)
     const ws = timelineService.connectRealtimeUpdates(projectId, (data) => {
-      // 실시간 업데이트 처리
+      // 실시간 업데이트 처리 (현재 사용되지 않음)
       if (data.type === 'scene_updated') {
         set((state) => ({
           scenes: state.scenes.map(scene =>
@@ -286,6 +293,7 @@ const useTimelineStore = create((set, get) => ({
     })
 
     set({ websocketConnection: ws })
+    console.log('🔌 타임라인 실시간 업데이트 연결 설정됨')
   },
 
   /**

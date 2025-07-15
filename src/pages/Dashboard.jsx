@@ -13,7 +13,13 @@ import {
   MenuItem,
   Avatar,
   Container,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
+  CircularProgress
 } from '@mui/material'
 import { 
   Add, 
@@ -23,7 +29,8 @@ import {
   Create,
   Movie,
   AutoFixHigh,
-  History
+  History,
+  Delete
 } from '@mui/icons-material'
 import { useAuthStore } from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
@@ -49,6 +56,9 @@ const Dashboard = () => {
   const [projects, setProjects] = useState([]) // 프로젝트 목록
   const [showOnboarding, setShowOnboarding] = useState(false) // 온보딩 모달 표시 여부
   const [showProjectSelection, setShowProjectSelection] = useState(false) // 프로젝트 선택 모달 표시 여부
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false) // 삭제 확인 다이얼로그
+  const [projectToDelete, setProjectToDelete] = useState(null) // 삭제할 프로젝트
+  const [deletingProject, setDeletingProject] = useState(false) // 삭제 중 상태
 
   // 컴포넌트 마운트 시 프로젝트 목록 가져오기 및 온보딩 체크
   useEffect(() => {
@@ -114,8 +124,14 @@ const Dashboard = () => {
         const projectId = response.data.project._id
         toast.success('새 프로젝트가 생성되었습니다!')
         
-        // 프로젝트 생성 후 콘티 생성 페이지로 이동
-        navigate(`/project/${projectId}/conte`)
+        // 스토리 생성 방식에 따라 다른 페이지로 이동
+        if (projectData.storyGenerationType === 'direct') {
+          // 직접 스토리 작성 페이지로 이동
+          navigate('/direct-story')
+        } else {
+          // AI 스토리 생성 페이지로 이동
+          navigate(`/project/${projectId}/conte`)
+        }
       } else {
         throw new Error(response.data.message || '프로젝트 생성에 실패했습니다.')
       }
@@ -132,35 +148,7 @@ const Dashboard = () => {
     setShowProjectSelection(false)
   }
 
-  /**
-   * 스토리 생성 선택 핸들러
-   */
-  const handleSelectStoryGeneration = () => {
-    setShowProjectSelection(false)
-    navigate('/story-generation')
-  }
 
-  /**
-   * 콘티 생성 선택 핸들러
-   */
-  const handleSelectConteGeneration = () => {
-    setShowProjectSelection(false)
-    navigate('/direct-story')
-  }
-
-  /**
-   * 스토리 생성 버튼 클릭 핸들러
-   */
-  const handleStoryGeneration = () => {
-    navigate('/story-generation')
-  }
-
-  /**
-   * 콘티 생성 버튼 클릭 핸들러
-   */
-  const handleConteGeneration = () => {
-    navigate('/direct-story')
-  }
 
   /**
    * 프로젝트 카드 클릭 핸들러
@@ -208,6 +196,53 @@ const Dashboard = () => {
     toast.success('SceneForge를 시작합니다!')
   }
 
+  /**
+   * 프로젝트 삭제 버튼 클릭 핸들러
+   * @param {Object} project - 삭제할 프로젝트
+   * @param {Event} event - 클릭 이벤트
+   */
+  const handleDeleteClick = (project, event) => {
+    event.stopPropagation() // 카드 클릭 이벤트 방지
+    setProjectToDelete(project)
+    setDeleteDialogOpen(true)
+  }
+
+  /**
+   * 삭제 확인 다이얼로그 닫기 핸들러
+   */
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false)
+    setProjectToDelete(null)
+  }
+
+  /**
+   * 프로젝트 삭제 실행 핸들러
+   */
+  const handleDeleteConfirm = async () => {
+    if (!projectToDelete) return
+
+    setDeletingProject(true)
+    
+    try {
+      const projectId = projectToDelete._id || projectToDelete.id
+      const response = await api.delete(`/projects/${projectId}`)
+      
+      if (response.data.success) {
+        toast.success('프로젝트가 삭제되었습니다.')
+        // 프로젝트 목록에서 삭제된 프로젝트 제거
+        setProjects(prev => prev.filter(p => (p._id || p.id) !== projectId))
+      } else {
+        throw new Error(response.data.message || '프로젝트 삭제에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('프로젝트 삭제 실패:', error)
+      toast.error('프로젝트 삭제에 실패했습니다.')
+    } finally {
+      setDeletingProject(false)
+      handleDeleteDialogClose()
+    }
+  }
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       {/* 상단 앱바 */}
@@ -236,7 +271,7 @@ const Dashboard = () => {
         {/* 주요 기능 카드 그리드 */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {/* 새 프로젝트 만들기 카드 */}
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={6}>
             <Card 
               sx={{ 
                 cursor: 'pointer',
@@ -256,50 +291,8 @@ const Dashboard = () => {
             </Card>
           </Grid>
 
-          {/* 스토리 생성 카드 */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card 
-              sx={{ 
-                cursor: 'pointer',
-                '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
-              }}
-              onClick={handleStoryGeneration}
-            >
-              <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                <Create sx={{ fontSize: 48, color: 'secondary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  AI 스토리 생성
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  시놉시스로 AI 스토리를 생성하세요
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* 콘티 생성 카드 */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card 
-              sx={{ 
-                cursor: 'pointer',
-                '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
-              }}
-              onClick={handleConteGeneration}
-            >
-              <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                <Movie sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  콘티 생성
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  나만의 스토리로 콘티를 자동 생성하세요
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
           {/* 프로젝트 목록 보기 카드 */}
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={6}>
             <Card 
               sx={{ 
                 cursor: 'pointer',
@@ -317,6 +310,8 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </Grid>
+
+
         </Grid>
 
         {/* 최근 프로젝트 섹션 */}
@@ -333,10 +328,28 @@ const Dashboard = () => {
                 <Card 
                   sx={{ 
                     cursor: 'pointer',
-                    '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
+                    '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' },
+                    position: 'relative'
                   }}
                   onClick={() => handleProjectClick(project._id || project.id)}
                 >
+                  {/* 삭제 버튼 */}
+                  <IconButton
+                    sx={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 1)',
+                      }
+                    }}
+                    onClick={(e) => handleDeleteClick(project, e)}
+                    size="small"
+                  >
+                    <Delete sx={{ fontSize: 16, color: 'error.main' }} />
+                  </IconButton>
+                  
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       {project.projectTitle || '제목 없음'}
@@ -345,9 +358,16 @@ const Dashboard = () => {
                       {project.synopsis?.substring(0, 100) || '설명 없음'}...
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="caption" color="text.secondary">
-                        수정일: {new Date(project.updatedAt || project.createdAt).toLocaleDateString()}
-                      </Typography>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          수정일: {new Date(project.updatedAt || project.createdAt).toLocaleDateString()}
+                        </Typography>
+                        {project.lastViewedAt && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            최근 조회: {new Date(project.lastViewedAt).toLocaleDateString()}
+                          </Typography>
+                        )}
+                      </Box>
                       <Chip 
                         label={getProjectStatusLabel(project)} 
                         size="small" 
@@ -397,6 +417,39 @@ const Dashboard = () => {
         onClose={handleProjectSelectionClose}
         onConfirm={handleConfirmProjectCreation}
       />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteDialogClose}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          프로젝트 삭제 확인
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            <strong>{projectToDelete?.projectTitle || '이 프로젝트'}</strong>를 삭제하시겠습니까?
+            <br />
+            이 작업은 되돌릴 수 없으며, 프로젝트와 관련된 모든 콘티 데이터가 함께 삭제됩니다.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose} color="primary">
+            취소
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            color="error" 
+            variant="contained"
+            disabled={deletingProject}
+            startIcon={deletingProject ? <CircularProgress size={16} /> : <Delete />}
+          >
+            {deletingProject ? '삭제 중...' : '삭제'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

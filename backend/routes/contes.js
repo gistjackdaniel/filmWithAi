@@ -52,7 +52,9 @@ const checkProjectAccess = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findOne({
+    // 순환 참조 방지를 위해 함수 내부에서 require
+    const ProjectModel = require('../models/Project');
+    const project = await ProjectModel.findOne({
       _id: projectId,
       userId: req.user._id,
       isDeleted: false
@@ -102,7 +104,12 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       estimatedDuration,
       keywords,
       weights,
-      order
+      order,
+      imageUrl,
+      imagePrompt,
+      imageGeneratedAt,
+      imageModel,
+      isFreeTier
     } = req.body;
 
     console.log('💾 콘티 저장 요청 시작:', { 
@@ -121,6 +128,63 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
         success: false,
         message: '씬 번호, 제목, 설명은 필수입니다.'
       });
+    }
+
+    // 프로젝트 존재 확인 (순환 참조 방지를 위해 함수 내부에서 require)
+    const ProjectModel = require('../models/Project');
+    const existingProject = await ProjectModel.findById(projectId);
+    if (!existingProject) {
+      console.error('❌ 콘티 저장 실패: 프로젝트를 찾을 수 없음', { projectId });
+      return res.status(404).json({
+        success: false,
+        message: '프로젝트를 찾을 수 없습니다.'
+      });
+    }
+
+    console.log('✅ 프로젝트 확인 완료:', { projectId, projectTitle: existingProject.projectTitle });
+
+    // 중복 저장 방지: 같은 프로젝트의 같은 씬 번호가 이미 존재하는지 확인
+    const existingConte = await Conte.findOne({ 
+      projectId: projectId, 
+      scene: scene 
+    });
+    
+    if (existingConte) {
+      console.log('⚠️ 중복 콘티 감지:', { 
+        projectId, 
+        scene, 
+        existingConteId: existingConte._id,
+        existingTitle: existingConte.title 
+      });
+      
+      // 기존 콘티를 업데이트하는 대신 중복 저장을 방지
+      return res.status(409).json({
+        success: false,
+        message: `씬 ${scene}번 콘티가 이미 존재합니다.`,
+        data: {
+          existingConte: {
+            id: existingConte._id,
+            scene: existingConte.scene,
+            title: existingConte.title
+          }
+        }
+      });
+    }
+
+    // keywords 검증 및 수정
+    let validatedKeywords = keywords || {};
+    if (validatedKeywords.timeOfDay) {
+      // timeOfDay 값 검증 및 변환
+      const validTimeOfDayValues = ['새벽', '아침', '오후', '저녁', '밤', '낮'];
+      if (!validTimeOfDayValues.includes(validatedKeywords.timeOfDay)) {
+        // 유효하지 않은 값인 경우 기본값으로 변경
+        if (validatedKeywords.timeOfDay === '주간') {
+          validatedKeywords.timeOfDay = '오후';
+        } else {
+          validatedKeywords.timeOfDay = '오후';
+        }
+        console.log(`⚠️ 콘티의 timeOfDay 값 수정: ${keywords.timeOfDay} → ${validatedKeywords.timeOfDay}`);
+      }
     }
 
     // 새 콘티 생성
@@ -142,22 +206,47 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       visualEffects: visualEffects || '',
       type: type || 'live_action',
       estimatedDuration: estimatedDuration || '5분',
-      keywords: keywords || {},
+      keywords: validatedKeywords,
       weights: weights || {},
-      order: order || scene
+      order: order || scene,
+      imageUrl: imageUrl || null,
+      imagePrompt: imagePrompt || null,
+      imageGeneratedAt: imageGeneratedAt || null,
+      imageModel: imageModel || null,
+      isFreeTier: isFreeTier || false
     });
 
-    console.log('💾 콘티 저장 중...');
+    console.log('💾 콘티 저장 중...', { 
+      conteId: conte._id,
+      projectId: conte.projectId,
+      scene: conte.scene,
+      title: conte.title 
+    });
+    
+    // 이미지 URL을 영구 URL로 변환 (출시 모드에서만)
+    const imageService = require('../services/imageService');
+    if (conte.imageUrl) {
+      try {
+        const permanentUrl = await imageService.convertToPermanentUrl(
+          conte.imageUrl,
+          `conte_${conte.scene}_${Date.now()}.png`
+        );
+        conte.imageUrl = permanentUrl;
+        console.log('✅ 이미지 URL 변환 완료:', permanentUrl);
+      } catch (error) {
+        console.error('❌ 이미지 URL 변환 실패:', error);
+        // 변환 실패 시에도 콘티는 저장
+      }
+    }
+    
     await conte.save();
     console.log('✅ 콘티 저장 완료:', { id: conte._id, scene: conte.scene, title: conte.title });
 
-    // 프로젝트 상태를 conte_ready로 업데이트
-    const Project = require('../models/Project');
-    const project = await Project.findById(projectId);
-    if (project && project.status !== 'conte_ready') {
-      project.status = 'conte_ready';
-      await project.save();
-      console.log('✅ 프로젝트 상태 업데이트 완료: draft -> conte_ready');
+    // 프로젝트 상태를 콘티 수에 따라 자동 업데이트
+    const project = await ProjectModel.findById(projectId);
+    if (project) {
+      await project.updateStatusByConteCount();
+      console.log('✅ 프로젝트 상태 자동 업데이트 완료');
     }
 
     res.status(201).json({
@@ -198,37 +287,42 @@ router.get('/:projectId/contes', authenticateToken, checkProjectAccess, async (r
 
     const contes = await Conte.findByProjectId(projectId, options);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        contes: contes.map(conte => ({
-          id: conte._id,
-          scene: conte.scene,
-          title: conte.title,
-          description: conte.description,
-          dialogue: conte.dialogue,
-          cameraAngle: conte.cameraAngle,
-          cameraWork: conte.cameraWork,
-          characterLayout: conte.characterLayout,
-          props: conte.props,
-          weather: conte.weather,
-          lighting: conte.lighting,
-          visualDescription: conte.visualDescription,
-          transition: conte.transition,
-          lensSpecs: conte.lensSpecs,
-          visualEffects: conte.visualEffects,
-          type: conte.type,
-          estimatedDuration: conte.estimatedDuration,
-          keywords: conte.keywords,
-          weights: conte.weights,
-          order: conte.order,
-          status: conte.status,
-          canEdit: conte.canEdit,
-          createdAt: conte.createdAt,
-          updatedAt: conte.updatedAt
-        }))
-      }
-    });
+            res.status(200).json({
+          success: true,
+          data: {
+            contes: contes.map(conte => ({
+              id: conte._id,
+              scene: conte.scene,
+              title: conte.title,
+              description: conte.description,
+              dialogue: conte.dialogue,
+              cameraAngle: conte.cameraAngle,
+              cameraWork: conte.cameraWork,
+              characterLayout: conte.characterLayout,
+              props: conte.props,
+              weather: conte.weather,
+              lighting: conte.lighting,
+              visualDescription: conte.visualDescription,
+              transition: conte.transition,
+              lensSpecs: conte.lensSpecs,
+              visualEffects: conte.visualEffects,
+              type: conte.type,
+              estimatedDuration: conte.estimatedDuration,
+              keywords: conte.keywords,
+              weights: conte.weights,
+              order: conte.order,
+              status: conte.status,
+              canEdit: conte.canEdit,
+              imageUrl: conte.imageUrl,
+              imagePrompt: conte.imagePrompt,
+              imageGeneratedAt: conte.imageGeneratedAt,
+              imageModel: conte.imageModel,
+              isFreeTier: conte.isFreeTier,
+              createdAt: conte.createdAt,
+              updatedAt: conte.updatedAt
+            }))
+          }
+        });
 
   } catch (error) {
     console.error('콘티 목록 조회 오류:', error);
@@ -285,6 +379,11 @@ router.get('/:projectId/contes/:conteId', authenticateToken, checkProjectAccess,
           order: conte.order,
           status: conte.status,
           canEdit: conte.canEdit,
+          imageUrl: conte.imageUrl,
+          imagePrompt: conte.imagePrompt,
+          imageGeneratedAt: conte.imageGeneratedAt,
+          imageModel: conte.imageModel,
+          isFreeTier: conte.isFreeTier,
           lastModified: conte.lastModified,
           modifiedBy: conte.modifiedBy,
           createdAt: conte.createdAt,
@@ -361,6 +460,11 @@ router.put('/:projectId/contes/:conteId', authenticateToken, checkProjectAccess,
           type: conte.type,
           order: conte.order,
           status: conte.status,
+          imageUrl: conte.imageUrl,
+          imagePrompt: conte.imagePrompt,
+          imageGeneratedAt: conte.imageGeneratedAt,
+          imageModel: conte.imageModel,
+          isFreeTier: conte.isFreeTier,
           lastModified: conte.lastModified,
           modifiedBy: conte.modifiedBy,
           updatedAt: conte.updatedAt

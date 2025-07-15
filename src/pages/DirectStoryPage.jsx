@@ -79,6 +79,10 @@ const DirectStoryPage = () => {
     if (savedState) {
       try {
         const parsedState = JSON.parse(savedState)
+        if (parsedState.synopsis) {
+          setSynopsis(parsedState.synopsis)
+          setHasUnsavedChanges(true)
+        }
         if (parsedState.story) {
           setStory(parsedState.story)
           setHasUnsavedChanges(true)
@@ -101,6 +105,7 @@ const DirectStoryPage = () => {
   // 상태 변경 시 로컬 스토리지에 저장
   useEffect(() => {
     const stateToSave = {
+      synopsis,
       story,
       generatedConte,
       activeStep,
@@ -109,9 +114,9 @@ const DirectStoryPage = () => {
     localStorage.setItem('directStoryPageState', JSON.stringify(stateToSave))
     
     // 변경사항이 있는지 확인
-    const hasChanges = story.trim() || generatedConte.length > 0
+    const hasChanges = synopsis.trim() || story.trim() || generatedConte.length > 0
     setHasUnsavedChanges(hasChanges)
-  }, [story, generatedConte, activeStep])
+  }, [synopsis, story, generatedConte, activeStep])
 
   // 페이지 언로드 시 경고
   useEffect(() => {
@@ -270,64 +275,17 @@ const DirectStoryPage = () => {
     setGeneratedConte(conteWithImages)
     toast.success(`✅ ${conteWithImages.length}개의 콘티가 생성되었습니다! (개발용 이미지 포함)`)
     
-    // 자동으로 프로젝트와 콘티 저장 (강화된 버전)
-    await handleAutoSave(conteWithImages)
-  }
-
-  // 강화된 자동 저장 함수 (프로젝트 생성 후 콘티 생성 플로우)
-  const handleAutoSave = async (conteWithImages) => {
-    try {
-      console.log('💾 자동 저장 시작...')
-      
-      // projectStore에서 saveStoryAndConteAsProject 함수 가져오기
-      const { saveStoryAndConteAsProject } = useProjectStore.getState()
-      
-      // 프로젝트 생성 후 콘티 생성 플로우로 변경
-      const projectSettings = {
-        projectTitle: `스토리 프로젝트 - ${new Date().toLocaleDateString()}`,
-        genre: '일반',
-        type: 'story_with_conte',
-        estimatedDuration: '미정',
-        status: 'draft' // 기본 상태 추가
-      }
-
-      console.log('💾 프로젝트 설정:', projectSettings)
-      console.log('💾 스토리 길이:', story.length)
-      console.log('💾 콘티 개수:', conteWithImages.length)
-      console.log('💾 시놉시스 선택적 입력:', !!synopsis.trim())
-
-      // 시놉시스 선택적 처리
-      const synopsisText = synopsis.trim() || story.substring(0, 200) + (story.length > 200 ? '...' : '')
-
-      // 통합 저장 함수 호출 (시놉시스 선택적 입력)
-      const result = await saveStoryAndConteAsProject(
-        synopsisText, // 시놉시스 (선택적)
-        story, // 생성된 스토리
-        conteWithImages, // 생성된 콘티 리스트
-        projectSettings // 프로젝트 설정
-      )
-
-      console.log('✅ 프로젝트 저장 완료:', result.projectId)
-      
-      // 로컬 스토리지에서 상태 삭제
-      localStorage.removeItem('directStoryPageState')
-      setHasUnsavedChanges(false)
-      
-      // 성공 메시지 표시
-      toast.success('프로젝트가 성공적으로 저장되었습니다!')
-      
-      // 프로젝트 페이지로 이동
-      if (result && result.projectId) {
-        navigate(`/project/${result.projectId}`)
-      } else {
-        navigate('/')
-      }
-      
-    } catch (error) {
-      console.error('❌ 자동 저장 실패:', error)
-      toast.error('프로젝트 저장에 실패했습니다. 다시 시도해주세요.')
+    // 콘티 생성 완료 후에는 프로젝트를 자동으로 생성하지 않음
+    // 사용자가 명시적으로 저장 버튼을 클릭할 때만 프로젝트 생성
+    console.log('✅ 콘티 생성 완료 - 사용자가 저장 버튼을 클릭할 때까지 대기')
+    
+    // 콘티 생성 완료 후 onGenerationComplete 호출 (이미지 포함된 최종 데이터)
+    if (onGenerationComplete) {
+      onGenerationComplete(conteWithImages)
     }
   }
+
+  // 자동 저장 함수는 제거됨 - 사용자가 명시적으로 저장 버튼을 클릭할 때만 프로젝트 생성
 
   const handleImageGenerationUpdate = (isGenerating, progress) => {
     console.log('🖼️ 이미지 생성 상태 업데이트:', { isGenerating, progress })
@@ -393,8 +351,10 @@ const DirectStoryPage = () => {
     }
   }
 
+
+
   /**
-   * 스토리만 저장하는 함수
+   * 스토리만 저장하는 함수 (story_ready 상태)
    */
   const handleSaveStory = async () => {
     if (!story.trim()) {
@@ -405,8 +365,8 @@ const DirectStoryPage = () => {
     setSavingProject(true)
     
     try {
-      // projectStore의 saveStoryAndConteAsProject 함수 사용
-      const { saveStoryAndConteAsProject } = useProjectStore.getState()
+      // projectStore의 createProject 함수 사용 (콘티 없이)
+      const { createProject } = useProjectStore.getState()
       
       console.log('📝 스토리 프로젝트 생성 시작:', {
         storyLength: story.length
@@ -415,64 +375,36 @@ const DirectStoryPage = () => {
       // 스토리만 저장 (콘티 없이)
       const storySynopsis = story.substring(0, 200) + (story.length > 200 ? '...' : '')
       
-      const result = await saveStoryAndConteAsProject(storySynopsis, story, [], {
+      // 프로젝트 데이터 구성 (콘티 없이)
+      const projectData = {
         projectTitle: `스토리 - ${new Date().toLocaleDateString()}`,
-        genre: '일반',
-        type: 'story_only',
-        estimatedDuration: '미정'
-      })
-      
-      if (result.success) {
-        console.log('✅ 스토리 저장 완료:', result.projectId)
-        toast.success('스토리가 저장되었습니다!')
-        
-        // 프로젝트 페이지로 이동
-        navigate(`/project/${result.projectId}`)
-      } else {
-        throw new Error(result.error || '스토리 저장에 실패했습니다.')
+        synopsis: storySynopsis,
+        story: story,
+        storyLength: story.length,
+        storyCreatedAt: new Date().toISOString(),
+        conteCount: 0,
+        conteCreatedAt: new Date().toISOString(),
+        settings: {
+          genre: '일반',
+          type: 'story_only',
+          estimatedDuration: '미정'
+        }
       }
       
-    } catch (error) {
-      console.error('❌ 스토리 저장 실패:', error)
-      toast.error(error.message || '스토리 저장에 실패했습니다.')
-    } finally {
-      setSavingProject(false)
-    }
-  }
-
-  /**
-   * 프로젝트 생성 및 콘티 저장
-   */
-  const handleSaveProject = async () => {
-    if (generatedConte.length === 0) {
-      toast.error('저장할 콘티가 없습니다.')
-      return
-    }
-
-    setSavingProject(true)
-    
-    try {
-      // projectStore의 saveStoryAndConteAsProject 함수 사용
-      const { saveStoryAndConteAsProject } = useProjectStore.getState()
+      const newProject = await createProject(projectData, null) // 콘티 리스트를 null로 전달
       
-      console.log('📝 프로젝트 저장 시작:', {
-        storyLength: story.length,
-        conteCount: generatedConte.length
-      })
-      
-      // 직접 스토리 입력 페이지에서는 스토리의 앞부분을 시놉시스로 사용
-      const storySynopsis = story.substring(0, 200) + (story.length > 200 ? '...' : '')
-      
-      const result = await saveStoryAndConteAsProject(storySynopsis, story, generatedConte, {
-        projectTitle: `직접 작성 스토리 - ${new Date().toLocaleDateString()}`,
-        genre: '일반',
-        maxScenes: generatedConte.length,
-        estimatedDuration: '90분',
-        type: 'story_with_conte'
-      })
-      
-      if (result.success) {
-        console.log('✅ 프로젝트 저장 완료:', result.projectId)
+      if (newProject && (newProject._id || newProject.id)) {
+        console.log('✅ 스토리 저장 완료:', newProject._id || newProject.id)
+        
+        // 프로젝트 상태를 story_ready로 설정
+        console.log('🔄 프로젝트 상태 업데이트 중...')
+        const { updateProject } = useProjectStore.getState()
+        
+        await updateProject(newProject._id || newProject.id, {
+          status: 'story_ready'
+        })
+        
+        console.log('✅ 프로젝트 상태 업데이트 완료: story_ready')
         
         // 로컬 스토리지에서 임시 데이터 삭제
         localStorage.removeItem('directStoryPageState')
@@ -484,12 +416,112 @@ const DirectStoryPage = () => {
         setHasUnsavedChanges(false)
         
         // 성공 메시지 표시
-        toast.success(`✅ 프로젝트와 ${generatedConte.length}개의 콘티가 성공적으로 저장되었습니다! 대시보드에서 확인하세요.`)
+        toast.success('스토리가 저장되었습니다!')
         
-        // 대시보드로 이동 (최근 프로젝트에서 확인 가능)
-        window.location.href = '/'
+        // 프로젝트 페이지로 이동
+        navigate(`/project/${newProject._id || newProject.id}`)
       } else {
-        throw new Error(result.error || '프로젝트 저장에 실패했습니다.')
+        throw new Error('스토리 저장에 실패했습니다.')
+      }
+      
+    } catch (error) {
+      console.error('❌ 스토리 저장 실패:', error)
+      toast.error(error.message || '스토리 저장에 실패했습니다.')
+    } finally {
+      setSavingProject(false)
+    }
+  }
+
+  /**
+   * 프로젝트와 콘티를 함께 저장하는 함수 (conte_ready 상태)
+   */
+  const handleSaveProjectWithContes = async (conteWithImages) => {
+    if (!conteWithImages || conteWithImages.length === 0) {
+      toast.error('저장할 콘티가 없습니다.')
+      return
+    }
+
+    setSavingProject(true)
+    
+    try {
+      // projectStore의 createProject 함수 사용 (콘티 없이)
+      const { createProject } = useProjectStore.getState()
+      
+      console.log('📝 프로젝트와 콘티 저장 시작:', {
+        storyLength: story.length,
+        conteCount: conteWithImages.length
+      })
+      
+      // 직접 스토리 입력 페이지에서는 스토리의 앞부분을 시놉시스로 사용
+      const storySynopsis = story.substring(0, 200) + (story.length > 200 ? '...' : '')
+      
+      // 프로젝트 데이터 구성 (콘티 없이)
+      const projectData = {
+        projectTitle: `직접 작성 스토리 - ${new Date().toLocaleDateString()}`,
+        synopsis: storySynopsis,
+        story: story,
+        storyLength: story.length,
+        storyCreatedAt: new Date().toISOString(),
+        conteCount: conteWithImages.length,
+        conteCreatedAt: new Date().toISOString(),
+        settings: {
+          genre: '일반',
+          maxScenes: conteWithImages.length,
+          estimatedDuration: '90분',
+          type: 'story_with_conte'
+        }
+      }
+      
+      const newProject = await createProject(projectData, null) // 콘티 리스트를 null로 전달
+      
+      if (newProject && (newProject._id || newProject.id)) {
+        console.log('✅ 프로젝트 저장 완료:', newProject._id || newProject.id)
+        
+        // 프로젝트 생성 후 콘티들을 저장
+        try {
+          console.log('💾 프로젝트 생성 후 콘티 저장 시작...')
+          const { saveConte } = useProjectStore.getState()
+          const projectId = newProject._id || newProject.id
+          
+          // 각 콘티를 개별적으로 저장
+          for (const conte of conteWithImages) {
+            await saveConte(projectId, conte)
+            console.log(`✅ 콘티 저장 완료: ${conte.title}`)
+          }
+          
+          console.log('✅ 모든 콘티 저장 완료')
+          
+          // 프로젝트 상태를 conte_ready로 업데이트
+          console.log('🔄 프로젝트 상태 업데이트 중...')
+          const { updateProject } = useProjectStore.getState()
+          
+          await updateProject(projectId, {
+            status: 'conte_ready'
+          })
+          
+          console.log('✅ 프로젝트 상태 업데이트 완료: conte_ready')
+          
+          // 로컬 스토리지에서 임시 데이터 삭제
+          localStorage.removeItem('directStoryPageState')
+          
+          // 상태 초기화
+          setStory('')
+          setGeneratedConte([])
+          setActiveStep(0)
+          setHasUnsavedChanges(false)
+          
+          // 성공 메시지 표시
+          toast.success(`✅ 프로젝트와 ${conteWithImages.length}개의 콘티가 성공적으로 저장되었습니다!`)
+          
+          // 저장된 프로젝트 페이지로 이동
+          navigate(`/project/${projectId}`)
+          
+        } catch (error) {
+          console.error('❌ 콘티 저장 실패:', error)
+          toast.error('콘티 저장에 실패했습니다: ' + error.message)
+        }
+      } else {
+        throw new Error('프로젝트 저장에 실패했습니다.')
       }
       
     } catch (error) {
@@ -500,10 +532,24 @@ const DirectStoryPage = () => {
     }
   }
 
+  /**
+   * 기존 프로젝트 저장 함수 (하위 호환성)
+   */
+  const handleSaveProject = async () => {
+    if (generatedConte.length === 0) {
+      toast.error('저장할 콘티가 없습니다.')
+      return
+    }
+
+    await handleSaveProjectWithContes(generatedConte)
+  }
+
   const handleViewTimeline = () => {
     // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
     if (generatedConte.length > 0) {
       localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      // 임시 프로젝트 ID 대신 실제 프로젝트가 생성된 후 해당 ID로 이동하도록 수정
+      // 현재는 임시 프로젝트로 이동하지만, 실제로는 프로젝트 저장 후 해당 ID로 이동해야 함
       navigate('/project/temp-project-id')
     } else {
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
@@ -793,6 +839,27 @@ const DirectStoryPage = () => {
                     </Typography>
                   </Grid>
                 </Grid>
+              </CardContent>
+            </Card>
+
+            {/* 시놉시스 입력 영역 */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  시놉시스 (선택사항)
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  label="시놉시스"
+                  placeholder="영화의 기본 줄거리를 간단히 설명해주세요..."
+                  value={synopsis}
+                  onChange={(e) => setSynopsis(e.target.value)}
+                  variant="outlined"
+                  sx={{ mb: 2 }}
+                  helperText="시놉시스는 나중에 수정할 수 있습니다."
+                />
               </CardContent>
             </Card>
 

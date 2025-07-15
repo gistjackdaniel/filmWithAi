@@ -151,7 +151,7 @@ api.interceptors.response.use(
     // 성공 응답은 그대로 반환
     return response
   },
-  (error) => {
+  async (error) => {
     // 네트워크 오류 처리
     if (!error.response) {
       console.error('Network error:', error.message)
@@ -165,11 +165,29 @@ api.interceptors.response.use(
     // HTTP 상태 코드별 오류 처리
     switch (error.response.status) {
       case 401:
-        // 인증 실패 시 로컬 스토리지에서 인증 정보 삭제
-        localStorage.removeItem('auth-storage')
-        console.log('Authentication failed, redirecting to login...')
-        // 로그인 페이지로 리다이렉트
-        window.location.href = '/'
+        console.log('🔐 401 인증 오류 발생. 인증 상태 갱신 시도...')
+        
+        try {
+          // 인증 스토어에서 강제 갱신 시도
+          const { useAuthStore } = await import('../stores/authStore')
+          const authStore = useAuthStore.getState()
+          const result = await authStore.forceAuthRefresh()
+          
+          if (result.success) {
+            console.log('✅ 인증 상태 갱신 성공. 요청 재시도...')
+            // 원래 요청을 다시 시도
+            const originalRequest = error.config
+            return api(originalRequest)
+          } else {
+            console.log('❌ 인증 상태 갱신 실패. 로그인 페이지로 이동...')
+            // 로그인 페이지로 리다이렉트
+            window.location.href = '/'
+          }
+        } catch (refreshError) {
+          console.error('❌ 인증 갱신 중 오류:', refreshError)
+          // 로그인 페이지로 리다이렉트
+          window.location.href = '/'
+        }
         break
       
       case 403:

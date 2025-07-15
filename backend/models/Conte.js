@@ -133,6 +133,32 @@ const conteSchema = new mongoose.Schema({
     trim: true
   },
   
+  // 이미지 생성 프롬프트
+  imagePrompt: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  
+  // 이미지 생성 시간
+  imageGeneratedAt: {
+    type: Date,
+    default: null
+  },
+  
+  // 이미지 생성 모델
+  imageModel: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  
+  // 무료 티어 여부
+  isFreeTier: {
+    type: Boolean,
+    default: false
+  },
+  
   // 키워드 노드 구조 (그래프 노드)
   keywords: {
     userInfo: {

@@ -31,6 +31,7 @@ const ProjectSelectionModal = ({
   const [projectTitle, setProjectTitle] = useState('')
   const [synopsis, setSynopsis] = useState('')
   const [genre, setGenre] = useState('일반')
+  const [storyGenerationType, setStoryGenerationType] = useState('ai') // 'ai' 또는 'direct'
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 제출 핸들러
@@ -48,7 +49,8 @@ const ProjectSelectionModal = ({
       await onConfirm({
         title: projectTitle.trim(),
         synopsis: synopsis.trim(),
-        genre: genre
+        genre: genre,
+        storyGenerationType: storyGenerationType
       })
       
       // 성공 시 폼 초기화
@@ -67,6 +69,7 @@ const ProjectSelectionModal = ({
     setProjectTitle('')
     setSynopsis('')
     setGenre('일반')
+    setStoryGenerationType('ai')
     onClose()
   }
   return (
@@ -147,19 +150,53 @@ const ProjectSelectionModal = ({
             </Select>
           </FormControl>
 
-          {/* 시놉시스 입력 (선택사항) */}
-          <TextField
-            fullWidth
-            label="시놉시스 (선택사항)"
-            value={synopsis}
-            onChange={(e) => setSynopsis(e.target.value)}
-            placeholder="영화의 기본 줄거리를 간단히 설명해주세요..."
-            multiline
-            rows={4}
-            sx={{ mb: 4 }}
-            disabled={isSubmitting}
-            helperText="시놉시스는 나중에 수정할 수 있습니다."
-          />
+          {/* 스토리 생성 방식 선택 */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              스토리 생성 방식
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant={storyGenerationType === 'ai' ? 'contained' : 'outlined'}
+                onClick={() => setStoryGenerationType('ai')}
+                disabled={isSubmitting}
+                sx={{ flex: 1 }}
+                startIcon={<Create />}
+              >
+                AI 스토리 생성
+              </Button>
+              <Button
+                variant={storyGenerationType === 'direct' ? 'contained' : 'outlined'}
+                onClick={() => setStoryGenerationType('direct')}
+                disabled={isSubmitting}
+                sx={{ flex: 1 }}
+                startIcon={<Create />}
+              >
+                직접 스토리 작성
+              </Button>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              {storyGenerationType === 'ai' 
+                ? '시놉시스를 바탕으로 AI가 스토리를 생성합니다.' 
+                : '나만의 스토리를 직접 작성할 수 있습니다.'}
+            </Typography>
+          </Box>
+
+          {/* 시놉시스 입력 (AI 스토리 생성 시에만 표시) */}
+          {storyGenerationType === 'ai' && (
+            <TextField
+              fullWidth
+              label="시놉시스 (선택사항)"
+              value={synopsis}
+              onChange={(e) => setSynopsis(e.target.value)}
+              placeholder="영화의 기본 줄거리를 간단히 설명해주세요..."
+              multiline
+              rows={4}
+              sx={{ mb: 4 }}
+              disabled={isSubmitting}
+              helperText="시놉시스는 나중에 수정할 수 있습니다."
+            />
+          )}
 
           {/* 버튼 영역 */}
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

@@ -478,7 +478,7 @@ const useTimelineStore = create((set, get) => ({
     switch (sortBy) {
       case 'scene_number':
         filteredScenes.sort((a, b) => 
-          (a.components?.sceneNumber || a.scene) - (b.components?.sceneNumber || b.scene)
+          (a.scene || 0) - (b.scene || 0)
         )
         break
       case 'duration':

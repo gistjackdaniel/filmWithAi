@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { createProject as createProjectApi, createConte as createConteApi, getProjects, getProject } from '../services/projectApi'
+import { createProject as createProjectApi, createConte as createConteApi, updateConte as updateConteApi, updateProject as updateProjectApi, getProjects, getProject } from '../services/projectApi'
 import { useAuthStore } from './authStore'
 
 /**
@@ -17,6 +17,9 @@ const useProjectStore = create((set, get) => ({
   
   // 현재 프로젝트
   currentProject: null,
+  
+  // 현재 프로젝트의 콘티 목록
+  currentProjectContes: [],
   
   // 프로젝트 생성 상태
   isCreating: false,
@@ -116,6 +119,13 @@ const useProjectStore = create((set, get) => ({
       // 프로젝트 목록 새로고침
       await get().loadProjects()
       
+      // 현재 프로젝트 ID를 로컬 스토리지에 저장
+      const finalProjectId = newProject._id || newProject.id
+      if (finalProjectId) {
+        localStorage.setItem('currentProjectId', finalProjectId)
+        console.log('💾 현재 프로젝트 ID 저장:', finalProjectId)
+      }
+      
       set({ 
         currentProject: newProject,
         isCreating: false 
@@ -137,26 +147,58 @@ const useProjectStore = create((set, get) => ({
    * 콘티 저장
    * @param {string} projectId - 프로젝트 ID
    * @param {Object} conteData - 콘티 데이터
+   * @returns {Promise<Object>} 저장된 콘티 정보
    */
   saveConte: async (projectId, conteData) => {
     set({ isSavingConte: true, saveConteError: null })
     
     try {
-      console.log('💾 콘티 저장 시작:', {
-        projectId,
-        scene: conteData.scene,
-        title: conteData.title
+      // 프로젝트 ID 검증
+      if (!projectId || projectId === 'temp-project-id') {
+        throw new Error('유효한 프로젝트 ID가 필요합니다. 먼저 프로젝트를 생성해주세요.')
+      }
+
+      console.log('💾 콘티 저장 시작:', { 
+        projectId, 
+        conteData: {
+          scene: conteData.scene,
+          title: conteData.title?.substring(0, 50) + '...',
+          hasDescription: !!conteData.description,
+          type: conteData.type
+        }
       })
+
+      // 필수 필드 검증
+      if (!conteData.scene || !conteData.title || !conteData.description) {
+        throw new Error('씬 번호, 제목, 설명은 필수입니다.')
+      }
 
       const response = await createConteApi(projectId, conteData)
       
       console.log('✅ 콘티 저장 완료:', response.data)
       
-      set({ isSavingConte: false })
+      // 현재 프로젝트의 콘티 목록에 새 콘티 추가
+      set(state => ({
+        currentProjectContes: [...state.currentProjectContes, response.data.conte],
+        isSavingConte: false
+      }))
+      
       return response.data
       
     } catch (error) {
       console.error('❌ 콘티 저장 실패:', error)
+      
+      // 중복 저장 오류 처리
+      if (error.response?.status === 409) {
+        console.log('⚠️ 중복 콘티 감지, 건너뛰기:', error.response.data)
+        set({ isSavingConte: false })
+        return {
+          success: true,
+          message: '콘티가 이미 존재합니다.',
+          data: error.response.data
+        }
+      }
+      
       set({ 
         saveConteError: error.message || '콘티 저장에 실패했습니다.',
         isSavingConte: false 
@@ -166,19 +208,129 @@ const useProjectStore = create((set, get) => ({
   },
 
   /**
-   * 프로젝트 로드
+   * 콘티 업데이트
    * @param {string} projectId - 프로젝트 ID
+   * @param {string} conteId - 콘티 ID
+   * @param {Object} conteData - 업데이트할 콘티 데이터
+   * @returns {Promise<Object>} 업데이트된 콘티 정보
    */
-  loadProject: async (projectId) => {
+  updateConte: async (projectId, conteId, conteData) => {
+    set({ isSavingConte: true, saveConteError: null })
+    
+    try {
+      // 프로젝트 ID 검증
+      if (!projectId || projectId === 'temp-project-id') {
+        throw new Error('유효한 프로젝트 ID가 필요합니다.')
+      }
+
+      // 콘티 ID 검증
+      if (!conteId) {
+        throw new Error('유효한 콘티 ID가 필요합니다.')
+      }
+
+      console.log('💾 콘티 업데이트 시작:', { 
+        projectId, 
+        conteId,
+        conteData: {
+          scene: conteData.scene,
+          title: conteData.title?.substring(0, 50) + '...',
+          hasImageUrl: !!conteData.imageUrl,
+          type: conteData.type
+        }
+      })
+
+      // 콘티 업데이트 API 호출
+      const response = await updateConteApi(projectId, conteId, conteData)
+      
+      console.log('✅ 콘티 업데이트 완료:', response.data)
+      
+      // 현재 프로젝트의 콘티 목록에서 해당 콘티 업데이트
+      set(state => ({
+        currentProjectContes: state.currentProjectContes.map(conte => 
+          conte._id === conteId || conte.id === conteId
+            ? response.data.conte
+            : conte
+        ),
+        isSavingConte: false
+      }))
+      
+      return response.data
+      
+    } catch (error) {
+      console.error('❌ 콘티 업데이트 실패:', error)
+      set({ 
+        saveConteError: error.message || '콘티 업데이트에 실패했습니다.',
+        isSavingConte: false 
+      })
+      throw error
+    }
+  },
+
+  /**
+   * 프로젝트 업데이트
+   * @param {string} projectId - 프로젝트 ID
+   * @param {Object} updateData - 업데이트할 프로젝트 데이터
+   * @returns {Promise<Object>} 업데이트된 프로젝트 정보
+   */
+  updateProject: async (projectId, updateData) => {
+    try {
+      console.log('💾 프로젝트 업데이트 시작:', { 
+        projectId, 
+        updateData: {
+          status: updateData.status,
+          projectTitle: updateData.projectTitle?.substring(0, 50) + '...',
+          hasStory: !!updateData.story,
+          hasSynopsis: !!updateData.synopsis
+        }
+      })
+
+      // 프로젝트 ID 검증
+      if (!projectId || projectId === 'temp-project-id') {
+        throw new Error('유효한 프로젝트 ID가 필요합니다.')
+      }
+
+      const response = await updateProjectApi(projectId, updateData)
+      
+      console.log('✅ 프로젝트 업데이트 완료:', response.data)
+      
+      // 현재 프로젝트 업데이트
+      set(state => ({
+        currentProject: state.currentProject?._id === projectId || state.currentProject?.id === projectId
+          ? response.data.project
+          : state.currentProject
+      }))
+      
+      return response.data
+      
+    } catch (error) {
+      console.error('❌ 프로젝트 업데이트 실패:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 프로젝트 로드 (콘티 목록 포함)
+   * @param {string} projectId - 프로젝트 ID
+   * @param {Object} options - 로드 옵션
+   * @param {boolean} options.includeContes - 콘티 목록 포함 여부 (기본값: true)
+   */
+  loadProject: async (projectId, options = {}) => {
     set({ isLoading: true, error: null })
     
     try {
-      const response = await getProject(projectId)
+      const { includeContes = true } = options
+      const response = await getProject(projectId, { includeContes })
+      
       set({ 
-        currentProject: response.data,
+        currentProject: response.data.project,
+        currentProjectContes: response.data.conteList || [],
         isLoading: false 
       })
-      console.log('✅ 프로젝트 로드 완료:', response.data.projectTitle)
+      
+      console.log('✅ 프로젝트 로드 완료:', { 
+        projectTitle: response.data.project.projectTitle,
+        conteCount: response.data.conteList?.length || 0
+      })
     } catch (error) {
       console.error('❌ 프로젝트 로드 실패:', error)
       set({ 

@@ -70,13 +70,12 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // 새 프로젝트 생성 (기본 상태: draft)
+    // 새 프로젝트 생성 (상태는 미들웨어에서 자동 설정)
     const project = new Project({
       userId: req.user._id,
       projectTitle,
       synopsis: synopsis || '',
       story: story || '',
-      status: 'draft', // 기본 상태 추가
       settings: settings || {},
       tags: tags || []
     });
@@ -99,15 +98,43 @@ router.post('/', authenticateToken, async (req, res) => {
             hasImage: !!conte.imageUrl
           });
           
+          // keywords 검증 및 수정
+          let validatedKeywords = conte.keywords || {};
+          if (validatedKeywords.timeOfDay) {
+            // timeOfDay 값 검증 및 변환
+            const validTimeOfDayValues = ['새벽', '아침', '오후', '저녁', '밤', '낮'];
+            if (!validTimeOfDayValues.includes(validatedKeywords.timeOfDay)) {
+              // 유효하지 않은 값인 경우 기본값으로 변경
+              if (validatedKeywords.timeOfDay === '주간') {
+                validatedKeywords.timeOfDay = '오후';
+              } else {
+                validatedKeywords.timeOfDay = '오후';
+              }
+              console.log(`⚠️ 콘티 ${index + 1}의 timeOfDay 값 수정: ${conte.keywords.timeOfDay} → ${validatedKeywords.timeOfDay}`);
+            }
+          }
+          
           const newConte = new Conte({
             projectId: project._id,
             scene: conte.scene || index + 1,
             title: conte.title || `씬 ${index + 1}`,
             description: conte.description || '',
+            dialogue: conte.dialogue || '',
+            cameraAngle: conte.cameraAngle || '',
+            cameraWork: conte.cameraWork || '',
+            characterLayout: conte.characterLayout || '',
+            props: conte.props || '',
+            weather: conte.weather || '',
+            lighting: conte.lighting || '',
+            visualDescription: conte.visualDescription || '',
+            transition: conte.transition || '',
+            lensSpecs: conte.lensSpecs || '',
+            visualEffects: conte.visualEffects || '',
             type: conte.type || 'live_action',
-            order: index + 1,
-            status: 'draft',
             estimatedDuration: conte.estimatedDuration || '5분',
+            keywords: validatedKeywords,
+            weights: conte.weights || {},
+            order: conte.order || index + 1,
             imageUrl: conte.imageUrl || null
           });
           return newConte.save();
@@ -120,6 +147,10 @@ router.post('/', authenticateToken, async (req, res) => {
         savedContes.forEach((conte, index) => {
           console.log(`✅ 콘티 ${index + 1} 저장됨:`, conte._id);
         });
+        
+        // 콘티가 저장된 후 프로젝트 상태 업데이트
+        await project.updateStatusByConteCount();
+        console.log('✅ 프로젝트 상태 업데이트 완료:', project.status);
       } catch (conteError) {
         console.error('❌ 콘티 저장 중 오류:', conteError);
         // 콘티 저장 실패해도 프로젝트는 생성됨
@@ -191,6 +222,7 @@ router.get('/', authenticateToken, async (req, res) => {
           tags: project.tags,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
+          lastViewedAt: project.lastViewedAt,
           conteCount: project.conteCount,
           generatedConteCount: project.generatedConteCount,
           liveActionConteCount: project.liveActionConteCount
@@ -208,18 +240,45 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 /**
- * 특정 프로젝트 조회
+ * 특정 프로젝트 조회 (콘티와 함께)
  * GET /api/projects/:id
  */
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const { includeContes = 'true' } = req.query;
 
-    const project = await Project.findOne({
-      _id: id,
+    // 중복 요청 방지를 위해 로깅 최소화
+    const logKey = `project_${id}_${Date.now()}`;
+    console.log('📋 프로젝트 조회:', { 
+      projectId: id, 
       userId: req.user._id,
-      isDeleted: false
-    }).populate('userId', 'name email');
+      includeContes,
+      logKey
+    });
+
+    // 프로젝트 조회 (사용자 권한 확인 포함)
+    let project;
+    if (includeContes === 'true') {
+      // 콘티와 함께 조회하되 사용자 권한 확인
+      project = await Project.findOne({
+        _id: id,
+        userId: req.user._id,
+        isDeleted: false
+      }).populate('userId', 'name email');
+      
+      if (project) {
+        // 콘티 목록 별도 조회
+        const contes = await Conte.findByProjectId(id);
+        project.contes = contes;
+      }
+    } else {
+      project = await Project.findOne({
+        _id: id,
+        userId: req.user._id,
+        isDeleted: false
+      }).populate('userId', 'name email');
+    }
 
     if (!project) {
       return res.status(404).json({
@@ -228,8 +287,17 @@ router.get('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // 프로젝트의 콘티 목록도 함께 조회
-    const contes = await Conte.findByProjectId(id);
+    // 마지막 조회 시간 업데이트
+    project.lastViewedAt = new Date();
+    await project.save();
+
+    // 중복 로깅 방지
+    console.log('✅ 프로젝트 조회 완료:', { 
+      projectId: project._id, 
+      title: project.projectTitle,
+      conteCount: project.contes?.length || 0,
+      logKey
+    });
 
     res.status(200).json({
       success: true,
@@ -244,21 +312,45 @@ router.get('/:id', authenticateToken, async (req, res) => {
           tags: project.tags,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
+          lastViewedAt: project.lastViewedAt,
+          conteCount: project.conteCount,
+          generatedConteCount: project.generatedConteCount,
+          liveActionConteCount: project.liveActionConteCount,
           user: {
             id: project.userId._id,
             name: project.userId.name,
             email: project.userId.email
           }
         },
-        contes: contes.map(conte => ({
+        conteList: project.contes ? project.contes.map(conte => ({
           id: conte._id,
           scene: conte.scene,
           title: conte.title,
           description: conte.description,
+          dialogue: conte.dialogue,
+          cameraAngle: conte.cameraAngle,
+          cameraWork: conte.cameraWork,
+          characterLayout: conte.characterLayout,
+          props: conte.props,
+          weather: conte.weather,
+          lighting: conte.lighting,
+          visualDescription: conte.visualDescription,
+          transition: conte.transition,
+          lensSpecs: conte.lensSpecs,
+          visualEffects: conte.visualEffects,
           type: conte.type,
           order: conte.order,
-          status: conte.status
-        }))
+          status: conte.status,
+          imageUrl: conte.imageUrl,
+          estimatedDuration: conte.estimatedDuration,
+          keywords: conte.keywords,
+          weights: conte.weights,
+          canEdit: conte.canEdit,
+          lastModified: conte.lastModified,
+          modifiedBy: conte.modifiedBy,
+          createdAt: conte.createdAt,
+          updatedAt: conte.updatedAt
+        })) : []
       }
     });
 

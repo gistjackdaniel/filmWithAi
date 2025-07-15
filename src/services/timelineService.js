@@ -15,7 +15,26 @@ const timelineAPI = axios.create({
 // 요청 인터셉터 - 토큰 추가
 timelineAPI.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken')
+    // 먼저 세션 스토리지에서 토큰 확인
+    let token = sessionStorage.getItem('auth-token')
+    
+    // 세션 스토리지에 없으면 로컬 스토리지에서 확인
+    if (!token) {
+      const authStorage = localStorage.getItem('auth-storage')
+      if (authStorage) {
+        try {
+          const parsedToken = JSON.parse(authStorage)
+          if (parsedToken.state?.token) {
+            token = parsedToken.state.token
+            // 세션 스토리지에도 저장
+            sessionStorage.setItem('auth-token', token)
+          }
+        } catch (error) {
+          console.error('토큰 파싱 오류:', error)
+        }
+      }
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -29,11 +48,31 @@ timelineAPI.interceptors.request.use(
 // 응답 인터셉터 - 에러 처리
 timelineAPI.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // 인증 실패 시 로그인 페이지로 리다이렉트
-      localStorage.removeItem('authToken')
-      window.location.href = '/login'
+      console.log('🔐 401 인증 오류 발생. 인증 상태 갱신 시도...')
+      
+      try {
+        // 인증 스토어에서 강제 갱신 시도
+        const { useAuthStore } = await import('../stores/authStore')
+        const authStore = useAuthStore.getState()
+        const result = await authStore.forceAuthRefresh()
+        
+        if (result.success) {
+          console.log('✅ 인증 상태 갱신 성공. 요청 재시도...')
+          // 원래 요청을 다시 시도
+          const originalRequest = error.config
+          return timelineAPI(originalRequest)
+        } else {
+          console.log('❌ 인증 상태 갱신 실패. 로그인 페이지로 이동...')
+          // 로그인 페이지로 리다이렉트
+          window.location.href = '/'
+        }
+      } catch (refreshError) {
+        console.error('❌ 인증 갱신 중 오류:', refreshError)
+        // 로그인 페이지로 리다이렉트
+        window.location.href = '/'
+      }
     }
     return Promise.reject(error)
   }
@@ -45,6 +84,33 @@ timelineAPI.interceptors.response.use(
  */
 class TimelineService {
   /**
+   * 시간 문자열을 초 단위로 변환하는 함수
+   * @param {string} duration - 시간 문자열 (예: "5분", "2분 30초")
+   * @returns {number} 초 단위 시간
+   */
+  parseDurationToSeconds(duration) {
+    if (!duration) {
+      return 300 // 기본 5분
+    }
+    
+    const match = duration.match(/(\d+)분\s*(\d+)?초?/)
+    if (match) {
+      const minutes = parseInt(match[1]) || 0
+      const seconds = parseInt(match[2]) || 0
+      return minutes * 60 + seconds
+    }
+    
+    // 숫자만 있는 경우 분으로 간주
+    const numMatch = duration.match(/(\d+)/)
+    if (numMatch) {
+      const minutes = parseInt(numMatch[1])
+      return minutes * 60
+    }
+    
+    return 300 // 기본 5분
+  }
+
+  /**
    * 프로젝트의 콘티 데이터를 가져옵니다
    * @param {string} projectId - 프로젝트 ID
    * @returns {Promise<Object>} 콘티 데이터
@@ -52,15 +118,50 @@ class TimelineService {
   async getProjectContes(projectId) {
     try {
       console.log('timelineService getProjectContes started for projectId:', projectId)
-      const response = await timelineAPI.get(`/projects/${projectId}`)
+      const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
       console.log('timelineService API response:', response.data)
       
-      const conteList = response.data.project?.conteList || []
+      // 백엔드 응답 구조에 맞게 수정
+      const conteList = response.data.data?.conteList || []
       console.log('timelineService conteList extracted:', conteList, 'count:', conteList.length)
+      
+      // 콘티 데이터를 타임라인 형식으로 변환
+      const timelineScenes = conteList.map(conte => ({
+        id: conte.id || conte._id,
+        scene: conte.scene,
+        title: conte.title,
+        description: conte.description,
+        dialogue: conte.dialogue,
+        cameraAngle: conte.cameraAngle,
+        cameraWork: conte.cameraWork,
+        characterLayout: conte.characterLayout,
+        props: conte.props,
+        weather: conte.weather,
+        lighting: conte.lighting,
+        visualDescription: conte.visualDescription,
+        transition: conte.transition,
+        lensSpecs: conte.lensSpecs,
+        visualEffects: conte.visualEffects,
+        type: conte.type || 'live_action',
+        estimatedDuration: conte.estimatedDuration || '5분',
+        duration: this.parseDurationToSeconds(conte.estimatedDuration || '5분'),
+        imageUrl: conte.imageUrl,
+        keywords: conte.keywords || {},
+        weights: conte.weights || {},
+        order: conte.order || conte.scene,
+        status: conte.status || 'active',
+        canEdit: conte.canEdit !== false,
+        lastModified: conte.lastModified,
+        modifiedBy: conte.modifiedBy,
+        createdAt: conte.createdAt,
+        updatedAt: conte.updatedAt
+      }))
+      
+      console.log('timelineService timelineScenes converted:', timelineScenes.length, 'scenes')
       
       return {
         success: true,
-        data: conteList,
+        data: timelineScenes,
         error: null
       }
     } catch (error) {
@@ -214,33 +315,59 @@ class TimelineService {
    * @returns {WebSocket} WebSocket 인스턴스
    */
   connectRealtimeUpdates(projectId, onUpdate) {
-    // WebSocket URL을 올바른 경로로 수정
-    const wsUrl = `ws://localhost:5001/api/timeline/projects/${projectId}/updates`
-    const ws = new WebSocket(wsUrl)
+    try {
+      // WebSocket URL 설정
+      const wsUrl = `ws://localhost:5001/api/timeline/projects/${projectId}`
+      console.log('🔌 WebSocket 연결 시도:', wsUrl)
+      
+      const ws = new WebSocket(wsUrl)
 
-    ws.onopen = () => {
-      console.log('타임라인 실시간 연결 성공')
-    }
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log('실시간 업데이트 수신:', data)
-        onUpdate(data)
-      } catch (error) {
-        console.error('실시간 데이터 파싱 실패:', error)
+      ws.onopen = () => {
+        console.log('✅ 타임라인 실시간 연결 성공')
+        
+        // 구독 메시지 전송
+        ws.send(JSON.stringify({
+          type: 'subscribe_updates',
+          projectId: projectId
+        }))
       }
-    }
 
-    ws.onerror = (error) => {
-      console.error('WebSocket 에러:', error)
-    }
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('📨 실시간 업데이트 수신:', data)
+          
+          if (onUpdate && typeof onUpdate === 'function') {
+            onUpdate(data)
+          }
+        } catch (error) {
+          console.error('❌ 실시간 데이터 파싱 실패:', error)
+        }
+      }
 
-    ws.onclose = () => {
-      console.log('타임라인 실시간 연결 종료')
-    }
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket 에러:', error)
+      }
 
-    return ws
+      ws.onclose = (event) => {
+        console.log('🔌 타임라인 실시간 연결 종료:', event.code, event.reason)
+      }
+
+      return ws
+    } catch (error) {
+      console.error('❌ WebSocket 연결 실패:', error)
+      
+      // 에러 발생 시 더미 객체 반환
+      const dummyWs = {
+        close: () => console.log('더미 WebSocket 연결 종료'),
+        onopen: null,
+        onmessage: null,
+        onerror: null,
+        onclose: null
+      }
+      
+      return dummyWs
+    }
   }
 
   /**

@@ -59,8 +59,6 @@ const ProjectPage = () => {
   // 프로젝트 ID가 변경될 때마다 프로젝트 정보와 타임라인 데이터 로드
   useEffect(() => {
     console.log('ProjectPage useEffect triggered with projectId:', projectId)
-    console.log('ProjectPage projectId type:', typeof projectId)
-    console.log('ProjectPage projectId value:', projectId)
     
     // projectId가 undefined이거나 빈 문자열인 경우 처리
     if (!projectId || projectId === 'undefined' || projectId === '') {
@@ -70,12 +68,17 @@ const ProjectPage = () => {
       return
     }
     
-    // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
-    if (projectId === 'temp-project-id') {
-      loadLocalConteData()
-    } else {
-      fetchProject()
-    }
+    // 중복 요청 방지를 위한 디바운싱
+    const timeoutId = setTimeout(() => {
+      // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
+      if (projectId === 'temp-project-id') {
+        loadLocalConteData()
+      } else {
+        fetchProject()
+      }
+    }, 100) // 100ms 디바운싱
+    
+    return () => clearTimeout(timeoutId)
   }, [projectId])
 
   // 컴포넌트 언마운트 시 실시간 연결 해제
@@ -226,15 +229,20 @@ const ProjectPage = () => {
       setCurrentProjectId(projectId)
       
       // 콘티 데이터가 있으면 타임라인 데이터 로드
-      if (projectData.conteList && Array.isArray(projectData.conteList) && projectData.conteList.length > 0) {
-        console.log('ProjectPage loading contes, count:', projectData.conteList.length)
+      const responseData = response.data?.data || response.data
+      const conteList = responseData.conteList || projectData.conteList || []
+      
+      if (conteList && Array.isArray(conteList) && conteList.length > 0) {
+        console.log('ProjectPage loading contes, count:', conteList.length)
         const result = await loadProjectContes(projectId)
         console.log('ProjectPage loadProjectContes result:', result)
         if (!result.success) {
           toast.error(result.error || '타임라인 데이터를 불러올 수 없습니다.')
+        } else {
+          console.log('✅ 프로젝트 콘티가 타임라인에 연결되었습니다:', result.data.length, '개')
         }
       } else {
-        console.log('ProjectPage no contes found in project data, conteList:', projectData.conteList)
+        console.log('ProjectPage no contes found in project data, conteList:', conteList)
         // 빈 배열로 초기화하여 타임라인 컴포넌트가 정상 작동하도록 함
         const { setScenes } = useTimelineStore.getState()
         setScenes([])
@@ -269,31 +277,10 @@ const ProjectPage = () => {
         return
       }
 
-      // temp-project-id인 경우 새 프로젝트 생성
+      // temp-project-id인 경우 임시 프로젝트이므로 저장 불가
       if (projectId === 'temp-project-id') {
-        console.log('Creating new project from temp data...')
-        
-        // 콘티가 있는지 확인하여 상태 결정
-        const hasContes = project.conteList && project.conteList.length > 0
-        const projectStatus = hasContes ? 'conte_ready' : 'story_ready'
-        
-        const response = await api.post('/projects', {
-          projectTitle: project.projectTitle,
-          synopsis: project.synopsis,
-          story: project.story,
-          conteList: project.conteList || [],
-          status: projectStatus
-        })
-
-        if (response.data.success) {
-          const newProjectId = response.data.project._id
-          toast.success('새 프로젝트가 생성되었습니다.')
-          
-          // 새 프로젝트 페이지로 이동
-          navigate(`/project/${newProjectId}`)
-        } else {
-          throw new Error(response.data.message || '프로젝트 생성에 실패했습니다.')
-        }
+        toast.error('임시 프로젝트는 저장할 수 없습니다. 프로젝트를 먼저 저장해주세요.')
+        return
       } else {
         // 기존 프로젝트 업데이트
         // 콘티가 있는지 확인하여 상태 결정
@@ -491,6 +478,8 @@ const ProjectPage = () => {
             color="inherit" 
             startIcon={<Save />}
             onClick={handleSave}
+            disabled={projectId === 'temp-project-id'}
+            title={projectId === 'temp-project-id' ? '임시 프로젝트는 저장할 수 없습니다' : '프로젝트 저장'}
           >
             저장
           </Button>

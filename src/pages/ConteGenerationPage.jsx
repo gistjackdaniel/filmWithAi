@@ -214,6 +214,21 @@ const ConteGenerationPage = () => {
         generationTime
       })
       
+      // 생성된 스토리를 프로젝트에 저장
+      if (projectId) {
+        try {
+          console.log('💾 생성된 스토리를 프로젝트에 저장 중...')
+          await api.put(`/projects/${projectId}`, {
+            story: response.story,
+            status: 'story_ready'
+          })
+          console.log('✅ 스토리 저장 완료')
+        } catch (saveError) {
+          console.error('❌ 스토리 저장 실패:', saveError)
+          // 저장 실패해도 스토리 생성은 성공으로 처리
+        }
+      }
+      
       toast.success('스토리 생성이 완료되었습니다.')
     } catch (error) {
       console.error('스토리 생성 실패:', error)
@@ -300,8 +315,70 @@ const ConteGenerationPage = () => {
    * 콘티 생성 완료 핸들러
    * @param {Array} conteList - 생성된 콘티 리스트
    */
-  const handleConteGenerationComplete = () => {
+  const handleConteGenerationComplete = async (conteList) => {
     // 스토어에서 이미 처리됨
+    
+    // 생성된 콘티를 프로젝트에 저장
+    if (projectId && conteList && conteList.length > 0) {
+      try {
+        console.log('💾 생성된 콘티를 프로젝트에 저장 중...', conteList.length, '개')
+        
+        // 각 콘티를 개별적으로 저장
+        const { conteAPI } = await import('../services/api')
+        
+        const savedContes = await Promise.all(
+          conteList.map(async (conte, index) => {
+            try {
+              console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
+              
+              const conteData = {
+                scene: conte.scene,
+                title: conte.title,
+                description: conte.description,
+                dialogue: conte.dialogue || '',
+                cameraAngle: conte.cameraAngle || '',
+                cameraWork: conte.cameraWork || '',
+                characterLayout: conte.characterLayout || '',
+                props: conte.props || '',
+                weather: conte.weather || '',
+                lighting: conte.lighting || '',
+                visualDescription: conte.visualDescription || '',
+                transition: conte.transition || '',
+                lensSpecs: conte.lensSpecs || '',
+                visualEffects: conte.visualEffects || '',
+                type: conte.type || 'live_action',
+                estimatedDuration: conte.estimatedDuration || '5분',
+                keywords: conte.keywords || {},
+                weights: conte.weights || {},
+                order: conte.order || index + 1,
+                imageUrl: conte.imageUrl || null
+              }
+              
+              const response = await conteAPI.createConte(projectId, conteData)
+              console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
+              return response.data
+            } catch (error) {
+              console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
+              throw error
+            }
+          })
+        )
+        
+        console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
+        
+        // 프로젝트 상태를 conte_ready로 업데이트
+        await api.put(`/projects/${projectId}`, {
+          status: 'conte_ready'
+        })
+        
+        console.log('✅ 프로젝트 상태 업데이트 완료: conte_ready')
+        
+      } catch (conteError) {
+        console.error('❌ 콘티 저장 중 오류:', conteError)
+        // 콘티 저장 실패해도 스토리 생성은 성공으로 처리
+        toast.error('콘티 저장에 실패했지만 콘티는 정상적으로 생성되었습니다.')
+      }
+    }
   }
 
   /**

@@ -3,6 +3,7 @@ const cors = require('cors')
 const axios = require('axios')
 const mongoose = require('mongoose')
 const http = require('http')
+const path = require('path')
 const { validateEnvironmentVariables } = require('./config/security')
 const {
   rateLimiter,
@@ -48,6 +49,9 @@ app.use(sqlInjectionProtection)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// 정적 파일 서빙 (이미지 파일용)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+
 // MongoDB 연결
 const MONGODB_URI = process.env.MONGODB_URI // || 'mongodb://localhost:27017/sceneforge_db'
 
@@ -85,11 +89,13 @@ const authRoutes = require('./routes/auth'); // 기존 인증 라우트
 const userRoutes = require('./routes/users'); // 사용자 관리 라우트
 const projectRoutes = require('./routes/projects'); // 프로젝트 관리 라우트
 const conteRoutes = require('./routes/contes'); // 콘티 관리 라우트
+const timelineRoutes = require('./routes/timeline'); // 타임라인 WebSocket 라우트
 
 app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
 app.use('/api/users', userRoutes); // /api/users/* 경로를 user 라우터로 연결
 app.use('/api/projects', projectRoutes); // /api/projects/* 경로를 project 라우터로 연결
 app.use('/api/projects', conteRoutes); // /api/projects/*/contes/* 경로를 conte 라우터로 연결
+app.use('/api/timeline', timelineRoutes.router); // /api/timeline/* 경로를 timeline 라우터로 연결
 
 /**
  * AI 스토리 생성 API
@@ -412,13 +418,19 @@ app.post('/api/conte/generate', async (req, res) => {
 
     console.log('🎬 AI 콘티 생성 요청:', { storyLength: story.length, maxScenes, genre })
 
+    // maxScenes 검증 및 제한
+    const validatedMaxScenes = Math.min(Math.max(parseInt(maxScenes) || 2, 1), 10)
+    console.log('✅ 검증된 maxScenes:', validatedMaxScenes)
+
     // OpenAI GPT-4o API 호출 - 캡션 카드 구조에 맞춘 상세한 콘티 생성
     const prompt = `
 다음 스토리를 바탕으로 영화 캡션 카드를 생성해주세요.
 
 스토리: ${story}
 장르: ${genre}
-최대 씬 수: ${maxScenes}
+최대 씬 수: ${validatedMaxScenes}
+
+**중요: 정확히 ${validatedMaxScenes}개의 씬만 생성해주세요. 더 많거나 적게 생성하지 마세요.**
 
 각 캡션 카드는 다음 12개 구성 요소를 모두 포함해야 합니다:
 
@@ -905,6 +917,13 @@ app.post('/api/conte/generate', async (req, res) => {
         firstItem: conteList[0] 
       })
       
+      // 생성된 콘티 개수 제한 (요청된 개수만큼만)
+      if (conteList.length > validatedMaxScenes) {
+        console.log(`⚠️ 생성된 콘티가 요청된 개수보다 많음: ${conteList.length} > ${validatedMaxScenes}`)
+        conteList = conteList.slice(0, validatedMaxScenes)
+        console.log(`✅ 콘티 개수 제한 완료: ${conteList.length}개`)
+      }
+
       // 각 캡션 카드에 고유 ID와 타임스탬프 추가
       conteList = conteList.map((card, index) => {
         // 키워드 노드 개별 파싱 함수
@@ -1150,6 +1169,9 @@ app.use(errorHandler)
 
 // 실시간 협업 서비스 초기화
 const realtimeService = new RealtimeService(server)
+
+// WebSocket 서비스 초기화
+timelineRoutes.initializeWebSocket(server)
 
 // 데이터 분석 서비스 초기화
 const analyticsService = new AnalyticsService()

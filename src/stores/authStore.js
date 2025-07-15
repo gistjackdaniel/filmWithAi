@@ -264,6 +264,50 @@ const useAuthStore = create(
       },
 
       /**
+       * 강제 인증 상태 갱신
+       * 토큰을 다시 확인하고 필요시 갱신
+       */
+      forceAuthRefresh: async () => {
+        try {
+          console.log('🔐 강제 인증 상태 갱신 시작...')
+          
+          // 현재 토큰 확인
+          const token = get().token
+          if (!token) {
+            console.log('❌ 토큰이 없습니다. 로그인이 필요합니다.')
+            return { success: false, needsLogin: true }
+          }
+
+          // 토큰 유효성 확인
+          if (get().isTokenExpired(token)) {
+            console.log('⚠️ 토큰이 만료되었습니다. 갱신 시도...')
+            const refreshSuccess = await get().refreshToken()
+            if (!refreshSuccess) {
+              console.log('❌ 토큰 갱신 실패. 로그인이 필요합니다.')
+              get().logout()
+              return { success: false, needsLogin: true }
+            }
+          }
+
+          // 서버에 인증 상태 확인
+          const response = await userAPI.getProfile()
+          if (response.data.success) {
+            console.log('✅ 인증 상태 확인 완료')
+            get().setUser(response.data.data.user)
+            return { success: true, needsLogin: false }
+          } else {
+            console.log('❌ 서버 인증 확인 실패')
+            get().logout()
+            return { success: false, needsLogin: true }
+          }
+        } catch (error) {
+          console.error('❌ 강제 인증 갱신 실패:', error)
+          get().logout()
+          return { success: false, needsLogin: true }
+        }
+      },
+
+      /**
        * 자동 로그아웃 타이머 설정
        * @param {number} timeoutMinutes - 타임아웃 시간 (분)
        */
