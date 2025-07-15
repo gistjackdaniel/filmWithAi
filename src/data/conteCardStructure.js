@@ -99,19 +99,21 @@ export const GRAPH_RELATIONSHIPS = {
 }
 
 /**
- * 스케줄링 가중치 계산 함수
+ * 스케줄링 가중치 계산 함수 (스케줄러와 동일한 우선순위 기반)
  * @param {Object} card - 캡션 카드
  * @returns {number} 가중치 점수
  */
 export const calculateScheduleWeight = (card) => {
-  const { weights } = card
+  // 각 요소별 우선순위 가중치 (장소 > 배우 > 시간 > 장비 > 복잡도)
+  // codeStyle: 항상 주석 작성
+  const { weights } = card;
   return (
-    weights.locationPriority * 0.3 +
-    weights.equipmentPriority * 0.2 +
-    weights.castPriority * 0.2 +
-    weights.timePriority * 0.2 +
-    weights.complexity * 0.1
-  )
+    (weights.locationPriority || 0) * 1000 + // 장소 최우선
+    (weights.castPriority || 0) * 500 +      // 배우
+    (weights.timePriority || 0) * 200 +      // 시간대
+    (weights.equipmentPriority || 0) * 100 + // 장비
+    (weights.complexity || 0) * 50           // 복잡도
+  );
 }
 
 /**

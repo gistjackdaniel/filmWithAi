@@ -7,6 +7,9 @@ import Dashboard from './pages/Dashboard'
 import ProjectPage from './pages/ProjectPage'
 import StoryGenerationPage from './pages/StoryGenerationPage'
 import DirectStoryPage from './pages/DirectStoryPage'
+import SchedulerPage from './pages/SchedulerPage'
+import SchedulerTestPage from './pages/SchedulerTestPage'
+import SimpleSchedulePage from './pages/SimpleSchedulePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import DebugPanel from './components/DebugPanel'
@@ -103,6 +106,32 @@ function App() {
           element={
             <ProtectedRoute>
               <DirectStoryPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* 스케줄러 페이지 라우트 */}
+        <Route 
+          path="/scheduler" 
+          element={
+            <ProtectedRoute>
+              <SchedulerPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* 스케줄러 테스트 페이지 라우트 */}
+        <Route 
+          path="/scheduler-test" 
+          element={<SchedulerTestPage />} 
+        />
+        
+        {/* 간단한 스케줄 페이지 라우트 */}
+        <Route 
+          path="/simple-schedule" 
+          element={
+            <ProtectedRoute>
+              <SimpleSchedulePage />
             </ProtectedRoute>
           } 
         />

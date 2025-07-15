@@ -61,7 +61,8 @@ const ErrorFallback = ({ error }) => {
   };
 
   const handleGoHome = () => {
-    navigate('/');
+    // 라우터가 깨진 상황에서도 무조건 홈으로 이동
+    window.location.replace('/')
   };
 
   return (

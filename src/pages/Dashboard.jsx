@@ -23,7 +23,8 @@ import {
   Create,
   Movie,
   AutoFixHigh,
-  History
+  History,
+  Schedule
 } from '@mui/icons-material'
 import { useAuthStore } from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
@@ -118,6 +119,13 @@ const Dashboard = () => {
    */
   const handleConteGeneration = () => {
     navigate('/direct-story')
+  }
+
+  /**
+   * 간단한 스케줄 페이지로 이동하는 핸들러
+   */
+  const handleSimpleSchedule = () => {
+    navigate('/simple-schedule')
   }
 
   /**
@@ -228,21 +236,22 @@ const Dashboard = () => {
             </Card>
           </Grid>
 
-          {/* 프로젝트 목록 보기 카드 */}
+          {/* 간단한 스케줄 카드 */}
           <Grid item xs={12} sm={6} md={3}>
             <Card 
               sx={{ 
                 cursor: 'pointer',
                 '&:hover': { transform: 'translateY(-2px)', transition: '0.2s' }
               }}
+              onClick={handleSimpleSchedule}
             >
               <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                <Folder sx={{ fontSize: 48, color: 'info.main', mb: 2 }} />
+                <Schedule sx={{ fontSize: 48, color: 'warning.main', mb: 2 }} />
                 <Typography variant="h6" gutterBottom>
-                  프로젝트 목록
+                  간단한 스케줄
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  기존 프로젝트들을 확인하세요
+                  깔끔한 촬영 스케줄표를 확인하세요
                 </Typography>
               </CardContent>
             </Card>

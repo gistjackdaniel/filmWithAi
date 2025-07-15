@@ -35,6 +35,15 @@ import toast from 'react-hot-toast'
  * 스토리를 바탕으로 상세한 캡션 카드를 생성하는 기능
  * 키워드 노드와 그래프 관계성을 포함한 전문적인 캡션 카드 생성
  * PRD 2.1.3 AI 콘티 생성 기능의 핵심 컴포넌트
+ *
+ * [AI 프롬프트 안내]
+ * 각 씬(콘티)에는 반드시 keywords.crew(필요 인력: 촬영감독, 카메라맨 등)와 keywords.equipment(필요 장비: 카메라, 조명 등)를 포함해서 생성해 주세요.
+ * 예시:
+ *   keywords: {
+ *     ...
+ *     crew: ["촬영감독", "카메라맨", "조명기사"],
+ *     equipment: ["카메라", "조명", "마이크"]
+ *   }
  */
 const ConteGenerator = ({ 
   story = '', 
@@ -183,6 +192,12 @@ const ConteGenerator = ({
       return
     }
 
+    // crew/equipment/cameras/timeOfDay 프롬프트를 story에 명시적으로 추가
+    const storyWithCrewEquipmentCamerasGuide =
+      story +
+      '\n\n' +
+      '[모든 씬의 keywords에는 반드시 crew(필요 인력: 촬영감독, 카메라맨, 조명기사 등), equipment(필요 장비: 카메라, 조명, 마이크 등), 그리고 cameras(카메라: C1~C20 중 1개 이상, 여러 개 가능)를 배열로 포함해 주세요. 예시: cameras: ["C1", "C5", "C12"]. 또한, timeOfDay(시간대)는 반드시 "낮" 또는 "밤" 중 하나로만 작성해 주세요.]';
+
     try {
       startConteGeneration()
       if (onGenerationStart) {
@@ -194,11 +209,12 @@ const ConteGenerator = ({
         settings: conteSettings 
       })
 
-      // AI 캡션 카드 생성 API 호출
+      // AI 캡션 카드 생성 API 호출 (crew/equipment/cameras 안내문 포함)
       const response = await generateConteWithRetry({
-        story: story,
+        story: storyWithCrewEquipmentCamerasGuide,
         maxScenes: conteSettings.maxScenes,
-        genre: conteSettings.genre
+        genre: conteSettings.genre,
+        focus: conteSettings.focus
       })
 
       console.log('✅ 캡션 카드 생성 완료:', { 

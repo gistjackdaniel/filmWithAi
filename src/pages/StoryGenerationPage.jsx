@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   Box, 
   Typography, 
@@ -31,7 +31,7 @@ import {
   Edit,
   Timeline
 } from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import SynopsisInputForm from '../components/StoryGeneration/SynopsisInputForm'
 import LoadingSpinner from '../components/StoryGeneration/LoadingSpinner'
@@ -43,6 +43,7 @@ import TemplateSelector from '../components/StoryGeneration/TemplateSelector'
 import StoryQualityEnhancer from '../components/StoryGeneration/StoryQualityEnhancer'
 import ConteGenerator from '../components/StoryGeneration/ConteGenerator'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
+import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import { generateStoryWithRetry, regenerateConteWithRetry, generateSceneImage } from '../services/storyGenerationApi'
 import { autoSaveProject } from '../services/projectApi'
 import useStoryGenerationStore from '../stores/storyGenerationStore'
@@ -56,6 +57,7 @@ import useStoryHistoryStore from '../stores/storyHistoryStore'
 const StoryGenerationPage = () => {
   // React Router 네비게이션 훅
   const navigate = useNavigate()
+  const location = useLocation()
   
   // 로컬 상태 관리
   const [activeTab, setActiveTab] = useState(0) // 활성 탭 (0: 생성, 1: 히스토리, 2: 템플릿, 3: 품질 개선, 4: 콘티 생성)
@@ -66,6 +68,76 @@ const StoryGenerationPage = () => {
   
   // 이미지 로딩 실패 상태 관리
   const [imageLoadErrors, setImageLoadErrors] = useState({})
+  
+  // 상태 복원 (뒤로가기 시) - 중복 토스트 방지용 플래그 추가
+  const hasRestored = useRef(false);
+  useEffect(() => {
+    // location.state가 있고, 아직 복원하지 않은 경우에만 실행
+    if (location.state && !hasRestored.current) {
+      // 탭 상태 복원
+      if (location.state.activeTab !== undefined) {
+        setActiveTab(location.state.activeTab)
+      }
+      
+      // 시놉시스 복원
+      if (location.state.synopsis) {
+        setSynopsis(location.state.synopsis)
+      }
+      
+      // 생성된 스토리 복원
+      if (location.state.generatedStory) {
+        updateGeneratedStory(location.state.generatedStory)
+      }
+      
+      // 스토리 설정 복원
+      if (location.state.storySettings) {
+        updateStorySettings(location.state.storySettings)
+      }
+      
+      // 템플릿 선택 복원
+      if (location.state.templateSelection) {
+        updateTemplateSelection(location.state.templateSelection)
+      }
+      
+      // 품질 개선 설정 복원
+      if (location.state.qualityEnhancement) {
+        updateQualityEnhancement(location.state.qualityEnhancement)
+      }
+      
+      // 콘티 생성 상태 복원
+      if (location.state.conteGeneration) {
+        // 콘티 생성 완료 상태로 복원
+        completeConteGeneration(location.state.conteGeneration.generatedConte || [])
+      }
+      
+      // 이미지 로딩 에러 상태 복원
+      if (location.state.imageLoadErrors) {
+        setImageLoadErrors(location.state.imageLoadErrors)
+      }
+      
+      // 선택된 콘티 복원
+      if (location.state.selectedConte) {
+        setSelectedConte(location.state.selectedConte)
+      }
+      
+      // 모달 상태 복원
+      if (location.state.conteModalOpen) {
+        setConteModalOpen(location.state.conteModalOpen)
+      }
+      
+      if (location.state.editModalOpen) {
+        setEditModalOpen(location.state.editModalOpen)
+      }
+      
+      if (location.state.editingConte) {
+        setEditingConte(location.state.editingConte)
+      }
+      
+      // 상태 복원 완료 알림 (중복 방지)
+      toast.success('이전 작업 상태가 복원되었습니다.');
+      hasRestored.current = true;
+    }
+  }, []);
   
   // Zustand 스토어에서 상태 가져오기
   const {
@@ -96,6 +168,29 @@ const StoryGenerationPage = () => {
 
   // 콘티 생성 상태
   const { isConteGenerating, generatedConte } = conteGeneration
+
+  /**
+   * 콘티 데이터 콘솔 출력 효과
+   * 콘티 생성 탭에서 콘티가 생성되면 모든 필드를 콘솔에 출력
+   */
+  useEffect(() => {
+    if (activeTab === 4 && generatedConte && generatedConte.length > 0) {
+      console.log('===== 콘티 데이터 전체 필드 출력 =====');
+      generatedConte.forEach((conte, idx) => {
+        console.log(`--- 콘티 #${idx + 1} ---`);
+        Object.entries(conte).forEach(([key, value]) => {
+          // 객체/배열은 JSON.stringify로 보기 좋게 출력
+          if (typeof value === 'object' && value !== null) {
+            console.log(`${key}: ${JSON.stringify(value, null, 2)}`);
+          } else {
+            console.log(`${key}: ${value}`);
+          }
+        });
+        console.log(''); // 콘티 간 구분을 위한 빈 줄
+      });
+      console.log('===============================');
+    }
+  }, [activeTab, generatedConte]);
 
   /**
    * 뒤로가기 버튼 핸들러
@@ -378,17 +473,41 @@ const StoryGenerationPage = () => {
 
   /**
    * 타임라인 보기 핸들러
+   * 타임라인 페이지로 이동 (현재 페이지 상태 유지)
    */
   const handleViewTimeline = () => {
-    // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
     if (generatedConte && generatedConte.length > 0) {
-      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
-      navigate('/project/temp-project-id')
+      // 현재 페이지의 모든 상태를 저장하여 타임라인으로 이동
+      const currentPageState = {
+        conteData: generatedConte,
+        projectTitle: 'AI 스토리 프로젝트',
+        returnTo: {
+          path: '/story-generation',
+          state: {
+            activeTab: activeTab,
+            synopsis: synopsis,
+            generatedStory: generatedStory,
+            storySettings: storySettings,
+            templateSelection: templateSelection,
+            qualityEnhancement: qualityEnhancement,
+            conteGeneration: conteGeneration,
+            imageLoadErrors: imageLoadErrors,
+            selectedConte: selectedConte,
+            conteModalOpen: conteModalOpen,
+            editModalOpen: editModalOpen,
+            editingConte: editingConte
+          }
+        }
+      }
+      
+      // 타임라인 페이지로 이동하면서 현재 상태 전달
+      navigate('/project/temp-project-id', { 
+        state: currentPageState
+      })
     } else {
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
     }
   }
-
   /**
    * 이미지 재시도 핸들러
    * @param {Object} conte - 콘티 객체
@@ -640,6 +759,7 @@ const StoryGenerationPage = () => {
                         </Typography>
                       </Box>
                       
+                      <Box sx={{ display: 'flex', gap: 2 }}>
                       <Button
                         variant="contained"
                         startIcon={<Timeline />}
@@ -653,6 +773,7 @@ const StoryGenerationPage = () => {
                       >
                         타임라인 보기
                       </Button>
+                      </Box>
                     </Box>
                     
                     {generatedConte.map((conte, index) => (
@@ -784,324 +905,16 @@ const StoryGenerationPage = () => {
           </Container>
         </Box>
 
-        {/* 콘티 상세 정보 모달 */}
-        <Modal
+        {/* 콘티 상세 정보 모달 (공통 컴포넌트 사용) */}
+        <ConteDetailModal
           open={conteModalOpen}
           onClose={handleConteModalClose}
-          aria-labelledby="conte-detail-modal"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 2
-          }}
-        >
-          <Box sx={{
-            width: '90%',
-            maxWidth: 800,
-            maxHeight: '90vh',
-            bgcolor: 'background.paper',
-            borderRadius: 2,
-            boxShadow: 24,
-            overflow: 'auto'
-          }}>
-            {selectedConte && (
-              <>
-                {/* 모달 헤더 */}
-                <Box sx={{
-                  p: 3,
-                  borderBottom: '1px solid #ddd',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <Typography variant="h5" component="h2">
-                    씬 {selectedConte.scene}: {selectedConte.title}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Edit />}
-                      onClick={() => {
-                        handleEditConte(selectedConte)
-                        handleConteModalClose()
-                      }}
-                    >
-                      편집
-                    </Button>
-                    <IconButton onClick={handleConteModalClose}>
-                      <Close />
-                    </IconButton>
-                  </Box>
-                </Box>
-
-                {/* 모달 내용 */}
-                <Box sx={{ p: 3 }}>
-                  <Grid container spacing={3}>
-                    {/* 씬 이미지 */}
-                    {selectedConte.imageUrl && (
-                      <Grid item xs={12}>
-                        <Box sx={{ 
-                          width: '100%', 
-                          height: 300, 
-                          borderRadius: 2,
-                          overflow: 'hidden',
-                          border: '1px solid #ddd',
-                          mb: 2,
-                          position: 'relative'
-                        }}>
-                          <img 
-                            src={selectedConte.imageUrl} 
-                            alt={`씬 ${selectedConte.scene} 이미지`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                            onError={(e) => handleImageLoadError(selectedConte.id, e)}
-                          />
-                          {imageLoadErrors[selectedConte.id] && (
-                            <Box sx={{ 
-                              position: 'absolute', 
-                              top: 0, 
-                              left: 0, 
-                              width: '100%', 
-                              height: '100%', 
-                              backgroundColor: 'rgba(0, 0, 0, 0.7)', 
-                              display: 'flex', 
-                              flexDirection: 'column',
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              zIndex: 1 
-                            }}>
-                              <Error sx={{ color: 'white', mb: 1, fontSize: 48 }} />
-                              <Typography variant="h6" color="white" sx={{ mb: 1, textAlign: 'center' }}>
-                                이미지 로딩 실패
-                              </Typography>
-                              <Button
-                                variant="contained"
-                                startIcon={<Refresh />}
-                                onClick={() => handleImageRetry(selectedConte)}
-                                sx={{ 
-                                  backgroundColor: 'var(--color-primary)',
-                                  '&:hover': {
-                                    backgroundColor: 'var(--color-accent)',
-                                  }
-                                }}
-                              >
-                                재시도
-                              </Button>
-                            </Box>
-                          )}
-                        </Box>
-                      </Grid>
-                    )}
-                    
-                    {/* 기본 정보 */}
-                    <Grid item xs={12}>
-                      <Accordion defaultExpanded>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                          <Typography variant="h6">기본 정보</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                              <Typography variant="subtitle2" color="text.secondary">설명</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.description}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="subtitle2" color="text.secondary">타입</Typography>
-                              <Chip 
-                                label={selectedConte.type === 'generated_video' ? 'AI 생성 비디오' : '실사 촬영용'} 
-                                color={selectedConte.type === 'generated_video' ? 'secondary' : 'primary'}
-                                sx={{ mt: 1 }}
-                              />
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="subtitle2" color="text.secondary">예상 시간</Typography>
-                              <Typography variant="body1">
-                                {selectedConte.estimatedDuration || '5분'}
-                              </Typography>
-                            </Grid>
-                          </Grid>
-                        </AccordionDetails>
-                      </Accordion>
-                    </Grid>
-
-                    {/* 촬영 정보 */}
-                    <Grid item xs={12}>
-                      <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                          <Typography variant="h6">촬영 정보</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">카메라 앵글</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.cameraAngle || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">카메라 워크</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.cameraWork || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">렌즈 스펙</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.lensSpecs || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">시각 효과</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.visualEffects || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                          </Grid>
-                        </AccordionDetails>
-                      </Accordion>
-                    </Grid>
-
-                    {/* 장면 설정 */}
-                    <Grid item xs={12}>
-                      <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                          <Typography variant="h6">장면 설정</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">인물 배치</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.characterLayout || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">소품</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.props || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">조명</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.lighting || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="subtitle2" color="text.secondary">날씨</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.weather || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography variant="subtitle2" color="text.secondary">시각적 설명</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.visualDescription || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography variant="subtitle2" color="text.secondary">전환</Typography>
-                              <Typography variant="body1" paragraph>
-                                {selectedConte.transition || '설정 없음'}
-                              </Typography>
-                            </Grid>
-                          </Grid>
-                        </AccordionDetails>
-                      </Accordion>
-                    </Grid>
-
-                    {/* 대사 */}
-                    {selectedConte.dialogue && (
-                      <Grid item xs={12}>
-                        <Accordion>
-                          <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Typography variant="h6">대사</Typography>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <Typography variant="body1" sx={{ 
-                              fontStyle: 'italic',
-                              p: 2,
-                              bgcolor: 'rgba(0, 0, 0, 0.04)',
-                              borderRadius: 1,
-                              border: '1px solid #ddd'
-                            }}>
-                              {selectedConte.dialogue}
-                            </Typography>
-                          </AccordionDetails>
-                        </Accordion>
-                      </Grid>
-                    )}
-
-                    {/* 키워드 정보 */}
-                    {selectedConte.keywords && (
-                      <Grid item xs={12}>
-                        <Accordion>
-                          <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Typography variant="h6">키워드 정보</Typography>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <Grid container spacing={2}>
-                              <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="text.secondary">사용자 정보</Typography>
-                                <Typography variant="body1" paragraph>
-                                  {selectedConte.keywords.userInfo || '기본 사용자'}
-                                </Typography>
-                              </Grid>
-                              <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="text.secondary">장소</Typography>
-                                <Typography variant="body1" paragraph>
-                                  {selectedConte.keywords.location || '기본 장소'}
-                                </Typography>
-                              </Grid>
-                              <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="text.secondary">장비</Typography>
-                                <Typography variant="body1" paragraph>
-                                  {selectedConte.keywords.equipment || '기본 장비'}
-                                </Typography>
-                              </Grid>
-                              <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="text.secondary">조명</Typography>
-                                <Typography variant="body1" paragraph>
-                                  {selectedConte.keywords.lighting || '기본 조명'}
-                                </Typography>
-                              </Grid>
-                              {selectedConte.keywords.cast && selectedConte.keywords.cast.length > 0 && (
-                                <Grid item xs={12} sm={6}>
-                                  <Typography variant="subtitle2" color="text.secondary">배우</Typography>
-                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                                    {selectedConte.keywords.cast.map((actor, index) => (
-                                      <Chip key={index} label={actor} size="small" variant="outlined" />
-                                    ))}
-                                  </Box>
-                                </Grid>
-                              )}
-                              {selectedConte.keywords.props && selectedConte.keywords.props.length > 0 && (
-                                <Grid item xs={12} sm={6}>
-                                  <Typography variant="subtitle2" color="text.secondary">소품</Typography>
-                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                                    {selectedConte.keywords.props.map((prop, index) => (
-                                      <Chip key={index} label={prop} size="small" variant="outlined" />
-                                    ))}
-                                  </Box>
-                                </Grid>
-                              )}
-                            </Grid>
-                          </AccordionDetails>
-                        </Accordion>
-                      </Grid>
-                    )}
-                  </Grid>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Modal>
+          conte={selectedConte}
+          onEdit={handleEditConte}
+          onImageRetry={handleImageRetry}
+          imageLoadErrors={imageLoadErrors}
+          onImageLoadError={handleImageLoadError}
+        />
 
         {/* 콘티 편집 모달 */}
         <ConteEditModal

@@ -222,35 +222,23 @@ const ConteResult = ({
       card.lighting.includes('태양광') ||
       card.lighting.includes('실내 조명')
     )) {
-      // 실내 장면 감지 (더 포괄적으로)
+      // 실내 장면 감지 (keywords.location만 사용하여 정확한 장소 정보 활용)
       const isIndoorScene = (
-        (card.description && (
-          card.description.includes('실내') ||
-          card.description.includes('방') ||
-          card.description.includes('건물') ||
-          card.description.includes('집') ||
-          card.description.includes('사무실') ||
-          card.description.includes('카페') ||
-          card.description.includes('레스토랑') ||
-          card.description.includes('학교') ||
-          card.description.includes('병원') ||
-          card.description.includes('상점') ||
-          card.description.includes('극장') ||
-          card.description.includes('지하') ||
-          card.description.includes('엘리베이터') ||
-          card.description.includes('계단')
-        )) ||
-        (card.visualDescription && (
-          card.visualDescription.includes('실내') ||
-          card.visualDescription.includes('방') ||
-          card.visualDescription.includes('건물') ||
-          card.visualDescription.includes('집')
-        )) ||
         (card.keywords && card.keywords.location && (
           card.keywords.location.includes('실내') ||
           card.keywords.location.includes('방') ||
           card.keywords.location.includes('건물') ||
-          card.keywords.location.includes('집')
+          card.keywords.location.includes('집') ||
+          card.keywords.location.includes('사무실') ||
+          card.keywords.location.includes('카페') ||
+          card.keywords.location.includes('레스토랑') ||
+          card.keywords.location.includes('학교') ||
+          card.keywords.location.includes('병원') ||
+          card.keywords.location.includes('상점') ||
+          card.keywords.location.includes('극장') ||
+          card.keywords.location.includes('지하') ||
+          card.keywords.location.includes('엘리베이터') ||
+          card.keywords.location.includes('계단')
         ))
       )
       
@@ -271,11 +259,8 @@ const ConteResult = ({
       }
     }
     
+    // 장소 정보는 keywords.location만 사용 (AI가 생성한 정확한 장소 정보)
     if (card.keywords && card.keywords.location && card.keywords.location !== '기본 장소') {
-      reasons.live_action.push('특정 실제 장소에서 촬영이 필요한 장면')
-    }
-    
-    if (card.location && card.location !== '기본 장소') {
       reasons.live_action.push('특정 실제 장소에서 촬영이 필요한 장면')
     }
 
@@ -907,11 +892,8 @@ const ConteResult = ({
                   )}
 
                   {/* 그래프 가중치 정보 */}
-                  {card.weights && (
-                    <Grid item xs={12}>
-                      {renderWeights(card.weights)}
-                    </Grid>
-                  )}
+                  {/* (⚖️ 그래프 가중치 관련 UI 전체 삭제) */}
+                  {/* 내부 최적화용 가중치는 UI에 노출하지 않음 (codeStyle) */}
 
                   {/* 타입 분류 이유 정보 */}
                   {renderTypeReason(card, index)}

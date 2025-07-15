@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { Toaster } from 'react-hot-toast'
@@ -8,6 +8,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App.jsx'
 import createAppTheme from './theme/theme.js'
 import './index.css'
+import SchedulerTestPage from './pages/SchedulerTestPage';
 
 /**
  * SceneForge 앱의 진입점
@@ -30,7 +31,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           v7_relativeSplatPath: true
         }}
       >
-        {/* Material-UI 테마 프로바이더 - 다크 모드 */}
         <ThemeProvider theme={darkTheme}>
           {/* CSS 기본 스타일 리셋 */}
           <CssBaseline />

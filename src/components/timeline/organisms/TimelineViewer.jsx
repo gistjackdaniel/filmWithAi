@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { Box, Typography, CircularProgress } from '@mui/material'
+import { Box, Typography, CircularProgress, Button } from '@mui/material'
+import { Schedule } from '@mui/icons-material'
 import {
   DndContext,
   closestCenter,
@@ -52,7 +53,9 @@ const TimelineViewer = (props) => {
     timeScale = 1, // 픽셀당 시간 (초)
     zoomLevel = 1, // 줌 레벨
     showTimeInfo = true, // 시간 정보 표시 여부
-    baseScale = 1 // 기본 스케일 (픽셀당 초)
+    baseScale = 1, // 기본 스케일 (픽셀당 초)
+    // 스케줄러 관련 props
+    onViewSchedule = null // 스케줄러 보기 핸들러
   } = props || {}
 
   // 디버깅 로그 추가
@@ -479,6 +482,26 @@ const TimelineViewer = (props) => {
           onClearFilters={handleClearFilters}
           sceneTypes={Object.values(CaptionCardType)}
         />
+        
+        {/* 스케줄러 버튼 */}
+        {onViewSchedule && (
+          <Button
+            variant="contained"
+            startIcon={<Schedule />}
+            onClick={onViewSchedule}
+            sx={{
+              backgroundColor: 'var(--color-primary)',
+              '&:hover': {
+                backgroundColor: 'var(--color-accent)',
+              },
+              ml: 2,
+              minWidth: '140px', // 최소 너비 설정
+              px: 3 // 좌우 패딩 증가
+            }}
+          >
+            스케줄러 보기
+          </Button>
+        )}
       </Box>
 
       {/* 시간 눈금 */}

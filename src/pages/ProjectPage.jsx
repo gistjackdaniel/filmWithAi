@@ -14,12 +14,13 @@ import {
   Save,
   PlayArrow
 } from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
 import TimelineViewer from '../components/timeline/organisms/TimelineViewer'
 import SceneDetailModal from '../components/timeline/organisms/SceneDetailModal'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
+import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import useTimelineStore from '../stores/timelineStore'
 
 /**
@@ -33,6 +34,7 @@ const ProjectPage = () => {
   
   // React Router 네비게이션 훅
   const navigate = useNavigate()
+  const location = useLocation()
   
   // 타임라인 스토어
   const {
@@ -60,13 +62,22 @@ const ProjectPage = () => {
   useEffect(() => {
     console.log('ProjectPage useEffect triggered with projectId:', projectId)
     
-    // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
+    // temp-project-id인 경우 전달받은 데이터 또는 로컬 스토리지에서 데이터 로드
     if (projectId === 'temp-project-id') {
-      loadLocalConteData()
+      // 전달받은 콘티 데이터가 있는지 확인
+      const passedConteData = location.state?.conteData
+      
+      if (passedConteData && Array.isArray(passedConteData) && passedConteData.length > 0) {
+        // 전달받은 데이터로 타임라인 설정
+        loadPassedConteData(passedConteData)
+      } else {
+        // 로컬 스토리지에서 데이터 로드
+        loadLocalConteData()
+      }
     } else {
       fetchProject()
     }
-  }, [projectId])
+  }, [projectId, location.state])
 
   // 컴포넌트 언마운트 시 실시간 연결 해제
   useEffect(() => {
@@ -109,6 +120,69 @@ const ProjectPage = () => {
     
     console.log(`parseDurationToSeconds: no match for "${duration}", returning 300s`)
     return 300 // 기본 5분
+  }
+
+  /**
+   * 전달받은 콘티 데이터를 로드하는 함수
+   */
+  const loadPassedConteData = (conteData) => {
+    try {
+      console.log('ProjectPage loadPassedConteData started')
+      setLoading(true)
+      
+      if (!Array.isArray(conteData) || conteData.length === 0) {
+        console.log('ProjectPage invalid passed conte data')
+        setProject({
+          projectTitle: '임시 프로젝트',
+          synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+          story: '',
+          conteList: []
+        })
+        setLoading(false)
+        return
+      }
+      
+      // 임시 프로젝트 정보 생성
+      const tempProject = {
+        projectTitle: location.state?.projectTitle || '임시 프로젝트',
+        synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+        story: '',
+        conteList: conteData
+      }
+      
+      setProject(tempProject)
+      
+      // 타임라인 스토어에 콘티 데이터 설정
+      const { setScenes } = useTimelineStore.getState()
+      
+      // 이미지 URL과 duration이 있는 경우 포함하여 설정
+      const scenesWithImages = conteData.map(scene => {
+        const duration = scene.duration || parseDurationToSeconds(scene.estimatedDuration || '5분')
+        console.log(`Processing scene ${scene.scene}: estimatedDuration=${scene.estimatedDuration}, parsed duration=${duration}s`)
+        
+        return {
+          ...scene,
+          imageUrl: scene.imageUrl || null,
+          type: scene.type || 'live_action',
+          duration: duration
+        }
+      })
+      
+      setScenes(scenesWithImages)
+      
+      console.log('ProjectPage passed conte data loaded:', conteData.length, 'scenes')
+      
+    } catch (error) {
+      console.error('ProjectPage loadPassedConteData failed:', error)
+      setProject({
+        projectTitle: '임시 프로젝트',
+        synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+        story: '',
+        conteList: []
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   /**
@@ -229,7 +303,19 @@ const ProjectPage = () => {
    * 대시보드로 돌아가기
    */
   const handleBack = () => {
-    navigate('/')
+    // 이전 페이지에서 전달받은 상태 정보 확인
+    const returnToInfo = location.state?.returnTo
+    
+    if (returnToInfo) {
+      // 특정 페이지로 돌아가면서 상태 복원
+      navigate(returnToInfo.path, { 
+        state: returnToInfo.state,
+        replace: true // 브라우저 히스토리에서 현재 페이지 대체
+      })
+    } else {
+      // 일반적인 뒤로가기
+      navigate('/')
+    }
   }
 
   /**
@@ -361,6 +447,34 @@ const ProjectPage = () => {
     }
   }, [projectId])
 
+  /**
+   * 스케줄러 보기 핸들러
+   * SimpleSchedulePage(간단 스케줄러)로 이동하면서 현재 콘티 데이터 전달
+   */
+  const handleViewSchedule = useCallback(() => {
+    if (scenes && scenes.length > 0) {
+      // 현재 페이지의 모든 상태를 저장하여 스케줄러로 이동
+      const currentPageState = {
+        conteData: scenes,
+        returnTo: {
+          path: `/project/${projectId}`,
+          state: {
+            // 현재 페이지 상태 복원을 위한 정보
+            projectId: projectId,
+            project: project
+          }
+        }
+      }
+      
+      // 간단 스케줄러 페이지로 이동하면서 현재 상태 전달 (정확한 경로로 수정)
+      navigate('/simple-schedule', { 
+        state: currentPageState
+      })
+    } else {
+      toast.error('스케줄을 보려면 먼저 콘티를 생성해주세요.')
+    }
+  }, [scenes, projectId, project, navigate])
+
   // 로딩 중일 때 로딩 화면 표시
   if (loading) {
     return (
@@ -469,6 +583,7 @@ const ProjectPage = () => {
             zoomLevel={1}
             showTimeInfo={true}
             baseScale={1}
+            onViewSchedule={handleViewSchedule}
           />
         </Box>
 
@@ -493,13 +608,24 @@ const ProjectPage = () => {
         )}
       </Container>
 
-      {/* 씬 상세 모달 */}
+      {/* 씬 상세 모달 (타임라인용) */}
       <SceneDetailModal
         open={modalOpen}
         scene={currentScene}
         onClose={closeModal}
         onEdit={handleSceneEdit}
         onRegenerate={handleSceneRegenerate}
+      />
+
+      {/* 콘티 상세 모달 (공통 컴포넌트) */}
+      <ConteDetailModal
+        open={false} // 타임라인에서는 기본적으로 비활성화
+        onClose={() => {}}
+        conte={null}
+        onEdit={null}
+        onImageRetry={null}
+        imageLoadErrors={{}}
+        onImageLoadError={null}
       />
 
       {/* 씬 편집 모달 */}

@@ -35,12 +35,14 @@ import {
   TipsAndUpdates,
   Timeline
 } from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import ConteGenerator from '../components/StoryGeneration/ConteGenerator'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import { generateSceneImage } from '../services/storyGenerationApi'
 import useStoryGenerationStore from '../stores/storyGenerationStore'
+// react에서 useEffect import
+import { useEffect } from 'react';
 
 /**
  * 직접 스토리 작성 페이지 컴포넌트
@@ -48,6 +50,7 @@ import useStoryGenerationStore from '../stores/storyGenerationStore'
  */
 const DirectStoryPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   
   // 로컬 상태 관리
   const [story, setStory] = useState('')
@@ -58,9 +61,59 @@ const DirectStoryPage = () => {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingConte, setEditingConte] = useState(null)
   const [activeStep, setActiveStep] = useState(0)
+  const [selectedConte, setSelectedConte] = useState(null)
+  const [conteModalOpen, setConteModalOpen] = useState(false)
 
   // 이미지 로딩 실패 상태 관리
   const [imageLoadErrors, setImageLoadErrors] = useState({})
+  
+  // 상태 복원 (뒤로가기 시)
+  useEffect(() => {
+    const restoredState = location.state
+    
+    if (restoredState) {
+      // 단계 상태 복원
+      if (restoredState.activeStep !== undefined) {
+        setActiveStep(restoredState.activeStep)
+      }
+      
+      // 스토리 복원
+      if (restoredState.story) {
+        setStory(restoredState.story)
+      }
+      
+      // 생성된 콘티 복원
+      if (restoredState.generatedConte) {
+        setGeneratedConte(restoredState.generatedConte)
+      }
+      
+      // 이미지 로딩 에러 상태 복원
+      if (restoredState.imageLoadErrors) {
+        setImageLoadErrors(restoredState.imageLoadErrors)
+      }
+      
+      // 선택된 콘티 복원
+      if (restoredState.selectedConte) {
+        setSelectedConte(restoredState.selectedConte)
+      }
+      
+      // 모달 상태 복원
+      if (restoredState.conteModalOpen) {
+        setConteModalOpen(restoredState.conteModalOpen)
+      }
+      
+      if (restoredState.editModalOpen) {
+        setEditModalOpen(restoredState.editModalOpen)
+      }
+      
+      if (restoredState.editingConte) {
+        setEditingConte(restoredState.editingConte)
+      }
+      
+      // 상태 복원 완료 알림
+      toast.success('이전 작업 상태가 복원되었습니다.')
+    }
+  }, [location.state])
 
   // DirectStoryPage는 로컬 상태를 사용하므로 스토어 함수는 사용하지 않음
 
@@ -196,10 +249,30 @@ const DirectStoryPage = () => {
   }
 
   const handleViewTimeline = () => {
-    // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
     if (generatedConte.length > 0) {
-      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
-      navigate('/project/temp-project-id')
+      // 현재 페이지의 모든 상태를 저장하여 타임라인으로 이동
+      const currentPageState = {
+        conteData: generatedConte,
+        projectTitle: '직접 스토리 프로젝트',
+        returnTo: {
+          path: '/direct-story',
+          state: {
+            activeStep: activeStep,
+            story: story,
+            generatedConte: generatedConte,
+            imageLoadErrors: imageLoadErrors,
+            selectedConte: selectedConte,
+            conteModalOpen: conteModalOpen,
+            editModalOpen: editModalOpen,
+            editingConte: editingConte
+          }
+        }
+      }
+      
+      // 타임라인 페이지로 이동하면서 현재 상태 전달
+      navigate('/project/temp-project-id', { 
+        state: currentPageState
+      })
     } else {
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
     }

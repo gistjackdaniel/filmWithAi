@@ -480,6 +480,21 @@ app.post('/api/conte/generate', async (req, res) => {
   * "[배경음: 차량 소음]" (음성 효과)
   * "아... 정말 힘들어..." (감정 표현)
 
+**필요인력 및 필요장비 정보:**
+- **필요인력**: 각 장면에 필요한 인력 구성 (예: "감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명")
+- **필요장비**: 각 장면에 필요한 장비 목록 (예: "카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개")
+- **카메라 정보**: C1부터 C20까지의 카메라 중 해당 장면에 적합한 카메라 지정 (예: "C1", "C2", "C3" 등)
+
+**시간대 구분:**
+- **낮**: 해가 떠있는 시간대 (오전 6시 ~ 오후 6시)
+- **밤**: 해가 진 시간대 (오후 6시 ~ 오전 6시)
+
+**중요:**
+- 반드시 각 콘티의 keywords에 timeOfDay(촬영 시간대)를 포함해야 하며,
+  "낮" 또는 "밤" 중 하나로 명확히 작성해야 합니다.
+- timeOfDay가 누락된 콘티는 절대 생성하지 마세요.
+- 누락 시 전체 응답을 다시 생성하세요.
+
 반드시 다음 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요:
 
 {
@@ -503,6 +518,9 @@ app.post('/api/conte/generate', async (req, res) => {
       "type": "generated_video",
       "typeReason": "AI 시각효과와 특수효과가 필요한 장면으로 판단됨",
       "estimatedDuration": "3분",
+      "requiredPersonnel": "감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명",
+      "requiredEquipment": "카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개",
+      "camera": "C1",
       "keywords": {
         "userInfo": "기본 사용자",
         "location": "기본 장소",
@@ -512,7 +530,7 @@ app.post('/api/conte/generate', async (req, res) => {
         "props": ["기본 소품"],
         "lighting": "기본 조명",
         "weather": "맑음",
-        "timeOfDay": "주간",
+        "timeOfDay": "낮", // 반드시 "낮" 또는 "밤"으로 포함!
         "specialRequirements": []
       },
       "weights": {
@@ -529,6 +547,9 @@ app.post('/api/conte/generate', async (req, res) => {
   ]
 }
 
+**반드시 모든 콘티에 timeOfDay가 포함되어야 하며, 누락 시 전체 응답을 다시 생성하세요.**
+
+JSON 이외의 텍스트는 포함하지 마세요.
 한국어로 자연스럽게 작성해주세요.
 `
 
@@ -691,48 +712,51 @@ app.post('/api/conte/generate', async (req, res) => {
               return item
             } else {
               console.log(`⚠️ 요소 ${index}: 구조가 불완전함, 기본값으로 보완`)
-              // 구조가 불완전한 경우 기본값으로 보완
-              return {
-                id: item.id || `scene_${index + 1}`,
-                scene: item.scene || index + 1,
-                title: item.title || `씬 ${index + 1}`,
-                description: item.description || item.content || item.text || '설명 없음',
-                dialogue: item.dialogue || item.dialog || '',
-                cameraAngle: item.cameraAngle || item.camera || '',
-                cameraWork: item.cameraWork || item.cameraMovement || '',
-                characterLayout: item.characterLayout || item.layout || '',
-                props: item.props || item.prop || '',
-                weather: item.weather || '',
-                lighting: item.lighting || item.light || '',
-                visualDescription: item.visualDescription || item.visual || '',
-                transition: item.transition || '',
-                lensSpecs: item.lensSpecs || item.lens || '',
-                visualEffects: item.visualEffects || item.effects || '',
-                type: item.type || 'live_action',
-                estimatedDuration: item.estimatedDuration || item.duration || '5분',
-                keywords: item.keywords || {
-                  userInfo: item.userInfo || '기본 사용자',
-                  location: item.location || '기본 장소',
-                  date: item.date || '2024-01-01',
-                  equipment: item.equipment || '기본 장비',
-                  cast: Array.isArray(item.cast) ? item.cast : ['기본 배우'],
-                  props: Array.isArray(item.props) ? item.props : ['기본 소품'],
-                  lighting: item.lighting || '기본 조명',
-                  weather: item.weather || '맑음',
-                  timeOfDay: item.timeOfDay || '주간',
-                  specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
-                },
-                weights: item.weights || {
-                  locationPriority: item.locationPriority || 1,
-                  equipmentPriority: item.equipmentPriority || 1,
-                  castPriority: item.castPriority || 1,
-                  timePriority: item.timePriority || 1,
-                  complexity: item.complexity || 1
-                },
-                canEdit: item.canEdit !== undefined ? item.canEdit : true,
-                lastModified: item.lastModified || new Date().toISOString(),
-                modifiedBy: item.modifiedBy || 'AI'
-              }
+                          // 구조가 불완전한 경우 기본값으로 보완
+            return {
+              id: item.id || `scene_${index + 1}`,
+              scene: item.scene || index + 1,
+              title: item.title || `씬 ${index + 1}`,
+              description: item.description || item.content || item.text || '설명 없음',
+              dialogue: item.dialogue || item.dialog || '',
+              cameraAngle: item.cameraAngle || item.camera || '',
+              cameraWork: item.cameraWork || item.cameraMovement || '',
+              characterLayout: item.characterLayout || item.layout || '',
+              props: item.props || item.prop || '',
+              weather: item.weather || '',
+              lighting: item.lighting || item.light || '',
+              visualDescription: item.visualDescription || item.visual || '',
+              transition: item.transition || '',
+              lensSpecs: item.lensSpecs || item.lens || '',
+              visualEffects: item.visualEffects || item.effects || '',
+              type: item.type || 'live_action',
+              estimatedDuration: item.estimatedDuration || item.duration || '5분',
+              requiredPersonnel: item.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+              requiredEquipment: item.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+              camera: item.camera || 'C1',
+              keywords: item.keywords || {
+                userInfo: item.userInfo || '기본 사용자',
+                location: item.location || '기본 장소',
+                date: item.date || '2024-01-01',
+                equipment: item.equipment || '기본 장비',
+                cast: Array.isArray(item.cast) ? item.cast : ['기본 배우'],
+                props: Array.isArray(item.props) ? item.props : ['기본 소품'],
+                lighting: item.lighting || '기본 조명',
+                weather: item.weather || '맑음',
+                timeOfDay: item.timeOfDay || '낮',
+                specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
+              },
+              weights: item.weights || {
+                locationPriority: item.locationPriority || 1,
+                equipmentPriority: item.equipmentPriority || 1,
+                castPriority: item.castPriority || 1,
+                timePriority: item.timePriority || 1,
+                complexity: item.complexity || 1
+              },
+              canEdit: item.canEdit !== undefined ? item.canEdit : true,
+              lastModified: item.lastModified || new Date().toISOString(),
+              modifiedBy: item.modifiedBy || 'AI'
+            }
             }
           })
           console.log(`✅ ${foundKey} 배열 사용:`, conteList.length)
@@ -769,6 +793,9 @@ app.post('/api/conte/generate', async (req, res) => {
                 visualEffects: item.visualEffects || item.effects || '',
                 type: item.type || 'live_action',
                 estimatedDuration: item.estimatedDuration || item.duration || '5분',
+                requiredPersonnel: item.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+                requiredEquipment: item.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+                camera: item.camera || 'C1',
                 keywords: item.keywords || {
                   userInfo: item.userInfo || '기본 사용자',
                   location: item.location || '기본 장소',
@@ -778,7 +805,7 @@ app.post('/api/conte/generate', async (req, res) => {
                   props: Array.isArray(item.props) ? item.props : ['기본 소품'],
                   lighting: item.lighting || '기본 조명',
                   weather: item.weather || '맑음',
-                  timeOfDay: item.timeOfDay || '주간',
+                  timeOfDay: item.timeOfDay || '낮',
                   specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
                 },
                 weights: item.weights || {
@@ -821,6 +848,9 @@ app.post('/api/conte/generate', async (req, res) => {
             visualEffects: item.visualEffects || item.effects || '',
             type: item.type || 'live_action',
             estimatedDuration: item.estimatedDuration || item.duration || '5분',
+            requiredPersonnel: item.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+            requiredEquipment: item.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+            camera: item.camera || 'C1',
             keywords: item.keywords || {
               userInfo: item.userInfo || '기본 사용자',
               location: item.location || '기본 장소',
@@ -830,7 +860,7 @@ app.post('/api/conte/generate', async (req, res) => {
               props: Array.isArray(item.props) ? item.props : ['기본 소품'],
               lighting: item.lighting || '기본 조명',
               weather: item.weather || '맑음',
-              timeOfDay: item.timeOfDay || '주간',
+              timeOfDay: item.timeOfDay || '낮',
               specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
             },
             weights: item.weights || {
@@ -874,6 +904,9 @@ app.post('/api/conte/generate', async (req, res) => {
             description: content.length > 200 ? content.substring(0, 200) + '...' : content,
             type: 'live_action'
           }),
+          requiredPersonnel: '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+          requiredEquipment: '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+          camera: 'C1',
           keywords: {
             userInfo: '기본 사용자',
             location: '기본 장소',
@@ -883,7 +916,7 @@ app.post('/api/conte/generate', async (req, res) => {
             props: ['기본 소품'],
             lighting: '기본 조명',
             weather: '맑음',
-            timeOfDay: '주간',
+            timeOfDay: '낮',
             specialRequirements: []
           },
           weights: {
@@ -989,7 +1022,7 @@ app.post('/api/conte/generate', async (req, res) => {
           visualEffects: card.visualEffects || '설정 없음',
           type: card.type || 'generated_video', // 기본값: AI 생성 비디오
           estimatedDuration: card.estimatedDuration || '5분',
-          // 키워드 노드 정보 - 개별 파싱
+          // 키워드 노드 정보 - timeOfDay가 반드시 포함되도록 파싱
           keywords: parseKeywords(card.keywords),
           // 그래프 가중치 - 개별 파싱
           weights: parseWeights(card.weights),
@@ -1029,15 +1062,18 @@ app.post('/api/conte/generate', async (req, res) => {
         visualDescription: '',
         transition: '',
         lensSpecs: '',
-                  visualEffects: '',
-          type: 'live_action',
-          typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
-          estimatedDuration: calculateSceneDuration({
-            dialogue: '',
-            visualEffects: '',
-            description: content.length > 200 ? content.substring(0, 200) + '...' : content,
-            type: 'live_action'
-          }),
+        visualEffects: '',
+        type: 'live_action',
+        typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
+        estimatedDuration: calculateSceneDuration({
+          dialogue: '',
+          visualEffects: '',
+          description: content.length > 200 ? content.substring(0, 200) + '...' : content,
+          type: 'live_action'
+        }),
+        requiredPersonnel: '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+        requiredEquipment: '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+        camera: 'C1',
         keywords: {
           userInfo: '기본 사용자',
           location: '기본 장소',
@@ -1047,7 +1083,7 @@ app.post('/api/conte/generate', async (req, res) => {
           props: ['기본 소품'],
           lighting: '기본 조명',
           weather: '맑음',
-          timeOfDay: '주간',
+          timeOfDay: '낮',
           specialRequirements: []
         },
         weights: {
