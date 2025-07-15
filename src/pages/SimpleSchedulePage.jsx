@@ -39,6 +39,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal';
 import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토리 생성 스토어 추가
+import { getProject } from '../services/projectApi';
 
 /**
  * 간단한 스케줄표 페이지
@@ -66,39 +67,64 @@ const SimpleSchedulePage = () => {
   // 프로젝트 ID 결정: URL 파라미터 > useParams > null
   const finalProjectId = urlProjectId || projectId;
 
-  // 스토리 생성 스토어에서 실제 콘티 데이터 가져오기
+  // 스토리 생성 스토어에서 실제 콘티 데이터 가져오기 (기본값으로만 사용)
   const { conteGeneration } = useStoryGenerationStore();
   const actualConteData = conteGeneration.generatedConte;
+
+  // location.state에서 전달받은 콘티 데이터 확인
+  const passedConteData = location.state?.conteData;
+
+  // 프로젝트 정보 가져오기 함수
+  const getProjectInfo = async (projectId) => {
+    try {
+      console.log(`📋 프로젝트 ${projectId} 정보 가져오는 중...`);
+      
+      const response = await getProject(projectId, { includeContes: false });
+      
+      if (response.success && response.data?.project) {
+        console.log(`✅ 프로젝트 ${projectId} 정보 가져옴:`, response.data.project.projectTitle);
+        return response.data.project;
+      } else {
+        console.warn(`⚠️ 프로젝트 ${projectId} 정보 가져오기 실패`);
+      }
+      return null;
+    } catch (error) {
+      console.error(`❌ 프로젝트 ${projectId} 정보 가져오기 오류:`, error);
+      return null;
+    }
+  };
+
+  // 프로젝트별 콘티 데이터 가져오기 함수
+  const getProjectConteData = async (projectId) => {
+    try {
+      console.log(`📋 프로젝트 ${projectId}의 콘티 데이터 가져오는 중...`);
+      
+      const response = await getProject(projectId, { includeContes: true });
+      
+      if (response.success && response.data?.conteList) {
+        const contes = response.data.conteList.map(conte => ({
+          ...conte,
+          projectTitle: response.data.project.projectTitle,
+          projectId: projectId
+        }));
+        console.log(`✅ 프로젝트 ${projectId}에서 ${contes.length}개 콘티 가져옴`);
+        return contes;
+      } else {
+        console.warn(`⚠️ 프로젝트 ${projectId} 콘티 데이터 가져오기 실패`);
+      }
+      return [];
+    } catch (error) {
+      console.error(`❌ 프로젝트 ${projectId} 콘티 데이터 가져오기 오류:`, error);
+      return [];
+    }
+  };
 
   // 즐겨찾기된 프로젝트 데이터 가져오기
   const getFavoriteProjectsData = async () => {
     try {
       if (finalProjectId) {
         // 특정 프로젝트의 콘티 데이터만 가져오기
-        console.log(`📋 프로젝트 ${finalProjectId}의 콘티 데이터 가져오는 중...`);
-        
-        const response = await fetch(`/api/projects/${finalProjectId}?includeContes=true`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const projectData = await response.json();
-          if (projectData.data && projectData.data.conteList) {
-            const contes = projectData.data.conteList.map(conte => ({
-              ...conte,
-              projectTitle: projectData.data.project.projectTitle,
-              projectId: finalProjectId
-            }));
-            console.log(`✅ 프로젝트 ${finalProjectId}에서 ${contes.length}개 콘티 가져옴`);
-            return contes;
-          }
-        } else {
-          console.warn(`⚠️ 프로젝트 ${finalProjectId} 콘티 데이터 가져오기 실패`);
-        }
-        return [];
+        return await getProjectConteData(finalProjectId);
       } else {
         // 기존 로직: 모든 즐겨찾기 프로젝트의 콘티 데이터 가져오기
         const storedData = localStorage.getItem('favoriteProjects');
@@ -112,31 +138,8 @@ const SimpleSchedulePage = () => {
           for (const project of favoriteProjects) {
             try {
               const projectId = project.id || project._id;
-              console.log(`📋 프로젝트 ${projectId}의 콘티 데이터 가져오는 중...`);
-              
-              // 프로젝트의 콘티 데이터 가져오기
-              const response = await fetch(`/api/projects/${projectId}?includeContes=true`, {
-                headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              if (response.ok) {
-                const projectData = await response.json();
-                if (projectData.data && projectData.data.conteList) {
-                  projectData.data.conteList.forEach(conte => {
-                    allContes.push({
-                      ...conte,
-                      projectTitle: project.projectTitle,
-                      projectId: projectId
-                    });
-                  });
-                  console.log(`✅ 프로젝트 ${projectId}에서 ${projectData.data.conteList.length}개 콘티 가져옴`);
-                }
-              } else {
-                console.warn(`⚠️ 프로젝트 ${projectId} 콘티 데이터 가져오기 실패`);
-              }
+              const projectContes = await getProjectConteData(projectId);
+              allContes.push(...projectContes);
             } catch (error) {
               console.error(`❌ 프로젝트 ${project.id || project._id} 콘티 데이터 가져오기 오류:`, error);
             }
@@ -156,29 +159,32 @@ const SimpleSchedulePage = () => {
   // 사용할 콘티 데이터 결정 (비동기 처리)
   const [conteData, setConteData] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [projectInfo, setProjectInfo] = useState(null); // 프로젝트 정보 추가
+  const [isLoadingConteData, setIsLoadingConteData] = useState(true); // 콘티 데이터 로딩 상태 추가
   
   useEffect(() => {
     const loadConteData = async () => {
-      if (isFavoriteView) {
+      setIsLoadingConteData(true); // 로딩 시작
+      console.log('🔍 SimpleSchedulePage 콘티 데이터 로드 시작');
+      console.log('  - isFavoriteView:', isFavoriteView);
+      console.log('  - finalProjectId:', finalProjectId);
+      console.log('  - passedConteData:', passedConteData?.length || 0, '개');
+      console.log('  - actualConteData:', actualConteData?.length || 0, '개');
+      console.log('  - location.state:', location.state);
+      console.log('  - location.search:', location.search);
+      
+      let dataToUse = [];
+      
+      if (passedConteData && passedConteData.length > 0) {
+        // Dashboard나 ProjectPage에서 전달받은 콘티 데이터 사용 (최우선)
+        console.log('📋 전달받은 콘티 데이터 사용:', passedConteData.length, '개');
+        console.log('📋 첫 번째 콘티 샘플:', passedConteData[0]);
+        dataToUse = passedConteData;
+      } else if (isFavoriteView) {
+        // 즐겨찾기 모드: 프로젝트 ID로 데이터 가져오기
         const favoriteData = await getFavoriteProjectsData();
         console.log('📋 즐겨찾기 콘티 데이터 로드:', favoriteData.length, '개');
-        console.log('📋 첫 번째 콘티 샘플:', favoriteData[0]);
-        
-        // keywords 필드가 없는 경우 기본값 추가
-        const processedData = favoriteData.map(conte => ({
-          ...conte,
-          keywords: conte.keywords || {
-            location: '미정',
-            equipment: '기본 장비',
-            cast: [],
-            props: [],
-            specialRequirements: [],
-            timeOfDay: '오후',
-            weather: conte.weather || '맑음'
-          }
-        }));
-        
-        setConteData(processedData);
+        dataToUse = favoriteData;
         
         // 선택된 프로젝트 정보 설정
         if (finalProjectId) {
@@ -187,30 +193,45 @@ const SimpleSchedulePage = () => {
             setSelectedProject(JSON.parse(storedProject));
           }
         }
+      } else if (finalProjectId) {
+        // URL 파라미터로 프로젝트 ID가 있는 경우 해당 프로젝트 데이터 가져오기
+        console.log('📋 URL 파라미터 프로젝트 ID로 데이터 가져오기:', finalProjectId);
+        const projectData = await getProjectConteData(finalProjectId);
+        console.log('📋 프로젝트 데이터 로드:', projectData.length, '개');
+        dataToUse = projectData;
+        
+        // 프로젝트 정보도 함께 가져오기
+        const projectInfoData = await getProjectInfo(finalProjectId);
+        if (projectInfoData) {
+          setProjectInfo(projectInfoData);
+        }
       } else {
-        console.log('📋 일반 콘티 데이터 로드:', actualConteData?.length || 0, '개');
-        console.log('📋 첫 번째 콘티 샘플:', actualConteData?.[0]);
-        
-        // keywords 필드가 없는 경우 기본값 추가
-        const processedData = (actualConteData || testConteData).map(conte => ({
-          ...conte,
-          keywords: conte.keywords || {
-            location: '미정',
-            equipment: '기본 장비',
-            cast: [],
-            props: [],
-            specialRequirements: [],
-            timeOfDay: '오후',
-            weather: conte.weather || '맑음'
-          }
-        }));
-        
-        setConteData(processedData);
+        // 기본값: 스토리 생성 스토어의 데이터 사용
+        console.log('📋 기본 콘티 데이터 로드:', actualConteData?.length || 0, '개');
+        dataToUse = actualConteData || testConteData;
       }
+      
+      // keywords 필드가 없는 경우 기본값 추가
+      const processedData = dataToUse.map(conte => ({
+        ...conte,
+        keywords: conte.keywords || {
+          location: '미정',
+          equipment: '기본 장비',
+          cast: [],
+          props: [],
+          specialRequirements: [],
+          timeOfDay: '오후',
+          weather: conte.weather || '맑음'
+        }
+      }));
+      
+      console.log('✅ 최종 처리된 콘티 데이터:', processedData.length, '개');
+      setConteData(processedData);
+      setIsLoadingConteData(false); // 로딩 완료
     };
     
     loadConteData();
-  }, [isFavoriteView, actualConteData, finalProjectId]);
+  }, [isFavoriteView, actualConteData, finalProjectId, passedConteData]);
 
   const getConteData = () => {
     return conteData;
@@ -880,9 +901,30 @@ const SimpleSchedulePage = () => {
     return actualDuration;
   };
 
-  // 뒤로가기 함수
+  // 뒤로가기 함수 - 단순화된 버전
   const handleBack = () => {
-    navigate(-1);
+    console.log('🔙 뒤로가기 버튼 클릭됨');
+    console.log('  - finalProjectId:', finalProjectId);
+    console.log('  - location.state:', location.state);
+    
+    // location.state에서 returnTo 정보 확인
+    const returnTo = location.state?.returnTo;
+    
+    if (returnTo && returnTo.path) {
+      // Dashboard에서 전달받은 returnTo 정보가 있으면 해당 경로로 이동
+      console.log('🔙 Dashboard로 돌아가기:', returnTo.path);
+      navigate(returnTo.path, { 
+        state: returnTo.state
+      });
+    } else if (finalProjectId) {
+      // URL 파라미터로 프로젝트 ID가 있으면 해당 프로젝트 페이지로 이동
+      console.log('🔙 프로젝트 페이지로 돌아가기:', `/project/${finalProjectId}`);
+      navigate(`/project/${finalProjectId}`);
+    } else {
+      // 기본값: 이전 페이지로 이동
+      console.log('🔙 이전 페이지로 돌아가기');
+      navigate(-1);
+    }
   };
 
   /**
@@ -1024,6 +1066,8 @@ const SimpleSchedulePage = () => {
     }
   }, [dateRange])
 
+  // 브라우저 뒤로가기/앞으로가기 버튼 처리 - 제거 (단순화)
+
   // 날짜가 변경될 때마다 days에 날짜를 할당
   const daysWithDates = scheduleData && scheduleData.days
     ? assignDatesToDays(scheduleData.days, dateRange)
@@ -1043,7 +1087,9 @@ const SimpleSchedulePage = () => {
         
         <Typography variant="h4" component="h1" gutterBottom>
           {finalProjectId 
-            ? `📅 프로젝트 스케줄` 
+            ? (projectInfo 
+                ? `📅 ${projectInfo.projectTitle} 스케줄` 
+                : `📅 프로젝트 스케줄 (ID: ${finalProjectId})`)
             : (isFavoriteView 
                 ? (selectedProject 
                     ? `⭐ ${selectedProject.projectTitle} 스케줄` 
@@ -1055,7 +1101,9 @@ const SimpleSchedulePage = () => {
         
         <Typography variant="body1" color="text.secondary">
           {finalProjectId 
-            ? `선택된 프로젝트의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.`
+            ? (projectInfo 
+                ? `${projectInfo.projectTitle} 프로젝트의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.`
+                : `프로젝트 ID: ${finalProjectId} - 선택된 프로젝트의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.`)
             : (isFavoriteView 
                 ? (selectedProject 
                     ? `${selectedProject.projectTitle} 프로젝트의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.`
@@ -1066,7 +1114,19 @@ const SimpleSchedulePage = () => {
         </Typography>
       </Box>
 
-      {/* 로딩 상태 */}
+      {/* 콘티 데이터 로딩 상태 */}
+      {isLoadingConteData && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Schedule sx={{ animation: 'spin 1s linear infinite' }} />
+              <Typography>콘티 데이터를 불러오는 중...</Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 스케줄 생성 로딩 상태 */}
       {isLoading && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
@@ -1095,7 +1155,7 @@ const SimpleSchedulePage = () => {
       )}
 
       {/* 실제 콘티 데이터가 없을 때 안내 메시지 */}
-      {!getConteData() || getConteData().length === 0 ? (
+      {!isLoadingConteData && (!getConteData() || getConteData().length === 0) ? (
         <Card sx={{ mb: 3, backgroundColor: '#fff3e0' }}>
           <CardContent>
             <Typography variant="h6" color="warning.main" gutterBottom>

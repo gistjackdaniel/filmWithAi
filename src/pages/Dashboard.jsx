@@ -42,7 +42,7 @@ import toast from 'react-hot-toast'
 import UserProfile from '../components/UserProfile'
 import OnboardingModal from '../components/OnboardingModal'
 import ProjectSelectionModal from '../components/ProjectSelectionModal'
-import { toggleProjectFavorite, getFavoriteProjects } from '../services/projectApi'
+import { toggleProjectFavorite, getFavoriteProjects, getProject } from '../services/projectApi'
 
 /**
  * SceneForge 대시보드 페이지 컴포넌트
@@ -201,7 +201,7 @@ const Dashboard = () => {
    * 즐겨찾기된 프로젝트 스케줄 보기 핸들러
    * @param {Object} project - 선택된 프로젝트 (선택사항)
    */
-  const handleViewFavoriteSchedule = (project = null) => {
+  const handleViewFavoriteSchedule = async (project = null) => {
     console.log('📅 handleViewFavoriteSchedule 호출됨')
     console.log('📅 전달된 프로젝트:', project)
     console.log('📅 현재 즐겨찾기 프로젝트 목록:', favoriteProjects)
@@ -211,21 +211,53 @@ const Dashboard = () => {
       return
     }
 
-    if (favoriteProjects.length === 1 && !project) {
-      // 즐겨찾기가 1개인 경우 바로 해당 프로젝트의 스케줄로 이동
-      const singleProject = favoriteProjects[0]
-      const projectId = singleProject._id || singleProject.id
-      console.log('📅 단일 즐겨찾기 프로젝트로 스케줄 페이지 이동:', projectId)
-      navigate(`/schedule/${projectId}`)
-    } else if (project) {
-      // 특정 프로젝트가 선택된 경우
-      const projectId = project._id || project.id
-      console.log('📅 선택된 프로젝트로 스케줄 페이지 이동:', projectId)
-      navigate(`/schedule/${projectId}`)
-    } else {
-      // 즐겨찾기가 여러 개인 경우 선택 모달 표시
-      console.log('📅 여러 즐겨찾기 프로젝트 - 선택 모달 표시')
-      setShowFavoriteSelection(true)
+    try {
+      let targetProject = project;
+      
+      if (favoriteProjects.length === 1 && !project) {
+        // 즐겨찾기가 1개인 경우 바로 해당 프로젝트의 스케줄로 이동
+        targetProject = favoriteProjects[0];
+      }
+      
+      if (targetProject) {
+        const projectId = targetProject._id || targetProject.id;
+        console.log('📅 프로젝트 콘티 데이터 가져오는 중:', projectId);
+        
+        // 프로젝트의 콘티 데이터를 가져오기
+        const response = await getProject(projectId, { includeContes: true });
+        console.log('📅 API 응답:', response);
+        
+        if (response.success && response.data?.conteList) {
+          const conteData = response.data.conteList;
+          console.log('📅 프로젝트 콘티 데이터 가져옴:', conteData.length, '개');
+          console.log('📅 첫 번째 콘티 샘플:', conteData[0]);
+          
+          // 스케줄 페이지로 이동하면서 콘티 데이터 전달
+          const navigationState = {
+            conteData: conteData,
+            returnTo: {
+              path: '/',
+              state: {}
+            }
+          };
+          console.log('📅 네비게이션 상태:', navigationState);
+          
+          navigate(`/schedule/${projectId}`, {
+            state: navigationState
+          });
+        } else {
+          console.warn('📅 프로젝트에 콘티가 없음:', projectId);
+          console.warn('📅 응답 데이터:', response.data);
+          toast.error('이 프로젝트에는 콘티가 없습니다. 콘티를 먼저 생성해주세요.');
+        }
+      } else {
+        // 즐겨찾기가 여러 개인 경우 선택 모달 표시
+        console.log('📅 여러 즐겨찾기 프로젝트 - 선택 모달 표시');
+        setShowFavoriteSelection(true);
+      }
+    } catch (error) {
+      console.error('📅 프로젝트 콘티 데이터 가져오기 실패:', error);
+      toast.error('프로젝트 데이터를 가져오는데 실패했습니다.');
     }
   }
 
@@ -240,13 +272,44 @@ const Dashboard = () => {
    * 즐겨찾기 프로젝트 선택 핸들러
    * @param {Object} project - 선택된 프로젝트
    */
-  const handleSelectFavoriteProject = (project) => {
+  const handleSelectFavoriteProject = async (project) => {
     console.log('📅 즐겨찾기 프로젝트 선택됨:', project)
     const projectId = project._id || project.id
     console.log('📅 선택된 프로젝트 ID:', projectId)
     
-    // 선택된 프로젝트로 스케줄 페이지 이동
-    navigate(`/schedule/${projectId}`)
+    try {
+      // 프로젝트의 콘티 데이터를 가져오기
+      const response = await getProject(projectId, { includeContes: true });
+      console.log('📅 선택된 프로젝트 API 응답:', response);
+      
+      if (response.success && response.data?.conteList) {
+        const conteData = response.data.conteList;
+        console.log('📅 선택된 프로젝트 콘티 데이터 가져옴:', conteData.length, '개');
+        console.log('📅 첫 번째 콘티 샘플:', conteData[0]);
+        
+        // 스케줄 페이지로 이동하면서 콘티 데이터 전달
+        const navigationState = {
+          conteData: conteData,
+          returnTo: {
+            path: '/',
+            state: {}
+          }
+        };
+        console.log('📅 선택된 프로젝트 네비게이션 상태:', navigationState);
+        
+        navigate(`/schedule/${projectId}`, {
+          state: navigationState
+        });
+      } else {
+        console.warn('📅 선택된 프로젝트에 콘티가 없음:', projectId);
+        console.warn('📅 응답 데이터:', response.data);
+        toast.error('이 프로젝트에는 콘티가 없습니다. 콘티를 먼저 생성해주세요.');
+      }
+    } catch (error) {
+      console.error('📅 선택된 프로젝트 콘티 데이터 가져오기 실패:', error);
+      toast.error('프로젝트 데이터를 가져오는데 실패했습니다.');
+    }
+    
     setShowFavoriteSelection(false)
   }
 

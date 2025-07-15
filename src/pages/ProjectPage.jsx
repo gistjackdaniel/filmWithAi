@@ -672,9 +672,11 @@ const ProjectPage = () => {
         }
       }
       
-      // 간단 스케줄러 페이지로 이동하면서 현재 상태 전달 (정확한 경로로 수정)
-      navigate('/simple-schedule', { 
+      // 간단 스케줄러 페이지로 이동하면서 현재 상태 전달
+      // URL 파라미터로도 프로젝트 ID 전달하여 확실하게 구분
+      navigate(`/simple-schedule/${projectId}`, { 
         state: currentPageState
+        // replace: true 제거하여 브라우저 히스토리 유지
       })
     } else {
       toast.error('스케줄을 보려면 먼저 콘티를 생성해주세요.')

@@ -53,7 +53,7 @@ export const createProject = async (projectData) => {
  */
 export const updateProject = async (projectId, projectData) => {
   try {
-    const response = await api.put(`/api/projects/${projectId}`, projectData, {
+    const response = await api.put(`/projects/${projectId}`, projectData, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -73,7 +73,7 @@ export const updateProject = async (projectId, projectData) => {
  */
 export const updateStory = async (projectId, story) => {
   try {
-    const response = await api.patch(`/api/projects/${projectId}/story`, { story }, {
+    const response = await api.patch(`/projects/${projectId}/story`, { story }, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -101,7 +101,7 @@ export const getProject = async (projectId, options = {}) => {
       params.append('includeContes', 'true')
     }
     
-    const response = await api.get(`/api/projects/${projectId}?${params.toString()}`, {
+    const response = await api.get(`/projects/${projectId}?${params.toString()}`, {
       timeout: 5000
     })
     return response.data
@@ -132,7 +132,7 @@ export const getProjects = async () => {
  */
 export const deleteProject = async (projectId) => {
   try {
-    await api.delete(`/api/projects/${projectId}`, {
+    await api.delete(`/projects/${projectId}`, {
       timeout: 5000
     })
   } catch (error) {
@@ -170,7 +170,7 @@ export const autoSaveProject = async (projectId, projectData) => {
  */
 export const createConte = async (projectId, conteData) => {
   try {
-    const response = await api.post(`/api/projects/${projectId}/contes`, conteData, {
+    const response = await api.post(`/projects/${projectId}/contes`, conteData, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -191,7 +191,7 @@ export const createConte = async (projectId, conteData) => {
  */
 export const updateConte = async (projectId, conteId, conteData) => {
   try {
-    const response = await api.put(`/api/projects/${projectId}/contes/${conteId}`, conteData, {
+    const response = await api.put(`/projects/${projectId}/contes/${conteId}`, conteData, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -211,7 +211,7 @@ export const updateConte = async (projectId, conteId, conteData) => {
  */
 export const duplicateProject = async (projectId, newTitle) => {
   try {
-    const response = await api.post(`/api/projects/${projectId}/duplicate`, { 
+    const response = await api.post(`/projects/${projectId}/duplicate`, { 
       newTitle 
     }, {
       timeout: 10000,
@@ -232,7 +232,7 @@ export const duplicateProject = async (projectId, newTitle) => {
  */
 export const searchProjects = async (query) => {
   try {
-    const response = await api.get('/api/projects/search', {
+    const response = await api.get('/projects/search', {
       params: { q: query },
       timeout: 5000
     })

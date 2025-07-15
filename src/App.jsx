@@ -137,6 +137,16 @@ function App() {
           } 
         />
         
+        {/* 프로젝트별 간단한 스케줄 페이지 라우트 */}
+        <Route 
+          path="/simple-schedule/:projectId" 
+          element={
+            <ProtectedRoute>
+              <SimpleSchedulePage />
+            </ProtectedRoute>
+          } 
+        />
+        
         {/* 프로젝트별 스케줄 페이지 라우트 */}
         <Route 
           path="/schedule/:projectId" 
