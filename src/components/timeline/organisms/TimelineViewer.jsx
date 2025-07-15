@@ -59,15 +59,80 @@ const TimelineViewer = (props) => {
   } = props || {}
 
   // 디버깅 로그 추가
-  console.log('TimelineViewer received props:', props)
-  console.log('TimelineViewer received scenes:', scenes, 'type:', typeof scenes, 'isArray:', Array.isArray(scenes))
+  console.log('🔍 TimelineViewer received props:', props)
+  console.log('🔍 TimelineViewer received scenes:', scenes, 'type:', typeof scenes, 'isArray:', Array.isArray(scenes))
   
   // scenes가 유효한 배열인지 확인하고 안전하게 처리
   const safeScenes = useMemo(() => {
-    if (!scenes) return []
-    const scenesArray = Array.isArray(scenes) ? scenes : []
-    console.log('TimelineViewer safeScenes:', scenesArray, 'length:', scenesArray?.length)
-    return scenesArray
+    if (!scenes) {
+      console.log('❌ TimelineViewer scenes is null/undefined, returning empty array')
+      return []
+    }
+    
+    if (!Array.isArray(scenes)) {
+      console.warn('❌ TimelineViewer scenes is not an array:', scenes, 'type:', typeof scenes)
+      return []
+    }
+    
+    console.log('✅ TimelineViewer safeScenes:', scenes, 'length:', scenes.length)
+    
+    // 각 씬의 상세 정보 로그
+    scenes.forEach((scene, index) => {
+      console.log(`📋 TimelineViewer 원본 씬 ${index + 1}:`)
+      console.log('  - ID:', scene.id)
+      console.log('  - 씬 번호:', scene.scene)
+      console.log('  - 제목:', scene.title)
+      console.log('  - 설명:', scene.description?.substring(0, 100) + '...')
+      console.log('  - 타입:', scene.type)
+      console.log('  - 예상 시간:', scene.estimatedDuration)
+      console.log('  - 실제 시간(초):', scene.duration)
+      console.log('  - 이미지 URL:', scene.imageUrl)
+      console.log('  - 키워드:', scene.keywords)
+      console.log('  - 시각적 설명:', scene.visualDescription?.substring(0, 50) + '...')
+      console.log('  - 대사:', scene.dialogue?.substring(0, 50) + '...')
+      console.log('  - 카메라 앵글:', scene.cameraAngle)
+      console.log('  - 카메라 워크:', scene.cameraWork)
+      console.log('  - 캐릭터 배치:', scene.characterLayout)
+      console.log('  - 소품:', scene.props)
+      console.log('  - 날씨:', scene.weather)
+      console.log('  - 조명:', scene.lighting)
+      console.log('  - 전환:', scene.transition)
+      console.log('  - 렌즈 사양:', scene.lensSpecs)
+      console.log('  - 시각 효과:', scene.visualEffects)
+      console.log('  ---')
+    })
+    
+    // 각 씬의 필수 필드 확인
+    const validatedScenes = scenes.map((scene, index) => {
+      if (!scene) {
+        console.warn(`❌ TimelineViewer scene at index ${index} is null/undefined`)
+        return null
+      }
+      
+      // 필수 필드가 없는 경우 기본값 설정
+      const validatedScene = {
+        id: scene.id || `scene_${index + 1}`,
+        scene: scene.scene || index + 1,
+        title: scene.title || `씬 ${scene.scene || index + 1}`,
+        description: scene.description || '',
+        type: scene.type || 'live_action',
+        duration: scene.duration || 300, // 기본 5분
+        ...scene
+      }
+      
+      console.log(`✅ TimelineViewer 검증된 씬 ${index + 1}:`, {
+        id: validatedScene.id,
+        scene: validatedScene.scene,
+        title: validatedScene.title,
+        type: validatedScene.type,
+        duration: validatedScene.duration
+      })
+      
+      return validatedScene
+    }).filter(Boolean) // null 값 제거
+    
+    console.log('✅ TimelineViewer validated scenes:', validatedScenes.length, 'scenes')
+    return validatedScenes
   }, [scenes])
   
   // 안전한 참조를 위한 메모이제이션된 값들

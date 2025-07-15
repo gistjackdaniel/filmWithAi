@@ -121,43 +121,88 @@ class TimelineService {
       const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
       console.log('timelineService API response:', response.data)
       
-      // 백엔드 응답 구조에 맞게 수정
-      const conteList = response.data.data?.conteList || []
+      // 백엔드 응답 구조: { data: { project: {...}, conteList: [...] } }
+      const responseData = response.data?.data
+      if (!responseData) {
+        console.error('timelineService no data field in response')
+        return {
+          success: false,
+          data: null,
+          error: '서버 응답에 데이터가 없습니다.'
+        }
+      }
+      
+      // conteList 추출
+      const conteList = responseData.conteList || []
       console.log('timelineService conteList extracted:', conteList, 'count:', conteList.length)
       
+      // 콘티 데이터가 없는 경우 처리
+      if (!conteList || !Array.isArray(conteList) || conteList.length === 0) {
+        console.log('timelineService no valid conteList found, returning empty array')
+        return {
+          success: true,
+          data: [],
+          error: null
+        }
+      }
+      
       // 콘티 데이터를 타임라인 형식으로 변환
-      const timelineScenes = conteList.map(conte => ({
-        id: conte.id || conte._id,
-        scene: conte.scene,
-        title: conte.title,
-        description: conte.description,
-        dialogue: conte.dialogue,
-        cameraAngle: conte.cameraAngle,
-        cameraWork: conte.cameraWork,
-        characterLayout: conte.characterLayout,
-        props: conte.props,
-        weather: conte.weather,
-        lighting: conte.lighting,
-        visualDescription: conte.visualDescription,
-        transition: conte.transition,
-        lensSpecs: conte.lensSpecs,
-        visualEffects: conte.visualEffects,
-        type: conte.type || 'live_action',
-        estimatedDuration: conte.estimatedDuration || '5분',
-        duration: this.parseDurationToSeconds(conte.estimatedDuration || '5분'),
-        imageUrl: conte.imageUrl,
-        keywords: conte.keywords || {},
-        weights: conte.weights || {},
-        order: conte.order || conte.scene,
-        status: conte.status || 'active',
-        canEdit: conte.canEdit !== false,
-        lastModified: conte.lastModified,
-        modifiedBy: conte.modifiedBy,
-        createdAt: conte.createdAt,
-        updatedAt: conte.updatedAt
-      }))
+      const timelineScenes = conteList.map((conte, index) => {
+        // ID 생성 로직 개선
+        const sceneId = conte.id || conte._id || `scene_${conte.scene || index + 1}`
+        
+        // duration 계산 개선
+        const duration = this.parseDurationToSeconds(conte.estimatedDuration || '5분')
+        
+        console.log(`timelineService converting scene ${conte.scene || index + 1}:`, {
+          id: sceneId,
+          title: conte.title,
+          duration: duration,
+          type: conte.type
+        })
+        
+        return {
+          id: sceneId,
+          scene: conte.scene || index + 1,
+          title: conte.title || `씬 ${conte.scene || index + 1}`,
+          description: conte.description || '',
+          dialogue: conte.dialogue || '',
+          cameraAngle: conte.cameraAngle || '',
+          cameraWork: conte.cameraWork || '',
+          characterLayout: conte.characterLayout || '',
+          props: conte.props || '',
+          weather: conte.weather || '',
+          lighting: conte.lighting || '',
+          visualDescription: conte.visualDescription || '',
+          transition: conte.transition || '',
+          lensSpecs: conte.lensSpecs || '',
+          visualEffects: conte.visualEffects || '',
+          type: conte.type || 'live_action',
+          estimatedDuration: conte.estimatedDuration || '5분',
+          duration: duration,
+          imageUrl: conte.imageUrl || null,
+          keywords: conte.keywords || {
+            location: '미정',
+            equipment: '기본 장비',
+            cast: [],
+            props: [],
+            specialRequirements: [],
+            timeOfDay: '오후',
+            weather: conte.weather || '맑음'
+          },
+          weights: conte.weights || {},
+          order: conte.order || conte.scene || index + 1,
+          status: conte.status || 'active',
+          canEdit: conte.canEdit !== false,
+          lastModified: conte.lastModified || new Date().toISOString(),
+          modifiedBy: conte.modifiedBy || 'AI',
+          createdAt: conte.createdAt || new Date().toISOString(),
+          updatedAt: conte.updatedAt || new Date().toISOString()
+        }
+      })
       
       console.log('timelineService timelineScenes converted:', timelineScenes.length, 'scenes')
+      console.log('timelineService first scene sample:', timelineScenes[0])
       
       return {
         success: true,
@@ -166,6 +211,11 @@ class TimelineService {
       }
     } catch (error) {
       console.error('콘티 데이터 가져오기 실패:', error)
+      console.error('timelineService error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
       return {
         success: false,
         data: null,

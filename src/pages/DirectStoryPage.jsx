@@ -47,6 +47,7 @@ import ConteResult from '../components/StoryGeneration/ConteResult'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import { generateSceneImage } from '../services/storyGenerationApi'
 import useProjectStore from '../stores/projectStore'
+import useTimelineStore from '../stores/timelineStore' // 타임라인 스토어 추가
 import { shouldUseDevImages, shouldShowDevBadge, getAppName, getCurrentMode } from '../config/appConfig'
 import { adaptConteForBackend, validateConteData } from '../utils/conteDataAdapter'
 
@@ -240,13 +241,13 @@ const DirectStoryPage = () => {
     
     console.log('✅ 콘티 생성 완료:', processedConteList.length, '개')
     
-    // 개발용 이미지 생성 (OpenAI API 비용 절약)
+    // 실제 OpenAI API로 이미지 생성
     const conteWithImages = await Promise.all(
       processedConteList.map(async (conte) => {
         try {
-          console.log(`🖼️ 개발용 이미지 생성 중: 씬 ${conte.scene}`)
+          console.log(`🖼️ 이미지 생성 중: 씬 ${conte.scene}`)
           
-          // 개발용 이미지 생성
+          // 실제 OpenAI API로 이미지 생성
           const imageResult = await generateDevelopmentImage(
             `${conte.title}: ${conte.description}`
           )
@@ -256,27 +257,29 @@ const DirectStoryPage = () => {
             imageUrl: imageResult.url,
             imagePrompt: imageResult.prompt,
             imageGeneratedAt: new Date().toISOString(),
-            imageModel: 'development',
-            isDevelopment: true,
-            isFreeTier: true
+            imageModel: imageResult.model,
+            isDevelopment: imageResult.isDevelopment,
+            isFreeTier: imageResult.isFreeTier
           }
         } catch (error) {
           console.error(`❌ 이미지 생성 실패 (씬 ${conte.scene}):`, error)
+          // 이미지 생성 실패 시에도 콘티는 유지하되 이미지 없이 반환
           return {
             ...conte,
-            imageUrl: 'https://picsum.photos/512/512?random=' + Math.random(),
-            imagePrompt: '개발용 이미지 생성 실패',
+            imageUrl: null,
+            imagePrompt: null,
             imageGeneratedAt: new Date().toISOString(),
-            imageModel: 'development_error',
-            isDevelopment: true,
-            isFreeTier: true
+            imageModel: null,
+            isDevelopment: false,
+            isFreeTier: false,
+            imageError: error.message
           }
         }
       })
     )
     
     setGeneratedConte(conteWithImages)
-    toast.success(`✅ ${conteWithImages.length}개의 콘티가 생성되었습니다! (개발용 이미지 포함)`)
+    toast.success(`✅ ${conteWithImages.length}개의 콘티가 생성되었습니다!`)
     
     // 콘티 생성 완료 후에는 프로젝트를 자동으로 생성하지 않음
     // 사용자가 명시적으로 저장 버튼을 클릭할 때만 프로젝트 생성
@@ -397,34 +400,20 @@ const DirectStoryPage = () => {
       const newProject = await createProject(projectData, null) // 콘티 리스트를 null로 전달
       
       if (newProject && (newProject._id || newProject.id)) {
-        console.log('✅ 스토리 저장 완료:', newProject._id || newProject.id)
+        const projectId = newProject._id || newProject.id
+        console.log('✅ 스토리 프로젝트 생성 완료:', projectId)
         
-        // 프로젝트 상태를 story_ready로 설정
-        console.log('🔄 프로젝트 상태 업데이트 중...')
-        const { updateProject } = useProjectStore.getState()
-        
-        await updateProject(newProject._id || newProject.id, {
-          status: 'story_ready'
-        })
-        
-        console.log('✅ 프로젝트 상태 업데이트 완료: story_ready')
-        
-        // 로컬 스토리지에서 임시 데이터 삭제
-        localStorage.removeItem('directStoryPageState')
-        
-        // 상태 초기화
-        setStory('')
-        setGeneratedConte([])
-        setActiveStep(0)
-        setHasUnsavedChanges(false)
-        
-        // 성공 메시지 표시
+        // 프로젝트 생성 성공 후 타임라인으로 이동
         toast.success('스토리가 저장되었습니다!')
         
-        // 프로젝트 페이지로 이동
-        navigate(`/project/${newProject._id || newProject.id}`)
+        // 타임라인 스토어에 프로젝트 ID 설정
+        const { setCurrentProjectId } = useTimelineStore.getState()
+        setCurrentProjectId(projectId)
+        
+        // 실제 프로젝트 페이지로 이동
+        navigate(`/project/${projectId}`)
       } else {
-        throw new Error('스토리 저장에 실패했습니다.')
+        throw new Error('프로젝트 생성 실패: 프로젝트 ID가 없습니다.')
       }
       
     } catch (error) {
@@ -516,6 +505,39 @@ const DirectStoryPage = () => {
           // 성공 메시지 표시
           toast.success(`✅ 프로젝트와 ${conteWithImages.length}개의 콘티가 성공적으로 저장되었습니다!`)
           
+          // 타임라인 스토어에 콘티 데이터 설정
+          const { setScenes, setCurrentProjectId } = useTimelineStore.getState()
+          
+          // 콘티 데이터를 타임라인 형식으로 변환
+          const timelineScenes = conteWithImages.map((conte, index) => ({
+            id: conte.id || `scene_${conte.scene || index + 1}`,
+            scene: conte.scene || index + 1,
+            title: conte.title || `씬 ${conte.scene || index + 1}`,
+            description: conte.description || '',
+            type: conte.type || 'live_action',
+            estimatedDuration: conte.estimatedDuration || '5분',
+            duration: parseDurationToSeconds(conte.estimatedDuration || '5분'),
+            imageUrl: conte.imageUrl || null,
+            keywords: conte.keywords || {},
+            visualDescription: conte.visualDescription || '',
+            dialogue: conte.dialogue || '',
+            cameraAngle: conte.cameraAngle || '',
+            cameraWork: conte.cameraWork || '',
+            characterLayout: conte.characterLayout || '',
+            props: conte.props || '',
+            weather: conte.weather || '',
+            lighting: conte.lighting || '',
+            transition: conte.transition || '',
+            lensSpecs: conte.lensSpecs || '',
+            visualEffects: conte.visualEffects || ''
+          }))
+          
+          console.log('📋 타임라인 스토어에 저장된 콘티 데이터 설정:', timelineScenes.length, '개')
+          
+          // 타임라인 스토어에 데이터 설정
+          setScenes(timelineScenes)
+          setCurrentProjectId(projectId)
+          
           // 저장된 프로젝트 페이지로 이동
           navigate(`/project/${projectId}`)
           
@@ -549,11 +571,114 @@ const DirectStoryPage = () => {
 
   const handleViewTimeline = () => {
     if (generatedConte.length > 0) {
+      console.log('📋 타임라인 보기 - 콘티 데이터:', generatedConte.length, '개')
+      
+      // 원본 콘티 데이터 로그
+      console.log('🔍 DirectStoryPage 원본 콘티 데이터:')
+      generatedConte.forEach((conte, index) => {
+        console.log(`📋 원본 콘티 ${index + 1}:`)
+        console.log('  - ID:', conte.id)
+        console.log('  - 씬 번호:', conte.scene)
+        console.log('  - 제목:', conte.title)
+        console.log('  - 설명:', conte.description?.substring(0, 100) + '...')
+        console.log('  - 타입:', conte.type)
+        console.log('  - 예상 시간:', conte.estimatedDuration)
+        console.log('  - 이미지 URL:', conte.imageUrl)
+        console.log('  - 키워드:', conte.keywords)
+        console.log('  - 시각적 설명:', conte.visualDescription?.substring(0, 50) + '...')
+        console.log('  - 대사:', conte.dialogue?.substring(0, 50) + '...')
+        console.log('  - 카메라 앵글:', conte.cameraAngle)
+        console.log('  - 카메라 워크:', conte.cameraWork)
+        console.log('  - 캐릭터 배치:', conte.characterLayout)
+        console.log('  - 소품:', conte.props)
+        console.log('  - 날씨:', conte.weather)
+        console.log('  - 조명:', conte.lighting)
+        console.log('  - 전환:', conte.transition)
+        console.log('  - 렌즈 사양:', conte.lensSpecs)
+        console.log('  - 시각 효과:', conte.visualEffects)
+        console.log('  ---')
+      })
+      
+      // 타임라인 스토어에 콘티 데이터 직접 설정
+      const { setScenes, setCurrentProjectId } = useTimelineStore.getState()
+      
+      // 콘티 데이터를 타임라인 형식으로 변환
+      const timelineScenes = generatedConte.map((conte, index) => {
+        const duration = parseDurationToSeconds(conte.estimatedDuration || '5분')
+        console.log(`🔄 타임라인 변환 - 씬 ${index + 1}:`)
+        console.log('  - 원본 시간:', conte.estimatedDuration)
+        console.log('  - 변환된 시간(초):', duration)
+        
+        return {
+          id: conte.id || `scene_${conte.scene || index + 1}`,
+          scene: conte.scene || index + 1,
+          title: conte.title || `씬 ${conte.scene || index + 1}`,
+          description: conte.description || '',
+          type: conte.type || 'live_action',
+          estimatedDuration: conte.estimatedDuration || '5분',
+          duration: duration,
+          imageUrl: conte.imageUrl || null,
+          keywords: conte.keywords || {},
+          visualDescription: conte.visualDescription || '',
+          dialogue: conte.dialogue || '',
+          cameraAngle: conte.cameraAngle || '',
+          cameraWork: conte.cameraWork || '',
+          characterLayout: conte.characterLayout || '',
+          props: conte.props || '',
+          weather: conte.weather || '',
+          lighting: conte.lighting || '',
+          transition: conte.transition || '',
+          lensSpecs: conte.lensSpecs || '',
+          visualEffects: conte.visualEffects || ''
+        }
+      })
+      
+      console.log('📋 타임라인 스토어에 설정할 변환된 씬 데이터:', timelineScenes.length, '개')
+      
+      // 변환된 씬 데이터 상세 로그
+      timelineScenes.forEach((scene, index) => {
+        console.log(`📋 변환된 씬 ${index + 1}:`)
+        console.log('  - ID:', scene.id)
+        console.log('  - 씬 번호:', scene.scene)
+        console.log('  - 제목:', scene.title)
+        console.log('  - 설명:', scene.description?.substring(0, 100) + '...')
+        console.log('  - 타입:', scene.type)
+        console.log('  - 예상 시간:', scene.estimatedDuration)
+        console.log('  - 실제 시간(초):', scene.duration)
+        console.log('  - 이미지 URL:', scene.imageUrl)
+        console.log('  - 키워드:', scene.keywords)
+        console.log('  - 시각적 설명:', scene.visualDescription?.substring(0, 50) + '...')
+        console.log('  - 대사:', scene.dialogue?.substring(0, 50) + '...')
+        console.log('  - 카메라 앵글:', scene.cameraAngle)
+        console.log('  - 카메라 워크:', scene.cameraWork)
+        console.log('  - 캐릭터 배치:', scene.characterLayout)
+        console.log('  - 소품:', scene.props)
+        console.log('  - 날씨:', scene.weather)
+        console.log('  - 조명:', scene.lighting)
+        console.log('  - 전환:', scene.transition)
+        console.log('  - 렌즈 사양:', scene.lensSpecs)
+        console.log('  - 시각 효과:', scene.visualEffects)
+        console.log('  ---')
+      })
+      
+      // 타임라인 스토어에 데이터 설정
+      console.log('🔧 타임라인 스토어에 데이터 설정 중...')
+      setScenes(timelineScenes)
+      setCurrentProjectId('temp-project-id') // 임시 프로젝트 ID 설정
+      console.log('✅ 타임라인 스토어 데이터 설정 완료')
+      
+      // 로컬 스토리지에도 백업 저장
+      console.log('💾 로컬 스토리지에 백업 저장 중...')
       localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
-      // 임시 프로젝트 ID 대신 실제 프로젝트가 생성된 후 해당 ID로 이동하도록 수정
-      // 현재는 임시 프로젝트로 이동하지만, 실제로는 프로젝트 저장 후 해당 ID로 이동해야 함
+      console.log('✅ 로컬 스토리지 백업 저장 완료')
+      
+      // 타임라인 페이지로 이동
+      console.log('🚀 타임라인 페이지로 이동 중...')
       navigate('/project/temp-project-id')
+      
+      toast.success(`${timelineScenes.length}개의 콘티가 타임라인에 로드되었습니다.`)
     } else {
+      console.log('❌ 타임라인 보기 실패: 생성된 콘티가 없음')
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
     }
   }
@@ -589,9 +714,9 @@ const DirectStoryPage = () => {
    */
   const handleImageRetry = async (conte) => {
     try {
-      console.log('🔄 개발용 이미지 재시도 시작:', conte.scene)
+      console.log('🔄 이미지 재시도 시작:', conte.scene)
       
-      // 개발용 이미지 생성
+      // 실제 OpenAI API로 이미지 생성
       const imageResult = await generateDevelopmentImage(
         `${conte.title}: ${conte.description}`
       )
@@ -603,9 +728,9 @@ const DirectStoryPage = () => {
           imageUrl: imageResult.url,
           imagePrompt: imageResult.prompt,
           imageGeneratedAt: new Date().toISOString(),
-          imageModel: 'development',
-          isDevelopment: true,
-          isFreeTier: true
+          imageModel: imageResult.model,
+          isDevelopment: imageResult.isDevelopment,
+          isFreeTier: imageResult.isFreeTier
         } : c
       )
       
@@ -619,106 +744,69 @@ const DirectStoryPage = () => {
         return newErrors
       })
       
-      toast.success('개발용 이미지가 재생성되었습니다!')
+      toast.success('이미지가 재생성되었습니다!')
       
     } catch (error) {
-      console.error('❌ 개발용 이미지 재시도 실패:', error)
-      toast.error('이미지 재생성에 실패했습니다.')
+      console.error('❌ 이미지 재시도 실패:', error)
+      toast.error('이미지 재생성에 실패했습니다: ' + error.message)
     }
   }
 
   /**
-   * 개발용 이미지 생성 함수 (OpenAI API 비용 절약용)
-   * 출시 시에는 실제 OpenAI API를 사용하도록 변경
+   * 실제 OpenAI API를 사용한 이미지 생성 함수
+   * 개발 모드에서도 실제 API를 사용하여 더미데이터 방지
    */
   const generateDevelopmentImage = async (sceneDescription) => {
-    // 개발 모드 확인 (설정 파일에서 가져옴)
-    const isDevelopmentMode = shouldUseDevImages()
-    
-    // 출시 모드에서는 실제 OpenAI API 사용
-    if (!isDevelopmentMode) {
-      try {
-        console.log('🖼️ OpenAI API로 이미지 생성 중...')
-        const imageResponse = await generateSceneImage({
-          sceneDescription: sceneDescription,
-          style: 'cinematic',
-          genre: '일반',
-          size: '1024x1024'
-        })
-        
-        return {
-          url: imageResponse.imageUrl,
-          prompt: imageResponse.prompt || sceneDescription,
-          isDevelopment: false,
-          model: imageResponse.model,
-          isFreeTier: imageResponse.isFreeTier
-        }
-      } catch (error) {
-        console.error('❌ OpenAI API 이미지 생성 실패:', error)
-        // API 실패 시 개발용 이미지로 폴백
-        return generateFallbackImage(sceneDescription)
+    try {
+      console.log('🖼️ OpenAI API로 이미지 생성 중...')
+      
+      // 실제 OpenAI API 호출
+      const imageResponse = await generateSceneImage({
+        sceneDescription: sceneDescription,
+        style: 'cinematic',
+        genre: '일반',
+        size: '1024x1024'
+      })
+      
+      return {
+        url: imageResponse.imageUrl,
+        prompt: imageResponse.prompt || sceneDescription,
+        isDevelopment: false,
+        model: imageResponse.model,
+        isFreeTier: imageResponse.isFreeTier
       }
-    }
-    
-    // 개발용 이미지 URL 배열 (다양한 장르별 이미지)
-    const devImages = [
-      'https://picsum.photos/512/512?random=1&blur=1',
-      'https://picsum.photos/512/512?random=2&blur=1',
-      'https://picsum.photos/512/512?random=3&blur=1',
-      'https://picsum.photos/512/512?random=4&blur=1',
-      'https://picsum.photos/512/512?random=5&blur=1',
-      'https://picsum.photos/512/512?random=6&blur=1',
-      'https://picsum.photos/512/512?random=7&blur=1',
-      'https://picsum.photos/512/512?random=8&blur=1'
-    ]
-    
-    // 씬 설명에 따라 적절한 이미지 선택
-    const sceneText = sceneDescription.toLowerCase()
-    let imageIndex = 0
-    
-    if (sceneText.includes('액션') || sceneText.includes('싸움') || sceneText.includes('전투')) {
-      imageIndex = 0
-    } else if (sceneText.includes('드라마') || sceneText.includes('감정') || sceneText.includes('울음')) {
-      imageIndex = 1
-    } else if (sceneText.includes('로맨스') || sceneText.includes('사랑') || sceneText.includes('키스')) {
-      imageIndex = 2
-    } else if (sceneText.includes('코미디') || sceneText.includes('웃음') || sceneText.includes('재미')) {
-      imageIndex = 3
-    } else if (sceneText.includes('스릴러') || sceneText.includes('공포') || sceneText.includes('긴장')) {
-      imageIndex = 4
-    } else if (sceneText.includes('판타지') || sceneText.includes('마법') || sceneText.includes('요정')) {
-      imageIndex = 5
-    } else if (sceneText.includes('sf') || sceneText.includes('우주') || sceneText.includes('로봇')) {
-      imageIndex = 6
-    } else if (sceneText.includes('역사') || sceneText.includes('고대') || sceneText.includes('왕')) {
-      imageIndex = 7
-    }
-    
-    // 랜덤한 변형을 위해 약간의 랜덤성 추가
-    const randomOffset = Math.floor(Math.random() * 3) - 1
-    const finalIndex = Math.max(0, Math.min(devImages.length - 1, imageIndex + randomOffset))
-    
-    return {
-      url: devImages[finalIndex],
-      prompt: `개발용 이미지: ${sceneDescription}`,
-      isDevelopment: true,
-      model: 'development',
-      isFreeTier: true
+    } catch (error) {
+      console.error('❌ OpenAI API 이미지 생성 실패:', error)
+      
+      // API 실패 시 에러를 던져서 더미데이터 생성 방지
+      throw new Error(`이미지 생성에 실패했습니다: ${error.message}`)
     }
   }
   
   /**
-   * 폴백 이미지 생성 (API 실패 시 사용)
+   * 시간 문자열을 초로 변환하는 함수
+   * @param {string} duration - "X분", "X시간", "X일" 등 형태의 문자열
+   * @returns {number} 초 단위의 숫자
    */
-  const generateFallbackImage = (sceneDescription) => {
-    return {
-      url: 'https://picsum.photos/512/512?random=999&blur=2',
-      prompt: `폴백 이미지: ${sceneDescription}`,
-      isDevelopment: true,
-      model: 'fallback',
-      isFreeTier: true
+  const parseDurationToSeconds = (duration) => {
+    if (!duration) return 0;
+    const match = duration.match(/(\d+)(분|시간|일)/);
+    if (!match) return 0;
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+      case '분':
+        return value * 60;
+      case '시간':
+        return value * 60 * 60;
+      case '일':
+        return value * 24 * 60 * 60;
+      default:
+        return 0;
     }
-  }
+  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>

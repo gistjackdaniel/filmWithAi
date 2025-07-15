@@ -243,6 +243,42 @@ export const searchProjects = async (query) => {
 }
 
 /**
+ * 프로젝트 즐겨찾기 토글
+ * @param {string} projectId - 프로젝트 ID
+ * @returns {Promise<Object>} 토글 결과
+ */
+export const toggleProjectFavorite = async (projectId) => {
+  try {
+    // baseURL에 이미 /api가 포함되어 있으므로, 경로에서 /api를 제거
+    const response = await api.put(`/projects/${projectId}/favorite`, {}, {
+      timeout: 5000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data
+  } catch (error) {
+    handleProjectError(error, '즐겨찾기 토글')
+  }
+}
+
+/**
+ * 즐겨찾기된 프로젝트 목록 조회
+ * @returns {Promise<Array<ProjectResponse>>} 즐겨찾기 프로젝트 목록
+ */
+export const getFavoriteProjects = async () => {
+  try {
+    // baseURL에 이미 /api가 포함되어 있으므로, 경로에서 /api를 제거
+    const response = await api.get('/projects/favorites', {
+      timeout: 5000
+    })
+    return response.data
+  } catch (error) {
+    handleProjectError(error, '즐겨찾기 프로젝트 조회')
+  }
+}
+
+/**
  * 프로젝트 에러 처리
  * @param {Error} error - 발생한 에러
  * @param {string} operation - 수행 중이던 작업
@@ -285,5 +321,7 @@ export default {
   deleteProject,
   autoSaveProject,
   duplicateProject,
-  searchProjects
+  searchProjects,
+  toggleProjectFavorite,
+  getFavoriteProjects
 } 

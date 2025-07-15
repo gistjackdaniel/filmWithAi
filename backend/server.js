@@ -904,59 +904,18 @@ JSON 이외의 텍스트는 포함하지 마세요.
           console.log('✅ 단일 객체를 배열로 변환:', conteList.length)
         }
       } else {
-        console.log('❌ 파싱 실패, 기본 구조로 변환')
+        console.log('❌ 파싱 실패, 에러 반환')
         console.log('원본 content:', content)
-        // 파싱 실패 시 content를 분석하여 기본 구조 생성
-        conteList = [{
-          id: 'scene_1',
-          scene: 1,
-          title: '기본 씬',
-          description: content.length > 200 ? content.substring(0, 200) + '...' : content,
-          dialogue: '',
-          cameraAngle: '',
-          cameraWork: '',
-          characterLayout: '',
-          props: '',
-          weather: '',
-          lighting: '',
-          visualDescription: '',
-          transition: '',
-          lensSpecs: '',
-          visualEffects: '',
-          type: 'live_action',
-          typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
-          estimatedDuration: calculateSceneDuration({
-            dialogue: '',
-            visualEffects: '',
-            description: content.length > 200 ? content.substring(0, 200) + '...' : content,
-            type: 'live_action'
-          }),
-          requiredPersonnel: '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
-          requiredEquipment: '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
-          camera: 'C1',
-          keywords: {
-            userInfo: '기본 사용자',
-            location: '기본 장소',
-            date: '2024-01-01',
-            equipment: '기본 장비',
-            cast: ['기본 배우'],
-            props: ['기본 소품'],
-            lighting: '기본 조명',
-            weather: '맑음',
-            timeOfDay: '낮',
-            specialRequirements: []
-          },
-          weights: {
-            locationPriority: 1,
-            equipmentPriority: 1,
-            castPriority: 1,
-            timePriority: 1,
-            complexity: 1
-          },
-          canEdit: true,
-          lastModified: new Date().toISOString(),
-          modifiedBy: 'AI'
-        }]
+        
+        // 파싱 실패 시 에러 반환 (더미데이터 생성하지 않음)
+        return res.status(500).json({
+          success: false,
+          message: 'AI 콘티 생성에 실패했습니다. 다시 시도해주세요.',
+          error: {
+            code: 'PARSE_ERROR',
+            details: 'AI 응답을 파싱할 수 없습니다.'
+          }
+        })
       }
       
       console.log('✅ JSON 파싱 완료:', { 
@@ -1080,57 +1039,15 @@ JSON 이외의 텍스트는 포함하지 마세요.
       console.error('❌ 콘티 JSON 파싱 실패:', parseError)
       console.log('원본 응답:', content)
       
-      // 파싱 실패 시 기본 캡션 카드 구조로 변환
-      conteList = [{
-        id: 'scene_1',
-        scene: 1,
-        title: '기본 씬',
-        description: content.length > 200 ? content.substring(0, 200) + '...' : content,
-        dialogue: '',
-        cameraAngle: '',
-        cameraWork: '',
-        characterLayout: '',
-        props: '',
-        weather: '',
-        lighting: '',
-        visualDescription: '',
-        transition: '',
-        lensSpecs: '',
-        visualEffects: '',
-        type: 'live_action',
-        typeReason: '실제 배우의 연기와 물리적 상호작용이 중요한 장면으로 판단됨',
-        estimatedDuration: calculateSceneDuration({
-          dialogue: '',
-          visualEffects: '',
-          description: content.length > 200 ? content.substring(0, 200) + '...' : content,
-          type: 'live_action'
-        }),
-        requiredPersonnel: '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
-        requiredEquipment: '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
-        camera: 'C1',
-        keywords: {
-          userInfo: '기본 사용자',
-          location: '기본 장소',
-          date: '2024-01-01',
-          equipment: '기본 장비',
-          cast: ['기본 배우'],
-          props: ['기본 소품'],
-          lighting: '기본 조명',
-          weather: '맑음',
-          timeOfDay: '낮',
-          specialRequirements: []
-        },
-        weights: {
-          locationPriority: 1,
-          equipmentPriority: 1,
-          castPriority: 1,
-          timePriority: 1,
-          complexity: 1
-        },
-        canEdit: true,
-        lastModified: new Date().toISOString(),
-        modifiedBy: 'AI'
-      }]
+      // 파싱 실패 시 에러 반환 (더미데이터 생성하지 않음)
+      return res.status(500).json({
+        success: false,
+        message: 'AI 콘티 생성에 실패했습니다. 다시 시도해주세요.',
+        error: {
+          code: 'PARSE_ERROR',
+          details: 'AI 응답을 파싱할 수 없습니다.'
+        }
+      })
     }
 
     console.log('✅ AI 콘티 생성 완료:', { tokenCount, sceneCount: conteList.length })

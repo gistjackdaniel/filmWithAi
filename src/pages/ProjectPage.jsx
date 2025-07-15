@@ -74,6 +74,66 @@ const ProjectPage = () => {
     const timeoutId = setTimeout(() => {
       // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
       if (projectId === 'temp-project-id') {
+        console.log('ProjectPage temp-project-id detected, checking timeline store first')
+        
+        // 타임라인 스토어에서 이미 설정된 데이터 확인
+        const { scenes, currentProjectId } = useTimelineStore.getState()
+        
+        console.log('🔍 ProjectPage 타임라인 스토어 데이터 확인:')
+        console.log('  - currentProjectId:', currentProjectId)
+        console.log('  - scenes 배열 길이:', scenes?.length || 0)
+        console.log('  - scenes 타입:', typeof scenes)
+        console.log('  - scenes가 배열인가:', Array.isArray(scenes))
+        
+        if (scenes && scenes.length > 0 && currentProjectId === 'temp-project-id') {
+          console.log('✅ ProjectPage 타임라인 스토어에서 데이터 발견:', scenes.length, '개 씬')
+          
+          // 각 씬의 상세 정보 로그
+          scenes.forEach((scene, index) => {
+            console.log(`📋 씬 ${index + 1} 상세 정보:`)
+            console.log('  - ID:', scene.id)
+            console.log('  - 씬 번호:', scene.scene)
+            console.log('  - 제목:', scene.title)
+            console.log('  - 설명:', scene.description?.substring(0, 100) + '...')
+            console.log('  - 타입:', scene.type)
+            console.log('  - 예상 시간:', scene.estimatedDuration)
+            console.log('  - 실제 시간(초):', scene.duration)
+            console.log('  - 이미지 URL:', scene.imageUrl)
+            console.log('  - 키워드:', scene.keywords)
+            console.log('  - 시각적 설명:', scene.visualDescription?.substring(0, 50) + '...')
+            console.log('  - 대사:', scene.dialogue?.substring(0, 50) + '...')
+            console.log('  - 카메라 앵글:', scene.cameraAngle)
+            console.log('  - 카메라 워크:', scene.cameraWork)
+            console.log('  - 캐릭터 배치:', scene.characterLayout)
+            console.log('  - 소품:', scene.props)
+            console.log('  - 날씨:', scene.weather)
+            console.log('  - 조명:', scene.lighting)
+            console.log('  - 전환:', scene.transition)
+            console.log('  - 렌즈 사양:', scene.lensSpecs)
+            console.log('  - 시각 효과:', scene.visualEffects)
+            console.log('  ---')
+          })
+          
+          // 임시 프로젝트 정보 생성
+          const tempProject = {
+            projectTitle: '임시 프로젝트',
+            synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
+            story: '',
+            conteList: scenes
+          }
+          
+          console.log('📋 임시 프로젝트 정보 생성:')
+          console.log('  - 제목:', tempProject.projectTitle)
+          console.log('  - 시놉시스:', tempProject.synopsis)
+          console.log('  - 콘티 개수:', tempProject.conteList.length)
+          
+          setProject(tempProject)
+          setLoading(false)
+          return
+        }
+        
+        // 타임라인 스토어에 데이터가 없으면 로컬 스토리지에서 로드
+        console.log('ProjectPage no timeline store data, loading from localStorage')
         loadLocalConteData()
       } else {
         fetchProject()
@@ -194,13 +254,14 @@ const ProjectPage = () => {
    */
   const loadLocalConteData = () => {
     try {
-      console.log('ProjectPage loadLocalConteData started')
+      console.log('🔍 ProjectPage loadLocalConteData 시작')
       setLoading(true)
       
       const storedData = localStorage.getItem('currentConteData')
+      console.log('🔍 로컬 스토리지에서 가져온 원본 데이터:', storedData ? '데이터 존재' : '데이터 없음')
       
       if (!storedData) {
-        console.log('ProjectPage no stored conte data found')
+        console.log('❌ ProjectPage 로컬 스토리지에 저장된 콘티 데이터가 없음')
         setProject({
           projectTitle: '임시 프로젝트',
           synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
@@ -212,9 +273,14 @@ const ProjectPage = () => {
       }
       
       const parsedData = JSON.parse(storedData)
+      console.log('🔍 파싱된 콘티 데이터:')
+      console.log('  - 데이터 타입:', typeof parsedData)
+      console.log('  - 배열인가:', Array.isArray(parsedData))
+      console.log('  - 데이터 길이:', parsedData?.length || 0)
       
       if (!Array.isArray(parsedData) || parsedData.length === 0) {
-        console.log('ProjectPage invalid stored conte data')
+        console.log('❌ ProjectPage 파싱된 콘티 데이터가 유효하지 않음')
+        console.log('  - 실제 데이터:', parsedData)
         setProject({
           projectTitle: '임시 프로젝트',
           synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
@@ -225,6 +291,33 @@ const ProjectPage = () => {
         return
       }
       
+      console.log('✅ ProjectPage 로컬 스토리지에서 유효한 콘티 데이터 발견:', parsedData.length, '개')
+      
+      // 각 콘티의 상세 정보 로그
+      parsedData.forEach((conte, index) => {
+        console.log(`📋 로컬 스토리지 콘티 ${index + 1} 상세 정보:`)
+        console.log('  - ID:', conte.id)
+        console.log('  - 씬 번호:', conte.scene)
+        console.log('  - 제목:', conte.title)
+        console.log('  - 설명:', conte.description?.substring(0, 100) + '...')
+        console.log('  - 타입:', conte.type)
+        console.log('  - 예상 시간:', conte.estimatedDuration)
+        console.log('  - 이미지 URL:', conte.imageUrl)
+        console.log('  - 키워드:', conte.keywords)
+        console.log('  - 시각적 설명:', conte.visualDescription?.substring(0, 50) + '...')
+        console.log('  - 대사:', conte.dialogue?.substring(0, 50) + '...')
+        console.log('  - 카메라 앵글:', conte.cameraAngle)
+        console.log('  - 카메라 워크:', conte.cameraWork)
+        console.log('  - 캐릭터 배치:', conte.characterLayout)
+        console.log('  - 소품:', conte.props)
+        console.log('  - 날씨:', conte.weather)
+        console.log('  - 조명:', conte.lighting)
+        console.log('  - 전환:', conte.transition)
+        console.log('  - 렌즈 사양:', conte.lensSpecs)
+        console.log('  - 시각 효과:', conte.visualEffects)
+        console.log('  ---')
+      })
+      
       // 임시 프로젝트 정보 생성
       const tempProject = {
         projectTitle: '임시 프로젝트',
@@ -232,6 +325,11 @@ const ProjectPage = () => {
         story: '',
         conteList: parsedData
       }
+      
+      console.log('📋 로컬 스토리지 기반 임시 프로젝트 정보 생성:')
+      console.log('  - 제목:', tempProject.projectTitle)
+      console.log('  - 시놉시스:', tempProject.synopsis)
+      console.log('  - 콘티 개수:', tempProject.conteList.length)
       
       setProject(tempProject)
       
@@ -241,7 +339,7 @@ const ProjectPage = () => {
       // 이미지 URL과 duration이 있는 경우 포함하여 설정
       const scenesWithImages = parsedData.map(scene => {
         const duration = scene.duration || parseDurationToSeconds(scene.estimatedDuration || '5분')
-        console.log(`Processing scene ${scene.scene}: estimatedDuration=${scene.estimatedDuration}, parsed duration=${duration}s`)
+        console.log(`🔄 씬 ${scene.scene} 처리: estimatedDuration=${scene.estimatedDuration}, 파싱된 duration=${duration}초`)
         
         return {
           ...scene,
@@ -251,12 +349,17 @@ const ProjectPage = () => {
         }
       })
       
+      console.log('📋 타임라인 스토어에 설정할 씬 데이터:', scenesWithImages.length, '개')
       setScenes(scenesWithImages)
       
-      console.log('ProjectPage local conte data loaded:', parsedData.length, 'scenes')
+      console.log('✅ ProjectPage 로컬 콘티 데이터 로드 완료:', parsedData.length, '개 씬')
       
     } catch (error) {
-      console.error('ProjectPage loadLocalConteData failed:', error)
+      console.error('❌ ProjectPage loadLocalConteData 실패:', error)
+      console.error('에러 상세:', {
+        message: error.message,
+        stack: error.stack
+      })
       setProject({
         projectTitle: '임시 프로젝트',
         synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
@@ -276,11 +379,17 @@ const ProjectPage = () => {
       console.log('ProjectPage fetchProject started for projectId:', projectId)
       console.log('ProjectPage API URL:', `/projects/${projectId}`)
       setLoading(true)
-      const response = await api.get(`/projects/${projectId}`)
+      
+      const response = await api.get(`/projects/${projectId}?includeContes=true`)
       console.log('ProjectPage API response:', response.data)
       
-      // 백엔드 응답 구조에 따라 project 데이터 추출
-      const projectData = response.data?.data?.project || response.data?.project
+      // 백엔드 응답 구조: { data: { project: {...}, conteList: [...] } }
+      const responseData = response.data?.data
+      if (!responseData) {
+        throw new Error('서버 응답에 데이터가 없습니다.')
+      }
+      
+      const projectData = responseData.project
       console.log('ProjectPage project data received:', projectData)
       
       // projectData가 존재하는지 확인
@@ -293,28 +402,60 @@ const ProjectPage = () => {
       // 타임라인 스토어에 프로젝트 ID 설정
       setCurrentProjectId(projectId)
       
-      // 콘티 데이터가 있으면 타임라인 데이터 로드
-      const responseData = response.data?.data || response.data
-      const conteList = responseData.conteList || projectData.conteList || []
+      // 콘티 데이터 확인 및 타임라인 로드
+      const conteList = responseData.conteList || []
+      
+      console.log('ProjectPage conteList found:', conteList.length, 'items')
       
       if (conteList && Array.isArray(conteList) && conteList.length > 0) {
-        console.log('ProjectPage loading contes, count:', conteList.length)
+        console.log('ProjectPage loading contes via timelineStore, count:', conteList.length)
+        
+        // 타임라인 스토어를 통해 콘티 데이터 로드
         const result = await loadProjectContes(projectId)
         console.log('ProjectPage loadProjectContes result:', result)
-        if (!result.success) {
-          toast.error(result.error || '타임라인 데이터를 불러올 수 없습니다.')
-        } else {
+        
+        if (result.success) {
           console.log('✅ 프로젝트 콘티가 타임라인에 연결되었습니다:', result.data.length, '개')
+          toast.success(`${result.data.length}개의 콘티가 타임라인에 로드되었습니다.`)
+        } else {
+          console.error('❌ 타임라인 데이터 로드 실패:', result.error)
+          toast.error(result.error || '타임라인 데이터를 불러올 수 없습니다.')
+          
+          // 실패 시 로컬 데이터로 폴백
+          console.log('ProjectPage falling back to local conte data')
+          const { setScenes } = useTimelineStore.getState()
+          const localScenes = conteList.map((conte, index) => ({
+            id: conte.id || conte._id || `scene_${conte.scene || index + 1}`,
+            scene: conte.scene || index + 1,
+            title: conte.title || `씬 ${conte.scene || index + 1}`,
+            description: conte.description || '',
+            type: conte.type || 'live_action',
+            estimatedDuration: conte.estimatedDuration || '5분',
+            duration: parseDurationToSeconds(conte.estimatedDuration || '5분'),
+            imageUrl: conte.imageUrl || null
+          }))
+          setScenes(localScenes)
+          console.log('ProjectPage local fallback scenes set:', localScenes.length, 'scenes')
         }
       } else {
         console.log('ProjectPage no contes found in project data, conteList:', conteList)
         // 빈 배열로 초기화하여 타임라인 컴포넌트가 정상 작동하도록 함
         const { setScenes } = useTimelineStore.getState()
         setScenes([])
+        
+        // 콘티가 없는 경우 안내 메시지
+        toast.info('이 프로젝트에는 콘티가 없습니다. 콘티를 생성해보세요.')
       }
     } catch (error) {
       console.error('프로젝트 조회 실패:', error)
+      console.error('ProjectPage error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
+      
       toast.error('프로젝트를 불러올 수 없습니다.')
+      
       // 에러 발생 시 빈 배열로 초기화
       const { setScenes } = useTimelineStore.getState()
       setScenes([])
@@ -664,9 +805,17 @@ const ProjectPage = () => {
           </Box>
           
           {/* 디버깅 로그 추가 */}
-          {console.log('ProjectPage scenes before TimelineViewer:', scenes, 'type:', typeof scenes, 'isArray:', Array.isArray(scenes))}
+          {console.log('ProjectPage rendering TimelineViewer with:', {
+            scenesCount: scenes?.length || 0,
+            scenesType: typeof scenes,
+            isArray: Array.isArray(scenes),
+            timelineLoading,
+            selectedSceneId,
+            projectId
+          })}
+          
           <TimelineViewer
-            scenes={Array.isArray(scenes) ? scenes : []}
+            scenes={scenes || []}
             loading={timelineLoading || false}
             selectedSceneId={selectedSceneId || null}
             onSceneClick={handleSceneClick}

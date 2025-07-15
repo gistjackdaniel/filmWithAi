@@ -28,9 +28,10 @@ import {
   AccessTime,
   ArrowBack,
   CameraAlt, // 아이콘 추가
-  Build // 아이콘 추가
+  Build, // 아이콘 추가
+  Star // 즐겨찾기 아이콘 추가
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { generateOptimalSchedule } from '../services/schedulerService';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -45,6 +46,8 @@ import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토�
  */
 const SimpleSchedulePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { projectId } = useParams(); // URL 파라미터에서 프로젝트 ID 가져오기
   const [scheduleData, setScheduleData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -56,9 +59,162 @@ const SimpleSchedulePage = () => {
   const [selectedConte, setSelectedConte] = useState(null); // 선택된 콘티 정보
   const [conteModalOpen, setConteModalOpen] = useState(false); // 모달 열림 여부
 
+  // URL 파라미터 확인하여 즐겨찾기 모드인지 확인
+  const isFavoriteView = new URLSearchParams(location.search).get('view') === 'favorite';
+  const urlProjectId = new URLSearchParams(location.search).get('projectId');
+  
+  // 프로젝트 ID 결정: URL 파라미터 > useParams > null
+  const finalProjectId = urlProjectId || projectId;
+
   // 스토리 생성 스토어에서 실제 콘티 데이터 가져오기
   const { conteGeneration } = useStoryGenerationStore();
   const actualConteData = conteGeneration.generatedConte;
+
+  // 즐겨찾기된 프로젝트 데이터 가져오기
+  const getFavoriteProjectsData = async () => {
+    try {
+      if (finalProjectId) {
+        // 특정 프로젝트의 콘티 데이터만 가져오기
+        console.log(`📋 프로젝트 ${finalProjectId}의 콘티 데이터 가져오는 중...`);
+        
+        const response = await fetch(`/api/projects/${finalProjectId}?includeContes=true`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const projectData = await response.json();
+          if (projectData.data && projectData.data.conteList) {
+            const contes = projectData.data.conteList.map(conte => ({
+              ...conte,
+              projectTitle: projectData.data.project.projectTitle,
+              projectId: finalProjectId
+            }));
+            console.log(`✅ 프로젝트 ${finalProjectId}에서 ${contes.length}개 콘티 가져옴`);
+            return contes;
+          }
+        } else {
+          console.warn(`⚠️ 프로젝트 ${finalProjectId} 콘티 데이터 가져오기 실패`);
+        }
+        return [];
+      } else {
+        // 기존 로직: 모든 즐겨찾기 프로젝트의 콘티 데이터 가져오기
+        const storedData = localStorage.getItem('favoriteProjects');
+        if (storedData) {
+          const favoriteProjects = JSON.parse(storedData);
+          console.log('⭐ 즐겨찾기 프로젝트 목록:', favoriteProjects);
+          
+          // 각 프로젝트의 콘티 데이터를 API로 가져오기
+          const allContes = [];
+          
+          for (const project of favoriteProjects) {
+            try {
+              const projectId = project.id || project._id;
+              console.log(`📋 프로젝트 ${projectId}의 콘티 데이터 가져오는 중...`);
+              
+              // 프로젝트의 콘티 데이터 가져오기
+              const response = await fetch(`/api/projects/${projectId}?includeContes=true`, {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (response.ok) {
+                const projectData = await response.json();
+                if (projectData.data && projectData.data.conteList) {
+                  projectData.data.conteList.forEach(conte => {
+                    allContes.push({
+                      ...conte,
+                      projectTitle: project.projectTitle,
+                      projectId: projectId
+                    });
+                  });
+                  console.log(`✅ 프로젝트 ${projectId}에서 ${projectData.data.conteList.length}개 콘티 가져옴`);
+                }
+              } else {
+                console.warn(`⚠️ 프로젝트 ${projectId} 콘티 데이터 가져오기 실패`);
+              }
+            } catch (error) {
+              console.error(`❌ 프로젝트 ${project.id || project._id} 콘티 데이터 가져오기 오류:`, error);
+            }
+          }
+          
+          console.log('⭐ 총 즐겨찾기 콘티 데이터:', allContes.length, '개');
+          return allContes;
+        }
+        return [];
+      }
+    } catch (error) {
+      console.error('즐겨찾기 프로젝트 데이터 파싱 실패:', error);
+      return [];
+    }
+  };
+
+  // 사용할 콘티 데이터 결정 (비동기 처리)
+  const [conteData, setConteData] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  
+  useEffect(() => {
+    const loadConteData = async () => {
+      if (isFavoriteView) {
+        const favoriteData = await getFavoriteProjectsData();
+        console.log('📋 즐겨찾기 콘티 데이터 로드:', favoriteData.length, '개');
+        console.log('📋 첫 번째 콘티 샘플:', favoriteData[0]);
+        
+        // keywords 필드가 없는 경우 기본값 추가
+        const processedData = favoriteData.map(conte => ({
+          ...conte,
+          keywords: conte.keywords || {
+            location: '미정',
+            equipment: '기본 장비',
+            cast: [],
+            props: [],
+            specialRequirements: [],
+            timeOfDay: '오후',
+            weather: conte.weather || '맑음'
+          }
+        }));
+        
+        setConteData(processedData);
+        
+        // 선택된 프로젝트 정보 설정
+        if (finalProjectId) {
+          const storedProject = localStorage.getItem('selectedFavoriteProject');
+          if (storedProject) {
+            setSelectedProject(JSON.parse(storedProject));
+          }
+        }
+      } else {
+        console.log('📋 일반 콘티 데이터 로드:', actualConteData?.length || 0, '개');
+        console.log('📋 첫 번째 콘티 샘플:', actualConteData?.[0]);
+        
+        // keywords 필드가 없는 경우 기본값 추가
+        const processedData = (actualConteData || testConteData).map(conte => ({
+          ...conte,
+          keywords: conte.keywords || {
+            location: '미정',
+            equipment: '기본 장비',
+            cast: [],
+            props: [],
+            specialRequirements: [],
+            timeOfDay: '오후',
+            weather: conte.weather || '맑음'
+          }
+        }));
+        
+        setConteData(processedData);
+      }
+    };
+    
+    loadConteData();
+  }, [isFavoriteView, actualConteData, finalProjectId]);
+
+  const getConteData = () => {
+    return conteData;
+  };
 
   // 테스트용 더미 콘티 데이터 (실제 콘티 데이터 구조와 동일)
   const testConteData = [
@@ -628,52 +784,71 @@ const SimpleSchedulePage = () => {
 
   // 스케줄 생성 함수
   const generateSchedule = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    // 실제 콘티 데이터 우선 사용, 없으면 더미 데이터 사용
-    let conteDataToUse = actualConteData && actualConteData.length > 0 
-      ? actualConteData 
-      : testConteData;
-    
-    // 실제 콘티 데이터에 이미지 URL이 없는 경우 기본 이미지 추가
-    if (actualConteData && actualConteData.length > 0) {
-      conteDataToUse = actualConteData.map((conte, index) => ({
-        ...conte,
-        imageUrl: conte.imageUrl || `https://images.unsplash.com/photo-${1500000000 + index}?w=800&h=600&fit=crop`
-      }));
-    }
-    
-    // 콘티 데이터 전체 로그
-    console.log('📦 [generateSchedule] 실제 콘티 데이터:', actualConteData);
-    console.log('📦 [generateSchedule] 사용할 콘티 데이터:', conteDataToUse);
-    console.log('📦 [generateSchedule] 데이터 소스:', actualConteData && actualConteData.length > 0 ? '실제 데이터' : '더미 데이터');
-
     try {
-      console.log('🎬 간단한 스케줄 생성 시작...');
-      console.log('📊 콘티 데이터:', conteDataToUse);
-      console.log('📊 데이터 개수:', conteDataToUse.length);
+      setIsLoading(true)
+      setError(null)
       
-      const result = await generateOptimalSchedule(conteDataToUse);
-      // 스케줄 생성 결과 로그
-      console.log('✅ [generateSchedule] 스케줄 생성 완료:', result);
-      setScheduleData(result);
-    } catch (err) {
-      console.error('❌ 스케줄 생성 실패:', err);
-      setError('스케줄 생성에 실패했습니다.');
+      console.log('🎬 스케줄 생성 시작');
+      console.log('📋 사용할 콘티 데이터:', {
+        totalCount: conteData.length,
+        isArray: Array.isArray(conteData),
+        firstItem: conteData[0] ? {
+          id: conteData[0].id,
+          title: conteData[0].title,
+          type: conteData[0].type,
+          hasKeywords: !!conteData[0].keywords,
+          keywords: conteData[0].keywords
+        } : '없음'
+      });
+      
+      // 콘티 데이터가 없는 경우 처리
+      if (!conteData || conteData.length === 0) {
+        if (isFavoriteView) {
+          setError('즐겨찾기된 프로젝트에 콘티 데이터가 없습니다.');
+        } else {
+          setError('콘티 데이터가 없습니다. 먼저 콘티를 생성해주세요.');
+        }
+        return;
+      }
+      
+      // 각 콘티의 keywords 정보 상세 로깅
+      conteData.forEach((conte, index) => {
+        console.log(`📋 콘티 ${index + 1} 상세 정보:`, {
+          id: conte.id,
+          title: conte.title,
+          type: conte.type,
+          keywords: conte.keywords,
+          location: conte.keywords?.location,
+          equipment: conte.keywords?.equipment,
+          cast: conte.keywords?.cast,
+          timeOfDay: conte.keywords?.timeOfDay
+        });
+      });
+      
+      const schedule = await generateOptimalSchedule(conteData)
+      
+      console.log('✅ 스케줄 생성 완료:', {
+        totalDays: schedule.totalDays,
+        totalScenes: schedule.totalScenes,
+        estimatedDuration: schedule.estimatedTotalDuration
+      });
+      
+      setScheduleData(schedule)
+    } catch (error) {
+      console.error('❌ 스케줄 생성 실패:', error)
+      setError(error.message || '스케줄 생성에 실패했습니다.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // 페이지 로드 시 자동으로 스케줄 생성
   // 1. 컴포넌트 마운트 시 콘티 데이터 전체 로그
   useEffect(() => {
-    console.log('📦 [SimpleSchedulePage] 실제 콘티 데이터:', actualConteData);
-    console.log('📦 [SimpleSchedulePage] 더미 콘티 데이터:', testConteData);
-    console.log('📦 [SimpleSchedulePage] 데이터 소스:', actualConteData && actualConteData.length > 0 ? '실제 데이터' : '더미 데이터');
+    console.log('📦 [SimpleSchedulePage] 즐겨찾기 모드:', isFavoriteView);
+    console.log('📦 [SimpleSchedulePage] 사용할 콘티 데이터:', getConteData());
     generateSchedule();
-  }, [actualConteData]); // 실제 콘티 데이터가 변경될 때마다 스케줄 재생성
+  }, [isFavoriteView, conteData]); // 즐겨찾기 모드와 콘티 데이터가 변경될 때마다 스케줄 재생성
 
   // 촬영 시간 포맷팅 함수
   const formatDuration = (minutes) => {
@@ -867,11 +1042,27 @@ const SimpleSchedulePage = () => {
         </Button>
         
         <Typography variant="h4" component="h1" gutterBottom>
-          📅 촬영 스케줄
+          {finalProjectId 
+            ? `📅 프로젝트 스케줄` 
+            : (isFavoriteView 
+                ? (selectedProject 
+                    ? `⭐ ${selectedProject.projectTitle} 스케줄` 
+                    : '⭐ 즐겨찾기 프로젝트 스케줄')
+                : '📅 촬영 스케줄'
+              )
+          }
         </Typography>
         
         <Typography variant="body1" color="text.secondary">
-          AI가 생성한 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.
+          {finalProjectId 
+            ? `선택된 프로젝트의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.`
+            : (isFavoriteView 
+                ? (selectedProject 
+                    ? `${selectedProject.projectTitle} 프로젝트의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.`
+                    : '즐겨찾기된 프로젝트들의 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.')
+                : 'AI가 생성한 콘티를 기반으로 최적의 촬영 스케줄을 제공합니다.'
+              )
+          }
         </Typography>
       </Box>
 
@@ -904,23 +1095,38 @@ const SimpleSchedulePage = () => {
       )}
 
       {/* 실제 콘티 데이터가 없을 때 안내 메시지 */}
-      {!actualConteData || actualConteData.length === 0 ? (
+      {!getConteData() || getConteData().length === 0 ? (
         <Card sx={{ mb: 3, backgroundColor: '#fff3e0' }}>
           <CardContent>
             <Typography variant="h6" color="warning.main" gutterBottom>
-              📝 콘티 데이터가 없습니다
+              {finalProjectId 
+                ? `📝 프로젝트에 콘티가 없습니다` 
+                : (isFavoriteView 
+                    ? (selectedProject 
+                        ? `⭐ ${selectedProject.projectTitle}에 콘티가 없습니다` 
+                        : '⭐ 즐겨찾기된 프로젝트가 없습니다')
+                    : '📝 콘티 데이터가 없습니다'
+                  )
+              }
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              현재 더미 데이터로 스케줄을 생성하고 있습니다. 
-              실제 콘티 데이터를 사용하려면 먼저 스토리 생성 페이지에서 콘티를 생성해주세요.
+              {finalProjectId 
+                ? `선택된 프로젝트에 콘티 데이터가 없습니다. 먼저 콘티를 생성해주세요.`
+                : (isFavoriteView 
+                    ? (selectedProject 
+                        ? `${selectedProject.projectTitle} 프로젝트에 콘티 데이터가 없습니다. 먼저 콘티를 생성해주세요.`
+                        : '즐겨찾기된 프로젝트에 콘티 데이터가 없습니다. 대시보드에서 프로젝트를 즐겨찾기에 추가해주세요.')
+                    : '현재 더미 데이터로 스케줄을 생성하고 있습니다. 실제 콘티 데이터를 사용하려면 먼저 스토리 생성 페이지에서 콘티를 생성해주세요.'
+                  )
+              }
             </Typography>
             <Button 
               variant="outlined" 
               color="warning"
-              onClick={() => navigate('/story-generation')}
+              onClick={() => navigate(isFavoriteView ? '/' : '/story-generation')}
               sx={{ mt: 1 }}
             >
-              스토리 생성 페이지로 이동
+              {isFavoriteView ? '대시보드로 이동' : '스토리 생성 페이지로 이동'}
             </Button>
           </CardContent>
         </Card>
@@ -972,9 +1178,17 @@ const SimpleSchedulePage = () => {
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
               {/* 데이터 소스 표시 */}
               <Chip
-                icon={<Videocam />}
-                label={`데이터: ${actualConteData && actualConteData.length > 0 ? '실제 콘티' : '더미 데이터'}`}
-                color={actualConteData && actualConteData.length > 0 ? "success" : "warning"}
+                icon={finalProjectId || isFavoriteView ? <Star /> : <Videocam />}
+                label={`데이터: ${finalProjectId 
+                  ? `프로젝트 ${finalProjectId.substring(0, 8)}...` 
+                  : (isFavoriteView 
+                      ? (selectedProject 
+                          ? `즐겨찾기 - ${selectedProject.projectTitle}` 
+                          : '즐겨찾기 프로젝트')
+                      : (getConteData().length > 0 ? '실제 콘티' : '더미 데이터')
+                    )
+                }`}
+                color={finalProjectId || isFavoriteView ? "warning" : (getConteData().length > 0 ? "success" : "warning")}
                 variant="outlined"
               />
               {/* 총 일수: color="primary" */}

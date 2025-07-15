@@ -76,6 +76,13 @@ const projectSchema = new mongoose.Schema({
     default: false
   },
   
+  // 즐겨찾기 여부
+  isFavorite: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  
   // 삭제 여부 (소프트 삭제)
   isDeleted: {
     type: Boolean,

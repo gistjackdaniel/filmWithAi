@@ -17,22 +17,25 @@ let wss = null;
  */
 const initializeWebSocket = (server) => {
   wss = new WebSocket.Server({ 
-    server,
-    path: '/api/timeline/projects'
+    server
+    // path 옵션 제거 - 모든 WebSocket 연결을 받음
   });
 
   console.log('✅ WebSocket 서버 초기화 완료');
 
   wss.on('connection', (ws, req) => {
     console.log('🔌 WebSocket 클라이언트 연결됨');
+    console.log('🔗 연결 URL:', req.url);
 
     // URL에서 프로젝트 ID 추출
     const url = new URL(req.url, 'http://localhost');
-    const projectId = url.pathname.split('/').pop();
+    const pathParts = url.pathname.split('/');
+    const projectId = pathParts[pathParts.length - 1]; // 마지막 부분이 프로젝트 ID
 
-    if (!projectId) {
-      console.error('❌ 프로젝트 ID가 없습니다.');
-      ws.close(1008, 'Project ID required');
+    // /api/timeline/projects/프로젝트ID 패턴 확인
+    if (!projectId || projectId === 'projects' || !pathParts.includes('projects')) {
+      console.error('❌ 올바르지 않은 WebSocket 경로:', req.url);
+      ws.close(1008, 'Invalid WebSocket path');
       return;
     }
 

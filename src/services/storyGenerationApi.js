@@ -142,21 +142,10 @@ export const generateSceneImage = async (requestData) => {
       return response.data
 
     } catch (apiError) {
-      console.warn('⚠️ 실제 API 호출 실패, 모의 이미지 생성으로 대체:', apiError.message)
+      console.error('❌ 실제 API 호출 실패:', apiError.message)
       
-      // 실제 API 실패 시 Unsplash API로 모의 이미지 생성
-      const mockImageUrl = `https://source.unsplash.com/1024x1024/?${encodeURIComponent(requestData.sceneDescription)}&${Date.now()}`
-      
-      const mockResponse = {
-        imageUrl: mockImageUrl,
-        prompt: requestData.sceneDescription,
-        generatedAt: new Date().toISOString(),
-        model: 'unsplash-api',
-        isFreeTier: true
-      }
-
-      console.log('✅ 모의 이미지 생성 완료:', mockImageUrl)
-      return mockResponse
+      // 실제 API 실패 시 에러를 던져서 더미데이터 생성 방지
+      throw new Error(`이미지 생성에 실패했습니다: ${apiError.message}`)
     }
 
   } catch (error) {

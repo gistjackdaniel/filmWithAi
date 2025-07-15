@@ -220,6 +220,7 @@ router.get('/', authenticateToken, async (req, res) => {
           status: project.status,
           settings: project.settings,
           tags: project.tags,
+          isFavorite: project.isFavorite,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
           lastViewedAt: project.lastViewedAt,
@@ -235,6 +236,54 @@ router.get('/', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '프로젝트 목록 조회 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+/**
+ * 즐겨찾기된 프로젝트 목록 조회
+ * GET /api/projects/favorites
+ */
+router.get('/favorites', authenticateToken, async (req, res) => {
+  try {
+    console.log('⭐ 즐겨찾기 프로젝트 목록 조회:', { 
+      userId: req.user._id 
+    });
+
+    const favoriteProjects = await Project.find({
+      userId: req.user._id,
+      isDeleted: false,
+      isFavorite: true
+    }).sort({ lastViewedAt: -1, updatedAt: -1 });
+
+    console.log('✅ 즐겨찾기 프로젝트 조회 완료:', favoriteProjects.length, '개');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        projects: favoriteProjects.map(project => ({
+          id: project._id,
+          projectTitle: project.projectTitle,
+          synopsis: project.synopsis,
+          status: project.status,
+          settings: project.settings,
+          tags: project.tags,
+          isFavorite: project.isFavorite,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+          lastViewedAt: project.lastViewedAt,
+          conteCount: project.conteCount,
+          generatedConteCount: project.generatedConteCount,
+          liveActionConteCount: project.liveActionConteCount
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ 즐겨찾기 프로젝트 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '즐겨찾기 프로젝트 목록 조회 중 오류가 발생했습니다.'
     });
   }
 });
@@ -543,6 +592,59 @@ router.get('/:id/stats', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '프로젝트 통계 조회 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+/**
+ * 프로젝트 즐겨찾기 토글
+ * PUT /api/projects/:id/favorite
+ */
+router.put('/:id/favorite', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log('⭐ 프로젝트 즐겨찾기 토글:', { 
+      projectId: id, 
+      userId: req.user._id 
+    });
+
+    const project = await Project.findOne({
+      _id: id,
+      userId: req.user._id,
+      isDeleted: false
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: '프로젝트를 찾을 수 없습니다.'
+      });
+    }
+
+    // 즐겨찾기 상태 토글
+    project.isFavorite = !project.isFavorite;
+    await project.save();
+
+    console.log('✅ 즐겨찾기 상태 변경 완료:', { 
+      projectId: project._id, 
+      isFavorite: project.isFavorite 
+    });
+
+    res.status(200).json({
+      success: true,
+      message: project.isFavorite ? '즐겨찾기에 추가되었습니다.' : '즐겨찾기에서 제거되었습니다.',
+      data: {
+        projectId: project._id,
+        isFavorite: project.isFavorite
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ 프로젝트 즐겨찾기 토글 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '즐겨찾기 상태 변경 중 오류가 발생했습니다.'
     });
   }
 });

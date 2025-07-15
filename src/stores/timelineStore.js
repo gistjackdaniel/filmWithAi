@@ -101,12 +101,38 @@ const useTimelineStore = create((set, get) => ({
    * 씬들 설정
    */
   setScenes: (scenes) => {
+    console.log('🔧 timelineStore setScenes 호출됨')
+    console.log('  - 전달받은 scenes 타입:', typeof scenes)
+    console.log('  - 전달받은 scenes가 배열인가:', Array.isArray(scenes))
+    console.log('  - 전달받은 scenes 길이:', scenes?.length || 0)
+    
+    if (scenes && Array.isArray(scenes)) {
+      console.log('✅ timelineStore 유효한 scenes 데이터 수신')
+      
+      // 각 씬의 기본 정보 로그
+      scenes.forEach((scene, index) => {
+        console.log(`📋 timelineStore 씬 ${index + 1} 기본 정보:`)
+        console.log('  - ID:', scene.id)
+        console.log('  - 씬 번호:', scene.scene)
+        console.log('  - 제목:', scene.title)
+        console.log('  - 타입:', scene.type)
+        console.log('  - 예상 시간:', scene.estimatedDuration)
+        console.log('  - 실제 시간(초):', scene.duration)
+        console.log('  - 이미지 URL 존재:', !!scene.imageUrl)
+        console.log('  - 키워드 존재:', !!scene.keywords)
+      })
+    } else {
+      console.log('❌ timelineStore 유효하지 않은 scenes 데이터:', scenes)
+    }
+    
     set({ scenes, loading: false, error: null })
+    console.log('✅ timelineStore scenes 설정 완료')
     
     // 사용자별 데이터 저장
     const { user } = useAuthStore.getState()
     if (user && user.id) {
       get().saveUserData(user.id)
+      console.log('💾 timelineStore 사용자별 데이터 저장 완료')
     }
   },
 
@@ -172,7 +198,12 @@ const useTimelineStore = create((set, get) => ({
    * 프로젝트 ID 설정
    */
   setCurrentProjectId: (projectId) => {
+    console.log('🔧 timelineStore setCurrentProjectId 호출됨')
+    console.log('  - 설정할 프로젝트 ID:', projectId)
+    console.log('  - 이전 프로젝트 ID:', get().currentProjectId)
+    
     set({ currentProjectId: projectId })
+    console.log('✅ timelineStore currentProjectId 설정 완료:', projectId)
   },
 
   /**
@@ -180,28 +211,47 @@ const useTimelineStore = create((set, get) => ({
    */
   loadProjectContes: async (projectId) => {
     console.log('timelineStore loadProjectContes started for projectId:', projectId)
+    
+    // projectId 유효성 검사
+    if (!projectId || projectId === 'undefined' || projectId === '') {
+      console.error('timelineStore invalid projectId:', projectId)
+      return { success: false, error: '유효하지 않은 프로젝트 ID입니다.' }
+    }
+    
     set({ loading: true, error: null })
     
     try {
-      // 캐시된 데이터 확인
+      // 캐시된 데이터 확인 (5분 이내)
       const cachedData = timelineService.getCachedData(`project_${projectId}`)
-      if (cachedData) {
+      if (cachedData && cachedData.length > 0) {
         console.log('timelineStore using cached data, count:', cachedData.length)
         set({ 
           scenes: cachedData, 
           loading: false, 
-          currentProjectId: projectId 
+          currentProjectId: projectId,
+          error: null
         })
         return { success: true, data: cachedData }
       }
 
       // API에서 데이터 가져오기
-      console.log('timelineStore fetching data from API')
+      console.log('timelineStore fetching data from API for projectId:', projectId)
       const result = await timelineService.getProjectContes(projectId)
       console.log('timelineStore API result:', result)
       
-      if (result.success) {
+      if (result.success && result.data) {
         console.log('timelineStore API success, data count:', result.data.length)
+        
+        // 데이터 유효성 검사
+        if (!Array.isArray(result.data)) {
+          console.error('timelineStore API returned non-array data:', result.data)
+          set({ 
+            loading: false, 
+            error: '서버에서 잘못된 데이터 형식을 받았습니다.' 
+          })
+          return { success: false, error: '서버에서 잘못된 데이터 형식을 받았습니다.' }
+        }
+        
         // 캐시에 저장
         timelineService.setCachedData(`project_${projectId}`, result.data)
         
@@ -212,18 +262,23 @@ const useTimelineStore = create((set, get) => ({
           error: null 
         })
         
-        // 실시간 업데이트 연결
-        console.log('timelineStore connecting realtime updates')
-        get().connectRealtimeUpdates(projectId)
+        // 실시간 업데이트 연결 (선택적)
+        try {
+          console.log('timelineStore connecting realtime updates')
+          get().connectRealtimeUpdates(projectId)
+        } catch (wsError) {
+          console.warn('timelineStore WebSocket connection failed:', wsError)
+          // WebSocket 연결 실패는 치명적이지 않으므로 계속 진행
+        }
         
         return { success: true, data: result.data }
       } else {
-        console.log('timelineStore API failed:', result.error)
+        console.error('timelineStore API failed:', result.error)
         set({ 
           loading: false, 
-          error: result.error 
+          error: result.error || '데이터를 불러올 수 없습니다.' 
         })
-        return { success: false, error: result.error }
+        return { success: false, error: result.error || '데이터를 불러올 수 없습니다.' }
       }
     } catch (error) {
       console.error('timelineStore loadProjectContes error:', error)

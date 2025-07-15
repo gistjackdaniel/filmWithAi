@@ -251,17 +251,38 @@ const ConteGenerator = ({
       }
 
       // API 응답 데이터를 그대로 사용 (서버에서 올바른 형식으로 제공됨)
-      processedConteList = conteList.map((card, index) => ({
-        ...card,
-        id: card.id || `scene_${index + 1}`,
-        scene: card.scene || index + 1,
-        title: card.title || `씬 ${card.scene || index + 1}`,
-        canEdit: card.canEdit !== false,
-        lastModified: card.lastModified || new Date().toISOString(),
-        modifiedBy: card.modifiedBy || 'AI'
-      }))
+      processedConteList = conteList.map((card, index) => {
+        console.log(`🔍 콘티 ${index + 1} 처리:`, {
+          id: card.id,
+          title: card.title,
+          hasKeywords: !!card.keywords,
+          keywords: card.keywords
+        });
+        
+        return {
+          ...card,
+          id: card.id || `scene_${index + 1}`,
+          scene: card.scene || index + 1,
+          title: card.title || `씬 ${card.scene || index + 1}`,
+          keywords: card.keywords || {
+            location: '미정',
+            equipment: '기본 장비',
+            cast: [],
+            props: [],
+            specialRequirements: [],
+            timeOfDay: '오후',
+            weather: card.weather || '맑음',
+            crew: ['촬영감독', '카메라맨', '조명기사'],
+            cameras: ['C1']
+          },
+          canEdit: card.canEdit !== false,
+          lastModified: card.lastModified || new Date().toISOString(),
+          modifiedBy: card.modifiedBy || 'AI'
+        }
+      })
 
       console.log('✅ 처리된 캡션 카드 리스트:', processedConteList)
+      console.log('✅ 첫 번째 콘티 keywords 샘플:', processedConteList[0]?.keywords)
 
       // 콘티 데이터를 로컬 상태에만 저장 (부모 컴포넌트로 전달하지 않음)
       setShowResult(true)

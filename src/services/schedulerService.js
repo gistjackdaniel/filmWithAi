@@ -11,6 +11,29 @@
  */
 export const generateOptimalSchedule = (conteData) => {
   try {
+    console.log('🎬 스케줄러 시작 - 입력 데이터:', {
+      totalCount: conteData?.length || 0,
+      isArray: Array.isArray(conteData),
+      firstItem: conteData?.[0] ? {
+        id: conteData[0].id,
+        title: conteData[0].title,
+        type: conteData[0].type,
+        hasKeywords: !!conteData[0].keywords,
+        keywords: conteData[0].keywords
+      } : '없음'
+    });
+    
+    if (!conteData || !Array.isArray(conteData) || conteData.length === 0) {
+      console.warn('⚠️ 스케줄러: 유효하지 않은 콘티 데이터');
+      return { 
+        days: [], 
+        totalDays: 0,
+        totalScenes: 0,
+        estimatedTotalDuration: 0,
+        message: '콘티 데이터가 없습니다.'
+      }
+    }
+    
     // 실사 촬영용 콘티만 필터링 (여러 타입명 지원)
     const liveActionConte = conteData.filter(conte => 
       conte.type === 'live_action' || 
@@ -18,7 +41,14 @@ export const generateOptimalSchedule = (conteData) => {
       conte.type === '실사 촬영용'
     )
     
+    console.log('🎬 실사 촬영용 콘티 필터링 결과:', {
+      total: conteData.length,
+      liveAction: liveActionConte.length,
+      types: [...new Set(conteData.map(c => c.type))]
+    });
+    
     if (liveActionConte.length === 0) {
+      console.warn('⚠️ 스케줄러: 실사 촬영용 콘티가 없음');
       return { 
         days: [], 
         totalDays: 0,
@@ -28,18 +58,37 @@ export const generateOptimalSchedule = (conteData) => {
       }
     }
     
+    // 각 콘티의 keywords 정보 로깅
+    liveActionConte.forEach((conte, index) => {
+      console.log(`🎬 콘티 ${index + 1} keywords:`, {
+        id: conte.id,
+        title: conte.title,
+        keywords: conte.keywords,
+        location: conte.keywords?.location,
+        equipment: conte.keywords?.equipment
+      });
+    });
+    
     // 장소별로 그룹화
     const locationGroups = groupByLocation(liveActionConte)
+    console.log('🎬 장소별 그룹화 결과:', Object.keys(locationGroups));
     
     // 장비별로 그룹화
     const equipmentGroups = groupByEquipment(liveActionConte)
+    console.log('🎬 장비별 그룹화 결과:', Object.keys(equipmentGroups));
     
     // 가중치 계산 및 최적화
     const optimizedSchedule = optimizeScheduleWithWeights(liveActionConte, locationGroups, equipmentGroups)
     
+    console.log('✅ 스케줄러 완료:', {
+      totalDays: optimizedSchedule.totalDays,
+      totalScenes: optimizedSchedule.totalScenes,
+      estimatedDuration: optimizedSchedule.estimatedTotalDuration
+    });
+    
     return optimizedSchedule
   } catch (error) {
-    console.error('스케줄 생성 중 오류:', error)
+    console.error('❌ 스케줄 생성 중 오류:', error)
     throw new Error('스케줄 생성에 실패했습니다.')
   }
 }
@@ -71,6 +120,14 @@ const groupByLocation = (conteData) => {
  * @returns {string} 추출된 장소 정보 (반드시 keywords.location 기반)
  */
 const extractLocationFromConte = (conte) => {
+  console.log('📍 장소 추출:', {
+    id: conte.id,
+    title: conte.title,
+    hasKeywords: !!conte.keywords,
+    keywordsLocation: conte.keywords?.location,
+    fallbackLocation: conte.location
+  });
+  
   // 반드시 keywords.location만 사용 (description fallback 제거)
   if (conte.keywords && conte.keywords.location && conte.keywords.location !== '기본 장소') {
     return conte.keywords.location
@@ -98,20 +155,6 @@ const groupByEquipment = (conteData) => {
   })
   
   return groups
-}
-
-/**
- * 콘티에서 장비 정보 추출
- * @param {Object} conte - 콘티 객체
- * @returns {string} 추출된 장비 정보 (반드시 keywords.equipment 기반)
- */
-const extractEquipmentFromConte = (conte) => {
-  // 반드시 keywords.equipment만 사용 (description fallback 제거)
-  if (conte.keywords && conte.keywords.equipment && conte.keywords.equipment !== '기본 장비') {
-    return conte.keywords.equipment
-  }
-  // 정보가 없으면 '기본 장비' 반환
-  return '기본 장비'
 }
 
 /**
@@ -1464,61 +1507,79 @@ const extractPropsFromConte = (conte) => {
 }
 
 /**
- * 배우 정보 비교 (같은 배우가 나오는지 확인)
+ * 두 씬이 같은 배우를 가지고 있는지 확인
  * @param {Object} scene1 - 첫 번째 씬
  * @param {Object} scene2 - 두 번째 씬
- * @returns {boolean} 같은 배우가 나오는지 여부
+ * @returns {boolean} 같은 배우가 있는지 여부
  */
 const hasSameActors = (scene1, scene2) => {
   const actors1 = extractActorsFromConte(scene1)
   const actors2 = extractActorsFromConte(scene2)
   
-  // 공통 배우가 있는지 확인
-  return actors1.some(actor1 => actors2.includes(actor1))
+  console.log('🎭 배우 비교:', {
+    scene1: { id: scene1.id, title: scene1.title, actors: actors1 },
+    scene2: { id: scene2.id, title: scene2.title, actors: actors2 }
+  });
+  
+  return actors1.some(actor => actors2.includes(actor))
 }
 
 /**
  * 콘티에서 배우 정보 추출
  * @param {Object} conte - 콘티 객체
- * @returns {Array} 추출된 배우 리스트 (반드시 keywords.cast 기반)
+ * @returns {Array} 배우 배열
  */
 const extractActorsFromConte = (conte) => {
-  // 반드시 keywords.cast만 사용 (description fallback 제거)
+  console.log('🎭 배우 추출:', {
+    id: conte.id,
+    title: conte.title,
+    hasKeywords: !!conte.keywords,
+    keywordsCast: conte.keywords?.cast,
+    fallbackCast: conte.cast
+  });
+  
   if (conte.keywords && conte.keywords.cast && Array.isArray(conte.keywords.cast)) {
     return conte.keywords.cast
   }
-  // 정보가 없으면 빈 배열 반환
   return []
 }
 
 /**
- * 촬영 시간대 비교 (같은 시간대인지 확인)
+ * 두 씬이 같은 시간대를 가지고 있는지 확인
  * @param {Object} scene1 - 첫 번째 씬
  * @param {Object} scene2 - 두 번째 씬
  * @returns {boolean} 같은 시간대인지 여부
  */
 const hasSameTimeSlot = (scene1, scene2) => {
-  const timeSlot1 = extractTimeSlotFromConte(scene1)
-  const timeSlot2 = extractTimeSlotFromConte(scene2)
+  const time1 = extractTimeSlotFromConte(scene1)
+  const time2 = extractTimeSlotFromConte(scene2)
   
-  console.log(`🕐 시간대 비교: "${scene1.title}" (${timeSlot1}) vs "${scene2.title}" (${timeSlot2})`);
-  console.log(`   결과: ${timeSlot1 === timeSlot2 ? '같음' : '다름'}`);
+  console.log('⏰ 시간대 비교:', {
+    scene1: { id: scene1.id, title: scene1.title, time: time1 },
+    scene2: { id: scene2.id, title: scene2.title, time: time2 }
+  });
   
-  return timeSlot1 === timeSlot2
+  return time1 === time2
 }
 
 /**
- * 콘티에서 촬영 시간대 추출
+ * 콘티에서 시간대 정보 추출
  * @param {Object} conte - 콘티 객체
- * @returns {string} 추출된 시간대 (반드시 keywords.timeOfDay 기반)
+ * @returns {string} 시간대 정보
  */
 const extractTimeSlotFromConte = (conte) => {
-  // 반드시 keywords.timeOfDay만 사용 (description fallback 제거)
-  if (conte.keywords && conte.keywords.timeOfDay && conte.keywords.timeOfDay !== '기본 시간대') {
+  console.log('⏰ 시간대 추출:', {
+    id: conte.id,
+    title: conte.title,
+    hasKeywords: !!conte.keywords,
+    keywordsTimeOfDay: conte.keywords?.timeOfDay,
+    fallbackTimeOfDay: conte.timeOfDay
+  });
+  
+  if (conte.keywords && conte.keywords.timeOfDay) {
     return conte.keywords.timeOfDay
   }
-  // 정보가 없으면 '미정' 반환
-  return '미정'
+  return '오후' // 기본값
 }
 
 /**
@@ -1583,4 +1644,26 @@ export const generateBreakdownCSV = (breakdownData) => {
   })
   
   return csv
+}
+
+/**
+ * 콘티에서 장비 정보 추출
+ * @param {Object} conte - 콘티 객체
+ * @returns {string} 추출된 장비 정보 (반드시 keywords.equipment 기반)
+ */
+const extractEquipmentFromConte = (conte) => {
+  console.log('🎥 장비 추출:', {
+    id: conte.id,
+    title: conte.title,
+    hasKeywords: !!conte.keywords,
+    keywordsEquipment: conte.keywords?.equipment,
+    fallbackEquipment: conte.equipment
+  });
+  
+  // 반드시 keywords.equipment만 사용 (description fallback 제거)
+  if (conte.keywords && conte.keywords.equipment && conte.keywords.equipment !== '기본 장비') {
+    return conte.keywords.equipment
+  }
+  // 정보가 없으면 '기본 장비' 반환
+  return '기본 장비'
 } 
