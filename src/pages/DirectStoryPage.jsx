@@ -30,7 +30,6 @@ import {
   DialogActions
 } from '@mui/material'
 import {
-  ArrowBack,
   Save,
   TipsAndUpdates,
   Movie,
@@ -50,6 +49,7 @@ import useProjectStore from '../stores/projectStore'
 import useTimelineStore from '../stores/timelineStore' // 타임라인 스토어 추가
 import { shouldUseDevImages, shouldShowDevBadge, getAppName, getCurrentMode } from '../config/appConfig'
 import { adaptConteForBackend, validateConteData } from '../utils/conteDataAdapter'
+import CommonHeader from '../components/CommonHeader'
 
 /**
  * 직접 스토리 작성 페이지
@@ -400,20 +400,34 @@ const DirectStoryPage = () => {
       const newProject = await createProject(projectData, null) // 콘티 리스트를 null로 전달
       
       if (newProject && (newProject._id || newProject.id)) {
-        const projectId = newProject._id || newProject.id
-        console.log('✅ 스토리 프로젝트 생성 완료:', projectId)
+        console.log('✅ 스토리 저장 완료:', newProject._id || newProject.id)
         
-        // 프로젝트 생성 성공 후 타임라인으로 이동
+        // 프로젝트 상태를 story_ready로 설정
+        console.log('🔄 프로젝트 상태 업데이트 중...')
+        const { updateProject } = useProjectStore.getState()
+        
+        await updateProject(newProject._id || newProject.id, {
+          status: 'story_ready'
+        })
+        
+        console.log('✅ 프로젝트 상태 업데이트 완료: story_ready')
+        
+        // 로컬 스토리지에서 임시 데이터 삭제
+        localStorage.removeItem('directStoryPageState')
+        
+        // 상태 초기화
+        setStory('')
+        setGeneratedConte([])
+        setActiveStep(0)
+        setHasUnsavedChanges(false)
+        
+        // 성공 메시지 표시
         toast.success('스토리가 저장되었습니다!')
         
-        // 타임라인 스토어에 프로젝트 ID 설정
-        const { setCurrentProjectId } = useTimelineStore.getState()
-        setCurrentProjectId(projectId)
-        
-        // 실제 프로젝트 페이지로 이동
-        navigate(`/project/${projectId}`)
+        // 프로젝트 페이지로 이동
+        navigate(`/project/${newProject._id || newProject.id}`)
       } else {
-        throw new Error('프로젝트 생성 실패: 프로젝트 ID가 없습니다.')
+        throw new Error('스토리 저장에 실패했습니다.')
       }
       
     } catch (error) {
@@ -504,40 +518,7 @@ const DirectStoryPage = () => {
           
           // 성공 메시지 표시
           toast.success(`✅ 프로젝트와 ${conteWithImages.length}개의 콘티가 성공적으로 저장되었습니다!`)
-          
-          // 타임라인 스토어에 콘티 데이터 설정
-          const { setScenes, setCurrentProjectId } = useTimelineStore.getState()
-          
-          // 콘티 데이터를 타임라인 형식으로 변환
-          const timelineScenes = conteWithImages.map((conte, index) => ({
-            id: conte.id || `scene_${conte.scene || index + 1}`,
-            scene: conte.scene || index + 1,
-            title: conte.title || `씬 ${conte.scene || index + 1}`,
-            description: conte.description || '',
-            type: conte.type || 'live_action',
-            estimatedDuration: conte.estimatedDuration || '5분',
-            duration: parseDurationToSeconds(conte.estimatedDuration || '5분'),
-            imageUrl: conte.imageUrl || null,
-            keywords: conte.keywords || {},
-            visualDescription: conte.visualDescription || '',
-            dialogue: conte.dialogue || '',
-            cameraAngle: conte.cameraAngle || '',
-            cameraWork: conte.cameraWork || '',
-            characterLayout: conte.characterLayout || '',
-            props: conte.props || '',
-            weather: conte.weather || '',
-            lighting: conte.lighting || '',
-            transition: conte.transition || '',
-            lensSpecs: conte.lensSpecs || '',
-            visualEffects: conte.visualEffects || ''
-          }))
-          
-          console.log('📋 타임라인 스토어에 저장된 콘티 데이터 설정:', timelineScenes.length, '개')
-          
-          // 타임라인 스토어에 데이터 설정
-          setScenes(timelineScenes)
-          setCurrentProjectId(projectId)
-          
+
           // 저장된 프로젝트 페이지로 이동
           navigate(`/project/${projectId}`)
           
@@ -556,6 +537,58 @@ const DirectStoryPage = () => {
       setSavingProject(false)
     }
   }
+          
+          // // 타임라인 스토어에 콘티 데이터 설정
+          // const { setScenes, setCurrentProjectId } = useTimelineStore.getState()
+          
+          // // 콘티 데이터를 타임라인 형식으로 변환
+          // const timelineScenes = conteWithImages.map((conte, index) => ({
+          //   id: conte.id || `scene_${conte.scene || index + 1}`,
+          //   scene: conte.scene || index + 1,
+          //   title: conte.title || `씬 ${conte.scene || index + 1}`,
+          //   description: conte.description || '',
+          //   type: conte.type || 'live_action',
+          //   estimatedDuration: conte.estimatedDuration || '5분',
+          //   duration: parseDurationToSeconds(conte.estimatedDuration || '5분'),
+          //   imageUrl: conte.imageUrl || null,
+          //   keywords: conte.keywords || {},
+          //   visualDescription: conte.visualDescription || '',
+          //   dialogue: conte.dialogue || '',
+          //   cameraAngle: conte.cameraAngle || '',
+          //   cameraWork: conte.cameraWork || '',
+          //   characterLayout: conte.characterLayout || '',
+          //   props: conte.props || '',
+          //   weather: conte.weather || '',
+          //   lighting: conte.lighting || '',
+          //   transition: conte.transition || '',
+          //   lensSpecs: conte.lensSpecs || '',
+          //   visualEffects: conte.visualEffects || ''
+          // }))
+          
+  //         console.log('📋 타임라인 스토어에 저장된 콘티 데이터 설정:', timelineScenes.length, '개')
+          
+  //         // 타임라인 스토어에 데이터 설정
+  //         setScenes(timelineScenes)
+  //         setCurrentProjectId(projectId)
+          
+  //         // 저장된 프로젝트 페이지로 이동
+  //         navigate(`/project/${projectId}`)
+          
+  //       } catch (error) {
+  //         console.error('❌ 콘티 저장 실패:', error)
+  //         toast.error('콘티 저장에 실패했습니다: ' + error.message)
+  //       }
+  //     } else {
+  //       throw new Error('프로젝트 저장에 실패했습니다.')
+  //     }
+      
+  //   } catch (error) {
+  //     console.error('❌ 프로젝트 저장 실패:', error)
+  //     toast.error(error.message || '프로젝트 저장에 실패했습니다.')
+  //   } finally {
+  //     setSavingProject(false)
+  //   }
+  // }
 
   /**
    * 기존 프로젝트 저장 함수 (하위 호환성)
@@ -810,48 +843,39 @@ const DirectStoryPage = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      {/* 상단 앱바 */}
-      <AppBar position="static">
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={handleBack}
-            sx={{ mr: 2 }}
-          >
-            <ArrowBack />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            직접 스토리 작성
-          </Typography>
-          <Button 
-            color="inherit" 
-            startIcon={<Save />}
-            onClick={activeStep === 0 ? handleSaveStory : handleSaveProject}
-            disabled={
-              (activeStep === 0 && !story.trim()) || 
-              (activeStep === 1 && generatedConte.length === 0) || 
-              savingProject
-            }
-            sx={{
+      {/* 공통 헤더 */}
+      <CommonHeader 
+        title="직접 스토리 작성"
+        showBackButton={true}
+        onBack={handleBack}
+      >
+        <Button 
+          color="inherit" 
+          startIcon={<Save />}
+          onClick={activeStep === 0 ? handleSaveStory : handleSaveProject}
+          disabled={
+            (activeStep === 0 && !story.trim()) || 
+            (activeStep === 1 && generatedConte.length === 0) || 
+            savingProject
+          }
+          sx={{
+            backgroundColor: 
+              (activeStep === 0 && story.trim()) || 
+              (activeStep === 1 && generatedConte.length > 0) 
+                ? 'rgba(255,255,255,0.1)' 
+                : 'transparent',
+            '&:hover': {
               backgroundColor: 
                 (activeStep === 0 && story.trim()) || 
                 (activeStep === 1 && generatedConte.length > 0) 
-                  ? 'rgba(255,255,255,0.1)' 
+                  ? 'rgba(255,255,255,0.2)' 
                   : 'transparent',
-              '&:hover': {
-                backgroundColor: 
-                  (activeStep === 0 && story.trim()) || 
-                  (activeStep === 1 && generatedConte.length > 0) 
-                    ? 'rgba(255,255,255,0.2)' 
-                    : 'transparent',
-              }
-            }}
-          >
-            {savingProject ? '저장 중...' : activeStep === 0 ? '스토리 저장' : '프로젝트 저장'}
-          </Button>
-        </Toolbar>
-      </AppBar>
+            }
+          }}
+        >
+          {savingProject ? '저장 중...' : activeStep === 0 ? '스토리 저장' : '프로젝트 저장'}
+        </Button>
+      </CommonHeader>
 
       {/* 메인 컨텐츠 */}
       <Container maxWidth="lg" sx={{ mt: 4 }}>

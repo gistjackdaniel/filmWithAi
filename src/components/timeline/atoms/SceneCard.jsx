@@ -12,8 +12,10 @@ import {
   Edit,
   Info,
   DragIndicator,
-  AccessTime
+  AccessTime,
+  Refresh
 } from '@mui/icons-material'
+import toast from 'react-hot-toast'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -22,7 +24,8 @@ import {
   formatTimeFromSeconds, 
   formatTimeShort, 
   formatTimeHumanReadable,
-  calculateMinSceneWidth 
+  calculateMinSceneWidth,
+  processImageUrl
 } from '../../../utils/timelineUtils'
 
 /**
@@ -200,7 +203,7 @@ const SceneCard = React.memo(({
       aria-describedby={`scene-${scene.id}-type`}
       sx={{
         width: cardWidth,
-        minHeight: scene.imageUrl && (scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action') ? 240 : 160,
+        minHeight: scene.imageUrl ? 240 : 160,
         backgroundColor: 'var(--color-card-bg)',
         borderRadius: '12px',
         border: selected 
@@ -342,30 +345,123 @@ const SceneCard = React.memo(({
         </Box>
       </Box>
 
-      {/* 씬 이미지 (실사 촬영 타입에만 표시) */}
-      {scene.imageUrl && (scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action') && (
+      {/* 씬 이미지 (모든 타입에서 표시) */}
+      {(
         <Box sx={{ 
           width: '100%', 
           height: 80, 
           borderRadius: 1,
           overflow: 'hidden',
-          border: '1px solid rgba(212, 175, 55, 0.3)',
+          border: scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action' 
+            ? '1px solid rgba(212, 175, 55, 0.3)' 
+            : '1px solid rgba(46, 204, 113, 0.3)',
           position: 'relative',
-          mb: 1
+          mb: 1,
+          backgroundColor: scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action'
+            ? 'rgba(212, 175, 55, 0.1)'
+            : 'rgba(46, 204, 113, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
-          <img 
-            src={scene.imageUrl.startsWith('http') ? scene.imageUrl : `http://localhost:5001${scene.imageUrl.startsWith('/') ? scene.imageUrl : `/${scene.imageUrl}`}`} 
-            alt={`씬 ${scene.components?.sceneNumber || scene.scene} 이미지`}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover'
-            }}
-            onError={(e) => {
-              console.error('씬 이미지 로딩 실패:', scene.imageUrl, '->', scene.imageUrl.startsWith('http') ? scene.imageUrl : `http://localhost:5001${scene.imageUrl.startsWith('/') ? scene.imageUrl : `/${scene.imageUrl}`}`)
-              e.target.style.display = 'none'
-            }}
-          />
+          {(() => {
+            const processedUrl = processImageUrl(scene.imageUrl)
+            console.log(`🖼️ SceneCard 씬 ${scene.scene} 이미지 처리:`)
+            console.log('  - 원본 URL:', scene.imageUrl)
+            console.log('  - 처리된 URL:', processedUrl)
+            console.log('  - 씬 타입:', scene.type)
+            console.log('  - 이미지 표시 조건 만족:', !!scene.imageUrl)
+            
+            // 이미지 URL이 있는 경우 이미지 표시
+            if (processedUrl) {
+              return (
+                <img 
+                  src={processedUrl} 
+                  alt={`씬 ${scene.components?.sceneNumber || scene.scene} 이미지`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                  onError={(e) => {
+                    console.error('❌ 씬 이미지 로딩 실패:', {
+                      sceneId: scene.id,
+                      sceneNumber: scene.scene,
+                      originalUrl: scene.imageUrl,
+                      processedUrl: processedUrl,
+                      error: e
+                    })
+                    e.target.style.display = 'none'
+                    // 이미지 로딩 실패 시 플레이스홀더 표시
+                    e.target.nextSibling.style.display = 'flex'
+                  }}
+                  onLoad={() => {
+                    console.log('✅ 씬 이미지 로딩 성공:', {
+                      sceneId: scene.id,
+                      sceneNumber: scene.scene,
+                      originalUrl: scene.imageUrl,
+                      processedUrl: processedUrl
+                    })
+                  }}
+                />
+              )
+            }
+            
+            // 이미지 URL이 없는 경우 플레이스홀더 표시
+            const isLiveAction = scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action'
+            const placeholderColor = isLiveAction ? 'rgba(212, 175, 55, 0.2)' : 'rgba(46, 204, 113, 0.2)'
+            const placeholderHoverColor = isLiveAction ? 'rgba(212, 175, 55, 0.3)' : 'rgba(46, 204, 113, 0.3)'
+            const placeholderIcon = isLiveAction ? <CameraAlt /> : <PlayArrow />
+            
+            return (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: '0.75rem',
+                  textAlign: 'center',
+                  gap: 0.5,
+                  position: 'relative'
+                }}
+              >
+                {React.cloneElement(placeholderIcon, { sx: { fontSize: '1.5rem', opacity: 0.6 } })}
+                <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                  이미지 없음
+                </Typography>
+                {/* 이미지 재생성 버튼 */}
+                <Tooltip title="이미지 재생성">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      console.log('🔄 이미지 재생성 요청:', scene.id)
+                      // TODO: 이미지 재생성 로직 구현
+                      toast.info('이미지 재생성 기능은 준비 중입니다.')
+                    }}
+                    sx={{
+                      position: 'absolute',
+                      bottom: 4,
+                      right: 4,
+                      backgroundColor: placeholderColor,
+                      color: 'var(--color-accent)',
+                      '&:hover': {
+                        backgroundColor: placeholderHoverColor
+                      },
+                      width: 24,
+                      height: 24
+                    }}
+                  >
+                    <Refresh fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            )
+          })()}
           {/* 이미지 오버레이 - 씬 번호 표시 */}
           <Box sx={{
             position: 'absolute',

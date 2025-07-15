@@ -19,7 +19,9 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Divider
+  Divider,
+  Paper,
+  Avatar
 } from '@mui/material'
 import { 
   Close,
@@ -29,14 +31,30 @@ import {
   Image,
   Movie,
   ExpandMore,
-  Error
+  Error,
+  PlayArrow,
+  CameraAlt,
+  LocationOn,
+  Schedule,
+  Videocam,
+  Lightbulb,
+  WbSunny,
+  Person,
+  Settings,
+  AccessTime,
+  Category,
+  Palette,
+  PhotoCamera,
+  Info
 } from '@mui/icons-material'
 import { generateSceneImage, regenerateConteWithRetry } from '../../services/storyGenerationApi'
 import toast from 'react-hot-toast'
+import { CaptionCardType } from '../../types/timeline'
 
 /**
  * 콘티 편집 모달 컴포넌트
  * 개별 씬의 정보를 편집하고 이미지를 재생성할 수 있는 기능
+ * SceneDetailModal의 모든 기능을 통합하여 상세 정보 표시와 편집 기능 제공
  * PRD 2.1.3 AI 콘티 생성 기능의 편집 부분
  */
 const ConteEditModal = ({ 
@@ -45,7 +63,9 @@ const ConteEditModal = ({
   conte, 
   onSave,
   onRegenerateImage,
-  onRegenerateConte
+  onRegenerateConte,
+  onEdit,
+  onRegenerate
 }) => {
   // 디버깅 로그
   console.log('🔍 ConteEditModal props:', { open, conte, onClose, onSave })
@@ -58,6 +78,37 @@ const ConteEditModal = ({
   
   // 이미지 로딩 실패 상태 관리
   const [imageLoadError, setImageLoadError] = useState(false)
+
+  // 씬 타입에 따른 아이콘과 색상
+  const getSceneTypeInfo = (type) => {
+    switch (type) {
+      case CaptionCardType.GENERATED_VIDEO:
+      case 'generated_video':
+        return {
+          icon: <PlayArrow />,
+          label: 'AI 생성 비디오',
+          color: 'success',
+          bgColor: 'rgba(46, 204, 113, 0.1)'
+        }
+      case CaptionCardType.LIVE_ACTION:
+      case 'live_action':
+        return {
+          icon: <CameraAlt />,
+          label: '실사 촬영',
+          color: 'warning',
+          bgColor: 'rgba(212, 175, 55, 0.1)'
+        }
+      default:
+        return {
+          icon: <Settings />,
+          label: '미분류',
+          color: 'default',
+          bgColor: 'rgba(160, 163, 177, 0.1)'
+        }
+    }
+  }
+
+  const typeInfo = editedConte?.type ? getSceneTypeInfo(editedConte.type) : null
 
   // 편집된 콘티가 변경될 때마다 상태 업데이트
   useEffect(() => {
@@ -283,7 +334,344 @@ const ConteEditModal = ({
     }
   }
 
-  if (!conte) return null
+  // 구성요소 섹션 렌더링
+  const renderComponentSection = (title, content, icon = null) => {
+    if (!content) return null
+
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          {icon && (
+            <Box sx={{ mr: 1, color: 'var(--color-accent)' }}>
+              {icon}
+            </Box>
+          )}
+          <Typography
+            variant="h6"
+            sx={{
+              font: 'var(--font-heading-2)',
+              color: 'var(--color-text-primary)'
+            }}
+          >
+            {title}
+          </Typography>
+        </Box>
+        <Typography
+          variant="body1"
+          sx={{
+            font: 'var(--font-body-1)',
+            color: 'var(--color-text-secondary)',
+            lineHeight: 1.6
+          }}
+        >
+          {content}
+        </Typography>
+      </Box>
+    )
+  }
+
+  // 키워드 정보 렌더링
+  const renderKeywordsSection = (keywords) => {
+    if (!keywords || typeof keywords !== 'object') return null
+
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            font: 'var(--font-heading-2)',
+            color: 'var(--color-text-primary)',
+            mb: 2
+          }}
+        >
+          키워드 정보
+        </Typography>
+        <Grid container spacing={2}>
+          {keywords.userInfo && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  사용자 정보
+                </Typography>
+                <Typography variant="body2">{keywords.userInfo}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.location && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  장소
+                </Typography>
+                <Typography variant="body2">{keywords.location}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.date && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  날짜
+                </Typography>
+                <Typography variant="body2">{keywords.date}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.equipment && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  장비
+                </Typography>
+                <Typography variant="body2">{keywords.equipment}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.cast && keywords.cast.length > 0 && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  출연진
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {keywords.cast.map((member, index) => (
+                    <Chip key={index} label={member} size="small" />
+                  ))}
+                </Box>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.props && keywords.props.length > 0 && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  소품
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {keywords.props.map((prop, index) => (
+                    <Chip key={index} label={prop} size="small" />
+                  ))}
+                </Box>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.lighting && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  조명
+                </Typography>
+                <Typography variant="body2">{keywords.lighting}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.weather && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  날씨
+                </Typography>
+                <Typography variant="body2">{keywords.weather}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.timeOfDay && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  시간대
+                </Typography>
+                <Typography variant="body2">{keywords.timeOfDay}</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {keywords.specialRequirements && keywords.specialRequirements.length > 0 && (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  특별 요구사항
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {keywords.specialRequirements.map((req, index) => (
+                    <Chip key={index} label={req} size="small" />
+                  ))}
+                </Box>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    )
+  }
+
+  // 가중치 정보 렌더링
+  const renderWeightsSection = (weights) => {
+    if (!weights || typeof weights !== 'object') return null
+
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            font: 'var(--font-heading-2)',
+            color: 'var(--color-text-primary)',
+            mb: 2
+          }}
+        >
+          우선순위 가중치
+        </Typography>
+        <Grid container spacing={2}>
+          {weights.locationPriority && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  장소 우선순위
+                </Typography>
+                <Typography variant="body2">{weights.locationPriority}/5</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {weights.equipmentPriority && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  장비 우선순위
+                </Typography>
+                <Typography variant="body2">{weights.equipmentPriority}/5</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {weights.castPriority && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  출연진 우선순위
+                </Typography>
+                <Typography variant="body2">{weights.castPriority}/5</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {weights.timePriority && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  시간 우선순위
+                </Typography>
+                <Typography variant="body2">{weights.timePriority}/5</Typography>
+              </Paper>
+            </Grid>
+          )}
+          
+          {weights.complexity && (
+            <Grid item xs={12} sm={6}>
+              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                  복잡도
+                </Typography>
+                <Typography variant="body2">{weights.complexity}/5</Typography>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    )
+  }
+
+  // 이미지 정보 렌더링
+  const renderImageSection = (scene) => {
+    if (!scene || (!scene.imageUrl && !scene.imagePrompt)) return null
+
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            font: 'var(--font-heading-2)',
+            color: 'var(--color-text-primary)',
+            mb: 2
+          }}
+        >
+          이미지 정보
+        </Typography>
+        
+        {scene.imageUrl && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+              생성된 이미지
+            </Typography>
+            <Box
+              component="img"
+              src={scene.imageUrl}
+              alt={`씬 ${scene.scene} 이미지`}
+              sx={{
+                width: '100%',
+                maxWidth: 400,
+                height: 'auto',
+                borderRadius: '8px',
+                border: '1px solid var(--color-scene-card-border)'
+              }}
+            />
+          </Box>
+        )}
+        
+        {scene.imagePrompt && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+              이미지 생성 프롬프트
+            </Typography>
+            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+              {scene.imagePrompt}
+            </Typography>
+          </Box>
+        )}
+        
+        {scene.imageModel && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+              이미지 생성 모델
+            </Typography>
+            <Typography variant="body2">{scene.imageModel}</Typography>
+          </Box>
+        )}
+        
+        {scene.imageGeneratedAt && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+              이미지 생성 시간
+            </Typography>
+            <Typography variant="body2">
+              {new Date(scene.imageGeneratedAt).toLocaleString('ko-KR')}
+            </Typography>
+          </Box>
+        )}
+        
+        {scene.isFreeTier !== undefined && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+              무료 티어 여부
+            </Typography>
+            <Typography variant="body2">
+              {scene.isFreeTier ? '무료 티어' : '유료 티어'}
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    )
+  }
+
+  if (!conte || !editedConte) return null
 
   return (
     <Modal
@@ -314,9 +702,22 @@ const ConteEditModal = ({
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Typography variant="h5" component="h2">
-            씬 {conte?.scene} 편집: {conte?.title}
+              씬 {conte?.scene || 'N/A'}: {conte?.title || '제목 없음'}
           </Typography>
+            {typeInfo && (
+              <Chip
+                icon={typeInfo.icon}
+                label={typeInfo.label}
+                color={typeInfo.color}
+                sx={{
+                  backgroundColor: typeInfo.bgColor,
+                  color: 'var(--color-text-primary)'
+                }}
+              />
+            )}
+          </Box>
           <IconButton onClick={handleClose}>
             <Close />
           </IconButton>
@@ -326,7 +727,7 @@ const ConteEditModal = ({
         <Box sx={{ p: 3 }}>
           <Grid container spacing={3}>
             {/* 씬 이미지 */}
-            {editedConte && editedConte.imageUrl && (
+            {editedConte?.imageUrl && (
               <Grid item xs={12}>
                 <Box sx={{ 
                   width: '100%', 
@@ -636,7 +1037,238 @@ const ConteEditModal = ({
                         variant="outlined"
                       />
                     </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="날씨"
+                        value={editedConte?.keywords?.weather || ''}
+                        onChange={(e) => handleKeywordChange('weather', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="시간대"
+                        value={editedConte?.keywords?.timeOfDay || ''}
+                        onChange={(e) => handleKeywordChange('timeOfDay', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
                   </Grid>
+                </AccordionDetails>
+              </Accordion>
+            </Grid>
+
+            {/* 상세 정보 표시 섹션 */}
+            <Grid item xs={12}>
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  <Typography variant="h6">상세 정보 보기</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    {/* 기본 정보 */}
+                    {renderComponentSection(
+                      '씬 설명',
+                      editedConte?.description
+                    )}
+
+                    {/* 대사 */}
+                    {renderComponentSection(
+                      '대사',
+                      editedConte?.dialogue,
+                      <Person />
+                    )}
+
+                    {/* 시각적 요소들 */}
+                    <Divider sx={{ my: 2, borderColor: 'var(--color-scene-card-border)' }} />
+                    
+                    {renderComponentSection(
+                      '카메라 앵글',
+                      editedConte?.cameraAngle,
+                      <Videocam />
+                    )}
+
+                    {renderComponentSection(
+                      '카메라 워크',
+                      editedConte?.cameraWork,
+                      <Videocam />
+                    )}
+
+                    {renderComponentSection(
+                      '인물 배치',
+                      editedConte?.characterLayout,
+                      <Person />
+                    )}
+
+                    {renderComponentSection(
+                      '소품',
+                      editedConte?.props
+                    )}
+
+                    {/* 환경 요소들 */}
+                    <Divider sx={{ my: 2, borderColor: 'var(--color-scene-card-border)' }} />
+
+                    {renderComponentSection(
+                      '날씨',
+                      editedConte?.weather,
+                      <WbSunny />
+                    )}
+
+                    {renderComponentSection(
+                      '조명',
+                      editedConte?.lighting,
+                      <Lightbulb />
+                    )}
+
+                    {renderComponentSection(
+                      '시각적 설명',
+                      editedConte?.visualDescription
+                    )}
+
+                    {/* 촬영 정보들 */}
+                    <Divider sx={{ my: 2, borderColor: 'var(--color-scene-card-border)' }} />
+
+                    {renderComponentSection(
+                      '전환',
+                      editedConte?.transition
+                    )}
+
+                    {renderComponentSection(
+                      '렌즈 사양',
+                      editedConte?.lensSpecs
+                    )}
+
+                    {renderComponentSection(
+                      '시각효과',
+                      editedConte?.visualEffects
+                    )}
+
+                    {/* 예상 지속 시간 */}
+                    {editedConte?.estimatedDuration && (
+                      <Box sx={{ mb: 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <AccessTime sx={{ mr: 1, color: 'var(--color-accent)' }} />
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              font: 'var(--font-heading-2)',
+                              color: 'var(--color-text-primary)'
+                            }}
+                          >
+                            예상 지속 시간
+                          </Typography>
+                        </Box>
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            font: 'var(--font-body-1)',
+                            color: 'var(--color-text-secondary)',
+                            lineHeight: 1.6
+                          }}
+                        >
+                          {editedConte.estimatedDuration}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* 키워드 정보 */}
+                    {renderKeywordsSection(editedConte?.keywords)}
+
+                    {/* 가중치 정보 */}
+                    {renderWeightsSection(editedConte?.weights)}
+
+                    {/* 이미지 정보 */}
+                    {renderImageSection(editedConte)}
+
+                    {/* 상태 정보 */}
+                    {editedConte?.status && (
+                      <Box sx={{ mb: 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <Info sx={{ mr: 1, color: 'var(--color-accent)' }} />
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              font: 'var(--font-heading-2)',
+                              color: 'var(--color-text-primary)'
+                            }}
+                          >
+                            상태 정보
+                          </Typography>
+                        </Box>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                              <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                                상태
+                              </Typography>
+                              <Typography variant="body2">{editedConte.status}</Typography>
+                            </Paper>
+                          </Grid>
+                          {editedConte.order !== undefined && (
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                                  순서
+                                </Typography>
+                                <Typography variant="body2">{editedConte.order}</Typography>
+                              </Paper>
+                            </Grid>
+                          )}
+                          {editedConte.canEdit !== undefined && (
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                                  편집 가능
+                                </Typography>
+                                <Typography variant="body2">
+                                  {editedConte.canEdit ? '편집 가능' : '편집 불가'}
+                                </Typography>
+                              </Paper>
+                            </Grid>
+                          )}
+                          {editedConte.lastModified && (
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                                  마지막 수정
+                                </Typography>
+                                <Typography variant="body2">
+                                  {new Date(editedConte.lastModified).toLocaleString('ko-KR')}
+                                </Typography>
+                              </Paper>
+                            </Grid>
+                          )}
+                          {editedConte.modifiedBy && (
+                            <Grid item xs={12} sm={6}>
+                              <Paper sx={{ p: 2, backgroundColor: 'var(--color-card-bg)', borderRadius: '8px' }}>
+                                <Typography variant="subtitle2" sx={{ color: 'var(--color-accent)', mb: 1 }}>
+                                  수정자
+                                </Typography>
+                                <Typography variant="body2">{editedConte.modifiedBy}</Typography>
+                              </Paper>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
+                    )}
+
+                    {/* 지속 시간 */}
+                    {editedConte?.duration && (
+                      <Box sx={{ mt: 2, textAlign: 'right' }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            font: 'var(--font-caption)',
+                            color: 'var(--color-text-secondary)'
+                          }}
+                        >
+                          지속 시간: {Math.floor(editedConte.duration / 60)}:{(editedConte.duration % 60).toString().padStart(2, '0')}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
                 </AccordionDetails>
               </Accordion>
             </Grid>
@@ -660,15 +1292,52 @@ const ConteEditModal = ({
             >
               {isRegeneratingConte ? '재생성 중...' : '콘티 재생성'}
             </Button>
+            {editedConte?.type && editedConte.type === CaptionCardType.GENERATED_VIDEO && onRegenerate && (
+              <Button
+                onClick={() => onRegenerate(editedConte)}
+                variant="outlined"
+                startIcon={<PlayArrow />}
+                sx={{
+                  borderColor: 'var(--color-accent)',
+                  color: 'var(--color-accent)',
+                  '&:hover': {
+                    borderColor: 'var(--color-primary)',
+                    backgroundColor: 'rgba(212, 175, 55, 0.1)'
+                  }
+                }}
+              >
+                재생성
+              </Button>
+            )}
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
               variant="outlined"
               onClick={handleClose}
+              sx={{
+                color: 'var(--color-text-secondary)',
+                '&:hover': { color: 'var(--color-text-primary)' }
+              }}
             >
-              취소
+              닫기
             </Button>
+            {onEdit && (
+              <Button
+                onClick={() => onEdit(editedConte)}
+                variant="contained"
+                startIcon={<Edit />}
+                sx={{
+                  backgroundColor: 'var(--color-accent)',
+                  color: 'var(--color-text-primary)',
+                  '&:hover': {
+                    backgroundColor: 'var(--color-primary)'
+                  }
+                }}
+              >
+                편집
+              </Button>
+            )}
             <Button
               variant="contained"
               startIcon={<Save />}

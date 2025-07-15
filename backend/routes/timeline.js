@@ -18,7 +18,6 @@ let wss = null;
 const initializeWebSocket = (server) => {
   wss = new WebSocket.Server({ 
     server
-    // path 옵션 제거 - 모든 WebSocket 연결을 받음
   });
 
   console.log('✅ WebSocket 서버 초기화 완료');
@@ -30,12 +29,27 @@ const initializeWebSocket = (server) => {
     // URL에서 프로젝트 ID 추출
     const url = new URL(req.url, 'http://localhost');
     const pathParts = url.pathname.split('/');
-    const projectId = pathParts[pathParts.length - 1]; // 마지막 부분이 프로젝트 ID
+// <<<<<<< HEAD
+//     const projectId = pathParts[pathParts.length - 1]; // 마지막 부분이 프로젝트 ID
 
-    // /api/timeline/projects/프로젝트ID 패턴 확인
-    if (!projectId || projectId === 'projects' || !pathParts.includes('projects')) {
-      console.error('❌ 올바르지 않은 WebSocket 경로:', req.url);
-      ws.close(1008, 'Invalid WebSocket path');
+//     // /api/timeline/projects/프로젝트ID 패턴 확인
+//     if (!projectId || projectId === 'projects' || !pathParts.includes('projects')) {
+//       console.error('❌ 올바르지 않은 WebSocket 경로:', req.url);
+//       ws.close(1008, 'Invalid WebSocket path');
+// =======
+    const projectId = pathParts[pathParts.length - 1];
+
+    console.log('🔍 WebSocket URL 분석:', {
+      fullUrl: req.url,
+      pathname: url.pathname,
+      pathParts: pathParts,
+      projectId: projectId
+    });
+
+    if (!projectId || projectId === 'ws' || projectId === 'timeline' || projectId === 'projects') {
+      console.error('❌ 유효한 프로젝트 ID가 없습니다.');
+      ws.close(1008, 'Valid Project ID required');
+// >>>>>>> 113e7129b304338650dbe50def2800702d0ff105
       return;
     }
 

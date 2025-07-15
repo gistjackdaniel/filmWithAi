@@ -40,11 +40,13 @@ code {
   --color-primary: #3498DB;    /* 밝은 블루 (기존 #2E3A59에서 변경) */
   --color-accent: #D4AF37;     /* Cinematic Gold */
   --color-bg: #1B1B1E;         /* Charcoal Black */
+  --color-bg-secondary: #2F2F37; /* Slate Gray - 헤더 배경 */
   --color-card-bg: #2F2F37;    /* Slate Gray */
   --color-text-primary: #F5F5F5;   /* Ivory White */
   --color-text-secondary: #A0A3B1; /* Cool Gray */
   --color-success: #2ECC71;     /* Emerald Green */
   --color-danger: #E74C3C;      /* Cinematic Red */
+  --color-border: rgba(255, 255, 255, 0.1); /* 헤더 테두리 */
   
   /* 타이포그래피 시스템 */
   --font-heading-1: 700 24px/32px 'Inter', sans-serif;

@@ -332,6 +332,52 @@ export const isValidSceneTime = (scene) => {
   return isValidTime(duration) && duration > 0
 }
 
+/**
+ * 이미지 URL을 안전하게 처리하는 함수
+ * @param {string} imageUrl - 원본 이미지 URL
+ * @returns {string} 처리된 이미지 URL
+ */
+export const processImageUrl = (imageUrl) => {
+  console.log('🔧 processImageUrl 호출됨:', {
+    input: imageUrl,
+    type: typeof imageUrl,
+    isNull: imageUrl === null,
+    isUndefined: imageUrl === undefined,
+    isEmpty: imageUrl === '',
+    length: imageUrl ? imageUrl.length : 0
+  })
+  
+  if (!imageUrl) {
+    console.log('❌ processImageUrl: URL이 없음, null 반환')
+    return null
+  }
+  
+  // 이미 완전한 URL인 경우 그대로 반환
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    console.log('✅ processImageUrl: 완전한 URL, 그대로 반환:', imageUrl)
+    return imageUrl
+  }
+  
+  // 상대 경로인 경우 API 기본 URL과 결합
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'
+  const baseUrl = apiBaseUrl.replace('/api', '')
+  
+  // 경로가 /로 시작하지 않으면 / 추가
+  const normalizedPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`
+  const finalUrl = `${baseUrl}${normalizedPath}`
+  
+  console.log('🔧 processImageUrl 처리 과정:', {
+    originalUrl: imageUrl,
+    apiBaseUrl: apiBaseUrl,
+    baseUrl: baseUrl,
+    normalizedPath: normalizedPath,
+    finalUrl: finalUrl
+  })
+  
+  console.log('✅ processImageUrl: 최종 URL 반환:', finalUrl)
+  return finalUrl
+}
+
 export default {
   // 시간 변환
   formatTimeFromSeconds,
@@ -363,5 +409,6 @@ export default {
   
   // 유효성 검사
   isValidTime,
-  isValidSceneTime
+  isValidSceneTime,
+  processImageUrl
 } 

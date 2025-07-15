@@ -4,13 +4,9 @@ import {
   Box, 
   Typography, 
   Container,
-  AppBar,
-  Toolbar,
-  IconButton,
   Button
 } from '@mui/material'
 import { 
-  ArrowBack,
   Save,
   PlayArrow
 } from '@mui/icons-material'
@@ -18,10 +14,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
 import TimelineViewer from '../components/timeline/organisms/TimelineViewer'
-import SceneDetailModal from '../components/timeline/organisms/SceneDetailModal'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import useTimelineStore from '../stores/timelineStore'
+import CommonHeader from '../components/CommonHeader'
 
 /**
  * 프로젝트 상세 페이지 컴포넌트
@@ -49,7 +45,8 @@ const ProjectPage = () => {
     selectScene,
     openModal,
     closeModal,
-    disconnectRealtimeUpdates
+    disconnectRealtimeUpdates,
+    loadSceneDetails
   } = useTimelineStore()
   
   // 로컬 상태 관리
@@ -469,19 +466,8 @@ const ProjectPage = () => {
    * 대시보드로 돌아가기
    */
   const handleBack = () => {
-    // 이전 페이지에서 전달받은 상태 정보 확인
-    const returnToInfo = location.state?.returnTo
-    
-    if (returnToInfo) {
-      // 특정 페이지로 돌아가면서 상태 복원
-      navigate(returnToInfo.path, { 
-        state: returnToInfo.state,
-        replace: true // 브라우저 히스토리에서 현재 페이지 대체
-      })
-    } else {
-      // 일반적인 뒤로가기
-      navigate('/')
-    }
+    // 일반적인 뒤로가기 - 브라우저 히스토리에서 이전 페이지로 이동
+    navigate(-1)
   }
 
   /**
@@ -500,16 +486,12 @@ const ProjectPage = () => {
         toast.error('임시 프로젝트는 저장할 수 없습니다. 프로젝트를 먼저 저장해주세요.')
         return
       } else {
-        // 기존 프로젝트 업데이트
-        // 콘티가 있는지 확인하여 상태 결정
-        const hasContes = project.conteList && project.conteList.length > 0
-        const projectStatus = hasContes ? 'conte_ready' : 'story_ready'
-        
+        // 기존 프로젝트 업데이트 (상태는 기존 상태 유지)
         const response = await api.put(`/projects/${projectId}`, {
           projectTitle: project.projectTitle,
           synopsis: project.synopsis,
-          story: project.story,
-          status: projectStatus
+          story: project.story
+          // status는 제거하여 기존 상태 유지
         })
 
         if (response.data.success) {
@@ -543,10 +525,22 @@ const ProjectPage = () => {
   /**
    * 씬 클릭 핸들러
    */
-  const handleSceneClick = useCallback((scene) => {
-    selectScene(scene.id)
-    openModal(scene)
-  }, [selectScene, openModal])
+  const handleSceneClick = useCallback(async (scene) => {
+    try {
+      console.log('ProjectPage handleSceneClick called with scene:', scene)
+      
+      // 씬 선택
+      selectScene(scene.id)
+      
+      // ConteEditModal을 직접 열기 (SceneDetailModal 대신)
+      setEditingScene(scene)
+      setEditModalOpen(true)
+      
+    } catch (error) {
+      console.error('ProjectPage handleSceneClick error:', error)
+      toast.error('씬 정보를 불러오는데 실패했습니다.')
+    }
+  }, [selectScene])
 
   /**
    * 씬 편집 핸들러
@@ -659,17 +653,9 @@ const ProjectPage = () => {
    */
   const handleViewSchedule = useCallback(() => {
     if (scenes && scenes.length > 0) {
-      // 현재 페이지의 모든 상태를 저장하여 스케줄러로 이동
+      // 간단 스케줄러 페이지로 이동하면서 콘티 데이터만 전달
       const currentPageState = {
-        conteData: scenes,
-        returnTo: {
-          path: `/project/${projectId}`,
-          state: {
-            // 현재 페이지 상태 복원을 위한 정보
-            projectId: projectId,
-            project: project
-          }
-        }
+        conteData: scenes
       }
       
       // 간단 스케줄러 페이지로 이동하면서 현재 상태 전달
@@ -703,46 +689,33 @@ const ProjectPage = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      {/* 상단 앱바 */}
-      <AppBar position="static">
-        <Toolbar>
-          {/* 뒤로가기 버튼 */}
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={handleBack}
-            sx={{ mr: 2 }}
-          >
-            <ArrowBack />
-          </IconButton>
-          
-          {/* 프로젝트 제목 */}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {project.projectTitle}
-          </Typography>
-          
-          {/* 저장 버튼 */}
-          <Button 
-            color="inherit" 
-            startIcon={<Save />}
-            onClick={handleSave}
-            disabled={projectId === 'temp-project-id'}
-            title={projectId === 'temp-project-id' ? '임시 프로젝트는 저장할 수 없습니다' : '프로젝트 저장'}
-          >
-            저장
-          </Button>
-          
-          {/* 콘티 생성 버튼 */}
-          <Button 
-            color="inherit" 
-            startIcon={<PlayArrow />}
-            onClick={handleGenerateConte}
-            sx={{ ml: 1 }}
-          >
-            콘티 생성
-          </Button>
-        </Toolbar>
-      </AppBar>
+      {/* 공통 헤더 */}
+      <CommonHeader 
+        title={project?.projectTitle || '프로젝트'}
+        showBackButton={true}
+        onBack={handleBack}
+      >
+        {/* 저장 버튼 */}
+        <Button 
+          color="inherit" 
+          startIcon={<Save />}
+          onClick={handleSave}
+          disabled={projectId === 'temp-project-id'}
+          title={projectId === 'temp-project-id' ? '임시 프로젝트는 저장할 수 없습니다' : '프로젝트 저장'}
+          sx={{ mr: 1 }}
+        >
+          저장
+        </Button>
+        
+        {/* 콘티 생성 버튼 */}
+        <Button 
+          color="inherit" 
+          startIcon={<PlayArrow />}
+          onClick={handleGenerateConte}
+        >
+          콘티 생성
+        </Button>
+      </CommonHeader>
 
       {/* 메인 컨텐츠 */}
       <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -854,8 +827,9 @@ const ProjectPage = () => {
         )}
       </Container>
 
+
       {/* 씬 상세 모달 (타임라인용) */}
-      <SceneDetailModal
+      <ConteEditModal
         open={modalOpen}
         scene={currentScene}
         onClose={closeModal}
@@ -874,14 +848,15 @@ const ProjectPage = () => {
         onImageLoadError={null}
       />
 
-      {/* 씬 편집 모달 */}
       <ConteEditModal
-        open={editModalOpen}
-        onClose={handleEditModalClose}
-        conte={editingScene}
+        open={modalOpen || editModalOpen}
+        onClose={modalOpen ? closeModal : handleEditModalClose}
+        conte={currentScene || editingScene}
         onSave={handleSaveScene}
         onRegenerateImage={handleRegenerateImage}
         onRegenerateConte={handleRegenerateScene}
+        onEdit={handleSceneEdit}
+        onRegenerate={handleSceneRegenerate}
       />
     </Box>
   )

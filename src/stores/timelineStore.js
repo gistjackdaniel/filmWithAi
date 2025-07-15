@@ -109,9 +109,10 @@ const useTimelineStore = create((set, get) => ({
     if (scenes && Array.isArray(scenes)) {
       console.log('✅ timelineStore 유효한 scenes 데이터 수신')
       
-      // 각 씬의 기본 정보 로그
+      // 이미지 URL 상세 분석 로그 추가
+      console.log('🖼️ timelineStore 이미지 URL 상세 분석:')
       scenes.forEach((scene, index) => {
-        console.log(`📋 timelineStore 씬 ${index + 1} 기본 정보:`)
+        console.log(`📸 timelineStore 씬 ${index + 1} 이미지 정보:`)
         console.log('  - ID:', scene.id)
         console.log('  - 씬 번호:', scene.scene)
         console.log('  - 제목:', scene.title)
@@ -119,7 +120,18 @@ const useTimelineStore = create((set, get) => ({
         console.log('  - 예상 시간:', scene.estimatedDuration)
         console.log('  - 실제 시간(초):', scene.duration)
         console.log('  - 이미지 URL 존재:', !!scene.imageUrl)
+        console.log('  - 이미지 URL 값:', scene.imageUrl)
+        console.log('  - 이미지 URL 타입:', typeof scene.imageUrl)
+        console.log('  - 이미지 URL 길이:', scene.imageUrl ? scene.imageUrl.length : 0)
+        if (scene.imageUrl) {
+          console.log('  - 이미지 URL이 http로 시작:', scene.imageUrl.startsWith('http'))
+          console.log('  - 이미지 URL이 /로 시작:', scene.imageUrl.startsWith('/'))
+          console.log('  - 이미지 URL이 빈 문자열:', scene.imageUrl === '')
+          console.log('  - 이미지 URL이 null:', scene.imageUrl === null)
+          console.log('  - 이미지 URL이 undefined:', scene.imageUrl === undefined)
+        }
         console.log('  - 키워드 존재:', !!scene.keywords)
+        console.log('  ---')
       })
     } else {
       console.log('❌ timelineStore 유효하지 않은 scenes 데이터:', scenes)
@@ -298,19 +310,23 @@ const useTimelineStore = create((set, get) => ({
     }
 
     try {
+      console.log('timelineStore loadSceneDetails started for sceneId:', sceneId)
       const result = await timelineService.getSceneDetails(currentProjectId, sceneId)
       
       if (result.success) {
-        // 현재 씬 업데이트
-        set({ currentScene: result.data })
+        // 현재 씬 업데이트 및 모달 열기
+        set({ currentScene: result.data, modalOpen: true })
+        console.log('timelineStore scene details loaded and modal opened:', result.data)
         return { success: true, data: result.data }
       } else {
         set({ error: result.error })
+        console.error('timelineStore loadSceneDetails failed:', result.error)
         return { success: false, error: result.error }
       }
     } catch (error) {
       const errorMessage = '씬 상세 정보를 불러오는데 실패했습니다.'
       set({ error: errorMessage })
+      console.error('timelineStore loadSceneDetails error:', error)
       return { success: false, error: errorMessage }
     }
   },

@@ -26,7 +26,6 @@ import {
   Group,
   Videocam,
   AccessTime,
-  ArrowBack,
   CameraAlt, // 아이콘 추가
   Build, // 아이콘 추가
   Star // 즐겨찾기 아이콘 추가
@@ -40,6 +39,7 @@ import dayjs from 'dayjs';
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal';
 import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토리 생성 스토어 추가
 import { getProject } from '../services/projectApi';
+import CommonHeader from '../components/CommonHeader';
 
 /**
  * 간단한 스케줄표 페이지
@@ -907,24 +907,9 @@ const SimpleSchedulePage = () => {
     console.log('  - finalProjectId:', finalProjectId);
     console.log('  - location.state:', location.state);
     
-    // location.state에서 returnTo 정보 확인
-    const returnTo = location.state?.returnTo;
-    
-    if (returnTo && returnTo.path) {
-      // Dashboard에서 전달받은 returnTo 정보가 있으면 해당 경로로 이동
-      console.log('🔙 Dashboard로 돌아가기:', returnTo.path);
-      navigate(returnTo.path, { 
-        state: returnTo.state
-      });
-    } else if (finalProjectId) {
-      // URL 파라미터로 프로젝트 ID가 있으면 해당 프로젝트 페이지로 이동
-      console.log('🔙 프로젝트 페이지로 돌아가기:', `/project/${finalProjectId}`);
-      navigate(`/project/${finalProjectId}`);
-    } else {
-      // 기본값: 이전 페이지로 이동
-      console.log('🔙 이전 페이지로 돌아가기');
-      navigate(-1);
-    }
+    // 일반적인 뒤로가기 - 브라우저 히스토리에서 이전 페이지로 이동
+    console.log('🔙 이전 페이지로 돌아가기');
+    navigate(-1);
   };
 
   /**
@@ -1074,16 +1059,17 @@ const SimpleSchedulePage = () => {
     : [];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* 헤더 */}
-      <Box sx={{ mb: 4 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={handleBack}
-          sx={{ mb: 2 }}
-        >
-          뒤로가기
-        </Button>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
+      {/* 공통 헤더 */}
+      <CommonHeader 
+        title="촬영 스케줄"
+        showBackButton={true}
+        onBack={handleBack}
+      />
+      
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        {/* 헤더 */}
+        <Box sx={{ mb: 4 }}>
         
         <Typography variant="h4" component="h1" gutterBottom>
           {finalProjectId 
@@ -1440,6 +1426,7 @@ const SimpleSchedulePage = () => {
         onImageLoadError={null}
       />
     </Container>
+    </Box>
   );
 };
 

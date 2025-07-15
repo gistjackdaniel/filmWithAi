@@ -111,6 +111,27 @@ class TimelineService {
   }
 
   /**
+   * 이미지 URL을 백엔드 서버 URL로 변환
+   * @param {string} imageUrl - 원본 이미지 URL
+   * @returns {string} 변환된 이미지 URL
+   */
+  convertImageUrl(imageUrl) {
+    if (!imageUrl) return null
+    
+    // 이미 전체 URL인 경우 그대로 반환
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl
+    }
+    
+    // 상대 경로인 경우 백엔드 서버 URL로 변환
+    if (imageUrl.startsWith('/uploads/')) {
+      return `http://localhost:5001${imageUrl}`
+    }
+    
+    return imageUrl
+  }
+
+  /**
    * 프로젝트의 콘티 데이터를 가져옵니다
    * @param {string} projectId - 프로젝트 ID
    * @returns {Promise<Object>} 콘티 데이터
@@ -147,59 +168,92 @@ class TimelineService {
       }
       
       // 콘티 데이터를 타임라인 형식으로 변환
-      const timelineScenes = conteList.map((conte, index) => {
-        // ID 생성 로직 개선
-        const sceneId = conte.id || conte._id || `scene_${conte.scene || index + 1}`
+// <<<<<<< HEAD
+//       const timelineScenes = conteList.map((conte, index) => {
+//         // ID 생성 로직 개선
+//         const sceneId = conte.id || conte._id || `scene_${conte.scene || index + 1}`
         
-        // duration 계산 개선
-        const duration = this.parseDurationToSeconds(conte.estimatedDuration || '5분')
+//         // duration 계산 개선
+//         const duration = this.parseDurationToSeconds(conte.estimatedDuration || '5분')
         
-        console.log(`timelineService converting scene ${conte.scene || index + 1}:`, {
-          id: sceneId,
-          title: conte.title,
-          duration: duration,
-          type: conte.type
-        })
+//         console.log(`timelineService converting scene ${conte.scene || index + 1}:`, {
+//           id: sceneId,
+//           title: conte.title,
+//           duration: duration,
+//           type: conte.type
+//         })
         
-        return {
-          id: sceneId,
-          scene: conte.scene || index + 1,
-          title: conte.title || `씬 ${conte.scene || index + 1}`,
-          description: conte.description || '',
-          dialogue: conte.dialogue || '',
-          cameraAngle: conte.cameraAngle || '',
-          cameraWork: conte.cameraWork || '',
-          characterLayout: conte.characterLayout || '',
-          props: conte.props || '',
-          weather: conte.weather || '',
-          lighting: conte.lighting || '',
-          visualDescription: conte.visualDescription || '',
-          transition: conte.transition || '',
-          lensSpecs: conte.lensSpecs || '',
-          visualEffects: conte.visualEffects || '',
-          type: conte.type || 'live_action',
-          estimatedDuration: conte.estimatedDuration || '5분',
-          duration: duration,
-          imageUrl: conte.imageUrl || null,
-          keywords: conte.keywords || {
-            location: '미정',
-            equipment: '기본 장비',
-            cast: [],
-            props: [],
-            specialRequirements: [],
-            timeOfDay: '오후',
-            weather: conte.weather || '맑음'
-          },
-          weights: conte.weights || {},
-          order: conte.order || conte.scene || index + 1,
-          status: conte.status || 'active',
-          canEdit: conte.canEdit !== false,
-          lastModified: conte.lastModified || new Date().toISOString(),
-          modifiedBy: conte.modifiedBy || 'AI',
-          createdAt: conte.createdAt || new Date().toISOString(),
-          updatedAt: conte.updatedAt || new Date().toISOString()
-        }
-      })
+//         return {
+//           id: sceneId,
+//           scene: conte.scene || index + 1,
+//           title: conte.title || `씬 ${conte.scene || index + 1}`,
+//           description: conte.description || '',
+//           dialogue: conte.dialogue || '',
+//           cameraAngle: conte.cameraAngle || '',
+//           cameraWork: conte.cameraWork || '',
+//           characterLayout: conte.characterLayout || '',
+//           props: conte.props || '',
+//           weather: conte.weather || '',
+//           lighting: conte.lighting || '',
+//           visualDescription: conte.visualDescription || '',
+//           transition: conte.transition || '',
+//           lensSpecs: conte.lensSpecs || '',
+//           visualEffects: conte.visualEffects || '',
+//           type: conte.type || 'live_action',
+//           estimatedDuration: conte.estimatedDuration || '5분',
+//           duration: duration,
+//           imageUrl: conte.imageUrl || null,
+//           keywords: conte.keywords || {
+//             location: '미정',
+//             equipment: '기본 장비',
+//             cast: [],
+//             props: [],
+//             specialRequirements: [],
+//             timeOfDay: '오후',
+//             weather: conte.weather || '맑음'
+//           },
+//           weights: conte.weights || {},
+//           order: conte.order || conte.scene || index + 1,
+//           status: conte.status || 'active',
+//           canEdit: conte.canEdit !== false,
+//           lastModified: conte.lastModified || new Date().toISOString(),
+//           modifiedBy: conte.modifiedBy || 'AI',
+//           createdAt: conte.createdAt || new Date().toISOString(),
+//           updatedAt: conte.updatedAt || new Date().toISOString()
+//         }
+//       })
+// =======
+      const timelineScenes = conteList.map(conte => ({
+        id: conte.id || conte._id,
+        scene: conte.scene,
+        title: conte.title,
+        description: conte.description,
+        dialogue: conte.dialogue,
+        cameraAngle: conte.cameraAngle,
+        cameraWork: conte.cameraWork,
+        characterLayout: conte.characterLayout,
+        props: conte.props,
+        weather: conte.weather,
+        lighting: conte.lighting,
+        visualDescription: conte.visualDescription,
+        transition: conte.transition,
+        lensSpecs: conte.lensSpecs,
+        visualEffects: conte.visualEffects,
+        type: conte.type || 'live_action',
+        estimatedDuration: conte.estimatedDuration || '5분',
+        duration: this.parseDurationToSeconds(conte.estimatedDuration || '5분'),
+        imageUrl: this.convertImageUrl(conte.imageUrl),
+        keywords: conte.keywords || {},
+        weights: conte.weights || {},
+        order: conte.order || conte.scene,
+        status: conte.status || 'active',
+        canEdit: conte.canEdit !== false,
+        lastModified: conte.lastModified,
+        modifiedBy: conte.modifiedBy,
+        createdAt: conte.createdAt,
+        updatedAt: conte.updatedAt
+      }))
+// >>>>>>> 113e7129b304338650dbe50def2800702d0ff105
       
       console.log('timelineService timelineScenes converted:', timelineScenes.length, 'scenes')
       console.log('timelineService first scene sample:', timelineScenes[0])
@@ -232,22 +286,65 @@ class TimelineService {
    */
   async getSceneDetails(projectId, sceneId) {
     try {
-      const response = await timelineAPI.get(`/projects/${projectId}`)
-      const project = response.data.project
-      const scene = project?.conteList?.find(scene => scene.id === sceneId || scene.scene === sceneId)
+      console.log('timelineService getSceneDetails started for projectId:', projectId, 'sceneId:', sceneId)
       
-      if (!scene) {
+      // 백엔드 API에서 특정 콘티 조회
+      const response = await timelineAPI.get(`/projects/${projectId}/contes/${sceneId}`)
+      console.log('timelineService getSceneDetails API response:', response.data)
+      
+      if (response.data.success && response.data.data?.conte) {
+        const conte = response.data.data.conte
+        
+        // 콘티 데이터를 타임라인 형식으로 변환
+        const sceneDetails = {
+          id: conte.id || conte._id,
+          scene: conte.scene,
+          title: conte.title,
+          description: conte.description,
+          dialogue: conte.dialogue,
+          cameraAngle: conte.cameraAngle,
+          cameraWork: conte.cameraWork,
+          characterLayout: conte.characterLayout,
+          props: conte.props,
+          weather: conte.weather,
+          lighting: conte.lighting,
+          visualDescription: conte.visualDescription,
+          transition: conte.transition,
+          lensSpecs: conte.lensSpecs,
+          visualEffects: conte.visualEffects,
+          type: conte.type || 'live_action',
+          estimatedDuration: conte.estimatedDuration || '5분',
+          duration: this.parseDurationToSeconds(conte.estimatedDuration || '5분'),
+          imageUrl: this.convertImageUrl(conte.imageUrl),
+          imagePrompt: conte.imagePrompt,
+          imageGeneratedAt: conte.imageGeneratedAt,
+          imageModel: conte.imageModel,
+          isFreeTier: conte.isFreeTier,
+          keywords: conte.keywords || {},
+          weights: conte.weights || {},
+          order: conte.order || conte.scene,
+          status: conte.status || 'draft',
+          canEdit: conte.canEdit !== false,
+          lastModified: conte.lastModified,
+          modifiedBy: conte.modifiedBy,
+          createdAt: conte.createdAt,
+          updatedAt: conte.updatedAt,
+          project: conte.project
+        }
+        
+        console.log('timelineService sceneDetails converted:', sceneDetails)
+        
+        return {
+          success: true,
+          data: sceneDetails,
+          error: null
+        }
+      } else {
         return {
           success: false,
           data: null,
-          error: '씬을 찾을 수 없습니다.'
+          error: response.data.message || '씬을 찾을 수 없습니다.'
         }
-      }
-      
-      return {
-        success: true,
-        data: scene,
-        error: null
       }
     } catch (error) {
       console.error('씬 상세 정보 가져오기 실패:', error)
@@ -367,7 +464,7 @@ class TimelineService {
   connectRealtimeUpdates(projectId, onUpdate) {
     try {
       // WebSocket URL 설정
-      const wsUrl = `ws://localhost:5001/api/timeline/projects/${projectId}`
+      const wsUrl = `ws://localhost:5001/ws/timeline/projects/${projectId}`
       console.log('🔌 WebSocket 연결 시도:', wsUrl)
       
       const ws = new WebSocket(wsUrl)
@@ -397,15 +494,35 @@ class TimelineService {
 
       ws.onerror = (error) => {
         console.error('❌ WebSocket 에러:', error)
+        
+        // 에러 발생 시 3초 후 재연결 시도
+        setTimeout(() => {
+          console.log('🔄 WebSocket 재연결 시도...')
+          this.connectRealtimeUpdates(projectId, onUpdate)
+        }, 3000)
       }
 
       ws.onclose = (event) => {
         console.log('🔌 타임라인 실시간 연결 종료:', event.code, event.reason)
+        
+        // 정상 종료가 아닌 경우 재연결 시도
+        if (event.code !== 1000) {
+          console.log('🔄 WebSocket 재연결 시도...')
+          setTimeout(() => {
+            this.connectRealtimeUpdates(projectId, onUpdate)
+          }, 3000)
+        }
       }
 
       return ws
     } catch (error) {
       console.error('❌ WebSocket 연결 실패:', error)
+      
+      // 에러 발생 시 3초 후 재시도
+      setTimeout(() => {
+        console.log('🔄 WebSocket 재연결 시도...')
+        this.connectRealtimeUpdates(projectId, onUpdate)
+      }, 3000)
       
       // 에러 발생 시 더미 객체 반환
       const dummyWs = {

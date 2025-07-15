@@ -35,7 +35,6 @@ import {
   MenuItem
 } from '@mui/material'
 import {
-  ArrowBack,
   Schedule,
   LocationOn,
   CameraAlt,
@@ -49,6 +48,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { generateOptimalSchedule, generateBreakdown, generateScheduleCSV, generateBreakdownCSV } from '../services/schedulerService'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
+import CommonHeader from '../components/CommonHeader'
 
 /**
  * 스케줄러 페이지 컴포넌트
@@ -174,22 +174,11 @@ const SchedulerPage = (props) => {
 
   /**
    * 뒤로가기 버튼 핸들러
-   * 이전 페이지로 돌아가면서 상태 복원
+   * 진짜 바로 전에 있던 페이지로 돌아가기
    */
   const handleBack = () => {
-    // 이전 페이지에서 전달받은 상태 정보 확인
-    const returnToInfo = location.state?.returnTo
-
-    if (returnToInfo) {
-      // 특정 페이지로 돌아가면서 상태 복원
-      navigate(returnToInfo.path, {
-        state: returnToInfo.state,
-        replace: true // 브라우저 히스토리에서 현재 페이지 대체
-      })
-    } else {
-      // 일반적인 뒤로가기
-      navigate(-1)
-    }
+    // 일반적인 뒤로가기 - 브라우저 히스토리에서 이전 페이지로 이동
+    navigate(-1)
   }
 
   /**
@@ -407,38 +396,29 @@ const SchedulerPage = (props) => {
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-      {/* 상단 앱바 */}
-      <AppBar position="static" sx={{ backgroundColor: 'var(--color-primary)' }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
+      {/* 공통 헤더 */}
+      <CommonHeader 
+        title="촬영 스케줄러"
+        showBackButton={true}
+        onBack={handleBack}
+      >
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
             color="inherit"
-            onClick={handleBack}
-            sx={{ mr: 2 }}
+            startIcon={<Print />}
+            onClick={handlePrint}
           >
-            <ArrowBack />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            촬영 스케줄러
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              color="inherit"
-              startIcon={<Print />}
-              onClick={handlePrint}
-            >
-              인쇄
-            </Button>
-            <Button
-              color="inherit"
-              startIcon={<Download />}
-              onClick={handleDownload}
-            >
-              다운로드
-            </Button>
-          </Box>
-        </Toolbar>
-      </AppBar>
+            인쇄
+          </Button>
+          <Button
+            color="inherit"
+            startIcon={<Download />}
+            onClick={handleDownload}
+          >
+            다운로드
+          </Button>
+        </Box>
+      </CommonHeader>
 
       {/* 메인 컨텐츠 */}
       <Container maxWidth="xl" sx={{ py: 4 }}>

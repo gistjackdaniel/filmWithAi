@@ -6,8 +6,6 @@ import {
   Card, 
   CardContent,
   Grid,
-  AppBar,
-  Toolbar,
   IconButton,
   Menu,
   MenuItem,
@@ -43,6 +41,7 @@ import UserProfile from '../components/UserProfile'
 import OnboardingModal from '../components/OnboardingModal'
 import ProjectSelectionModal from '../components/ProjectSelectionModal'
 import { toggleProjectFavorite, getFavoriteProjects, getProject } from '../services/projectApi'
+import CommonHeader from '../components/CommonHeader'
 
 /**
  * SceneForge 대시보드 페이지 컴포넌트
@@ -234,11 +233,7 @@ const Dashboard = () => {
           
           // 스케줄 페이지로 이동하면서 콘티 데이터 전달
           const navigationState = {
-            conteData: conteData,
-            returnTo: {
-              path: '/',
-              state: {}
-            }
+            conteData: conteData
           };
           console.log('📅 네비게이션 상태:', navigationState);
           
@@ -289,11 +284,7 @@ const Dashboard = () => {
         
         // 스케줄 페이지로 이동하면서 콘티 데이터 전달
         const navigationState = {
-          conteData: conteData,
-          returnTo: {
-            path: '/',
-            state: {}
-          }
+          conteData: conteData
         };
         console.log('📅 선택된 프로젝트 네비게이션 상태:', navigationState);
         
@@ -542,18 +533,11 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      {/* 상단 앱바 */}
-      <AppBar position="static">
-        <Toolbar>
-          {/* 앱 제목 */}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            SceneForge
-          </Typography>
-          
-          {/* 사용자 프로필 컴포넌트 */}
-          <UserProfile />
-        </Toolbar>
-      </AppBar>
+      {/* 공통 헤더 */}
+      <CommonHeader title="">
+        {/* 사용자 프로필 컴포넌트 */}
+        <UserProfile />
+      </CommonHeader>
 
       {/* 메인 컨텐츠 */}
       <Container maxWidth="lg" sx={{ mt: 4 }}>

@@ -62,6 +62,30 @@ const TimelineViewer = (props) => {
   console.log('🔍 TimelineViewer received props:', props)
   console.log('🔍 TimelineViewer received scenes:', scenes, 'type:', typeof scenes, 'isArray:', Array.isArray(scenes))
   
+  // 이미지 URL 상세 로그 추가
+  if (scenes && Array.isArray(scenes)) {
+    console.log('🖼️ TimelineViewer 이미지 URL 상세 분석:')
+    scenes.forEach((scene, index) => {
+      console.log(`📸 씬 ${index + 1} 이미지 정보:`)
+      console.log('  - 씬 ID:', scene.id)
+      console.log('  - 씬 번호:', scene.scene)
+      console.log('  - 제목:', scene.title)
+      console.log('  - 타입:', scene.type)
+      console.log('  - 이미지 URL 존재:', !!scene.imageUrl)
+      console.log('  - 이미지 URL 값:', scene.imageUrl)
+      console.log('  - 이미지 URL 타입:', typeof scene.imageUrl)
+      console.log('  - 이미지 URL 길이:', scene.imageUrl ? scene.imageUrl.length : 0)
+      if (scene.imageUrl) {
+        console.log('  - 이미지 URL이 http로 시작:', scene.imageUrl.startsWith('http'))
+        console.log('  - 이미지 URL이 /로 시작:', scene.imageUrl.startsWith('/'))
+        console.log('  - 이미지 URL이 빈 문자열:', scene.imageUrl === '')
+        console.log('  - 이미지 URL이 null:', scene.imageUrl === null)
+        console.log('  - 이미지 URL이 undefined:', scene.imageUrl === undefined)
+      }
+      console.log('  ---')
+    })
+  }
+  
   // scenes가 유효한 배열인지 확인하고 안전하게 처리
   const safeScenes = useMemo(() => {
     if (!scenes) {

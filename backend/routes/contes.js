@@ -242,11 +242,11 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
     await conte.save();
     console.log('✅ 콘티 저장 완료:', { id: conte._id, scene: conte.scene, title: conte.title });
 
-    // 프로젝트 상태를 콘티 수에 따라 자동 업데이트
+    // 새로운 콘티 생성 시에만 프로젝트 상태를 conte_ready로 업데이트 (기존 상태 유지)
     const project = await ProjectModel.findById(projectId);
     if (project) {
-      await project.updateStatusByConteCount();
-      console.log('✅ 프로젝트 상태 자동 업데이트 완료');
+      await project.updateStatusOnConteCreation();
+      console.log('✅ 콘티 생성으로 인한 프로젝트 상태 업데이트 완료');
     }
 
     res.status(201).json({
