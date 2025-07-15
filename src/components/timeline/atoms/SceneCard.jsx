@@ -354,7 +354,7 @@ const SceneCard = React.memo(({
           mb: 1
         }}>
           <img 
-            src={scene.imageUrl} 
+            src={scene.imageUrl.startsWith('http') ? scene.imageUrl : `http://localhost:5001${scene.imageUrl.startsWith('/') ? scene.imageUrl : `/${scene.imageUrl}`}`} 
             alt={`씬 ${scene.components?.sceneNumber || scene.scene} 이미지`}
             style={{
               width: '100%',
@@ -362,7 +362,7 @@ const SceneCard = React.memo(({
               objectFit: 'cover'
             }}
             onError={(e) => {
-              console.error('씬 이미지 로딩 실패:', scene.imageUrl)
+              console.error('씬 이미지 로딩 실패:', scene.imageUrl, '->', scene.imageUrl.startsWith('http') ? scene.imageUrl : `http://localhost:5001${scene.imageUrl.startsWith('/') ? scene.imageUrl : `/${scene.imageUrl}`}`)
               e.target.style.display = 'none'
             }}
           />

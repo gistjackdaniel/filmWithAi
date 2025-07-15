@@ -49,8 +49,23 @@ app.use(sqlInjectionProtection)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// 정적 파일 서빙 (이미지 파일용)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+// 정적 파일 서빙 (이미지 파일용) - CORS 헤더 추가
+app.use('/uploads', (req, res, next) => {
+  // CORS 헤더 설정
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3002');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  
+  // OPTIONS 요청 처리
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+}, express.static(path.join(__dirname, 'uploads')))
 
 // MongoDB 연결
 const MONGODB_URI = process.env.MONGODB_URI // || 'mongodb://localhost:27017/sceneforge_db'
