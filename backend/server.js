@@ -3,6 +3,7 @@ const cors = require('cors')
 const axios = require('axios')
 const mongoose = require('mongoose')
 const http = require('http')
+const path = require('path')
 const { validateEnvironmentVariables } = require('./config/security')
 const {
   rateLimiter,
@@ -48,8 +49,26 @@ app.use(sqlInjectionProtection)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// 정적 파일 서빙 (이미지 파일용) - CORS 헤더 추가
+app.use('/uploads', (req, res, next) => {
+  // CORS 헤더 설정
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3002');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  
+  // OPTIONS 요청 처리
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+}, express.static(path.join(__dirname, 'uploads')))
+
 // MongoDB 연결
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sceneforge_db'
+const MONGODB_URI = process.env.MONGODB_URI // || 'mongodb://localhost:27017/sceneforge_db'
 
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
@@ -85,11 +104,13 @@ const authRoutes = require('./routes/auth'); // 기존 인증 라우트
 const userRoutes = require('./routes/users'); // 사용자 관리 라우트
 const projectRoutes = require('./routes/projects'); // 프로젝트 관리 라우트
 const conteRoutes = require('./routes/contes'); // 콘티 관리 라우트
+const timelineRoutes = require('./routes/timeline'); // 타임라인 WebSocket 라우트
 
 app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
 app.use('/api/users', userRoutes); // /api/users/* 경로를 user 라우터로 연결
 app.use('/api/projects', projectRoutes); // /api/projects/* 경로를 project 라우터로 연결
 app.use('/api/projects', conteRoutes); // /api/projects/*/contes/* 경로를 conte 라우터로 연결
+app.use('/api/timeline', timelineRoutes.router); // /api/timeline/* 경로를 timeline 라우터로 연결
 
 /**
  * AI 스토리 생성 API
@@ -412,13 +433,19 @@ app.post('/api/conte/generate', async (req, res) => {
 
     console.log('🎬 AI 콘티 생성 요청:', { storyLength: story.length, maxScenes, genre })
 
+    // maxScenes 검증 및 제한
+    const validatedMaxScenes = Math.min(Math.max(parseInt(maxScenes) || 2, 1), 10)
+    console.log('✅ 검증된 maxScenes:', validatedMaxScenes)
+
     // OpenAI GPT-4o API 호출 - 캡션 카드 구조에 맞춘 상세한 콘티 생성
     const prompt = `
 다음 스토리를 바탕으로 영화 캡션 카드를 생성해주세요.
 
 스토리: ${story}
 장르: ${genre}
-최대 씬 수: ${maxScenes}
+최대 씬 수: ${validatedMaxScenes}
+
+**중요: 정확히 ${validatedMaxScenes}개의 씬만 생성해주세요. 더 많거나 적게 생성하지 마세요.**
 
 각 캡션 카드는 다음 12개 구성 요소를 모두 포함해야 합니다:
 
@@ -938,6 +965,13 @@ JSON 이외의 텍스트는 포함하지 마세요.
         firstItem: conteList[0] 
       })
       
+      // 생성된 콘티 개수 제한 (요청된 개수만큼만)
+      if (conteList.length > validatedMaxScenes) {
+        console.log(`⚠️ 생성된 콘티가 요청된 개수보다 많음: ${conteList.length} > ${validatedMaxScenes}`)
+        conteList = conteList.slice(0, validatedMaxScenes)
+        console.log(`✅ 콘티 개수 제한 완료: ${conteList.length}개`)
+      }
+
       // 각 캡션 카드에 고유 ID와 타임스탬프 추가
       conteList = conteList.map((card, index) => {
         // 키워드 노드 개별 파싱 함수
@@ -1153,94 +1187,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
   }
 })
 
-/**
- * 프로젝트 저장 API
- * POST /api/project/save
- */
-app.post('/api/project/save', async (req, res) => {
-  try {
-    const { projectTitle, synopsis, story, conteList, userId } = req.body
-
-    // 입력 검증
-    if (!projectTitle || !synopsis) {
-      return res.status(400).json({
-        success: false,
-        message: '프로젝트 제목과 시놉시스가 필요합니다.'
-      })
-    }
-
-    console.log('💾 프로젝트 저장 요청:', { 
-      projectTitle, 
-      synopsisLength: synopsis.length,
-      storyLength: story?.length || 0,
-      conteCount: conteList?.length || 0
-    })
-
-    // 임시 저장 (실제로는 데이터베이스에 저장)
-    const projectData = {
-      id: Date.now().toString(), // 임시 ID 생성
-      projectTitle,
-      synopsis,
-      story: story || '',
-      conteList: conteList || [],
-      userId: userId || 'anonymous',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-
-    console.log('✅ 프로젝트 저장 완료:', { projectId: projectData.id })
-
-    res.json({
-      success: true,
-      projectId: projectData.id,
-      message: '프로젝트가 성공적으로 저장되었습니다.',
-      savedAt: projectData.updatedAt
-    })
-
-  } catch (error) {
-    console.error('❌ 프로젝트 저장 오류:', error.message)
-    res.status(500).json({
-      success: false,
-      message: '프로젝트 저장 중 오류가 발생했습니다.'
-    })
-  }
-})
-
-/**
- * 프로젝트 조회 API
- * GET /api/project/list
- */
-app.get('/api/project/list', async (req, res) => {
-  try {
-    const { userId } = req.query
-
-    console.log('📋 프로젝트 목록 조회:', { userId })
-
-    // 임시 데이터 (실제로는 데이터베이스에서 조회)
-    const projects = [
-      {
-        id: '1',
-        projectTitle: '샘플 프로젝트',
-        synopsis: '샘플 시놉시스입니다.',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ]
-
-    res.json({
-      success: true,
-      projects: projects,
-      totalCount: projects.length
-    })
-
-  } catch (error) {
-    console.error('❌ 프로젝트 목록 조회 오류:', error.message)
-    res.status(500).json({
-      success: false,
-      message: '프로젝트 목록 조회 중 오류가 발생했습니다.'
-    })
-  }
-})
+// 기존 임시 API 제거 - MongoDB 연동 API로 대체됨
 
 /**
  * 서버 상태 확인 API
@@ -1273,6 +1220,9 @@ app.use(errorHandler)
 
 // 실시간 협업 서비스 초기화
 const realtimeService = new RealtimeService(server)
+
+// WebSocket 서비스 초기화
+timelineRoutes.initializeWebSocket(server)
 
 // 데이터 분석 서비스 초기화
 const analyticsService = new AnalyticsService()

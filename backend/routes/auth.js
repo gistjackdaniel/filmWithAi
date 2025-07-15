@@ -16,19 +16,32 @@ router.post('/google', async (req, res) => {
     
     console.log('Received request body:', req.body);
     console.log('Access token present:', !!access_token);
+    console.log('Access token length:', access_token ? access_token.length : 0);
     
     if (!access_token) {
-      return res.status(400).json({ error: 'Access token is required' });
+      console.log('Error: Access token is missing');
+      return res.status(400).json({ 
+        success: false,
+        message: '필수 정보가 누락되었습니다.',
+        error: 'Access token is required' 
+      });
     }
 
     // Google 사용자 정보 가져오기 (access_token 직접 사용)
+    console.log('Attempting to fetch user info from Google...');
     const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
         'Authorization': `Bearer ${access_token}`
       }
     });
 
+    console.log('Google user info response status:', userInfoResponse.status);
     const userInfo = userInfoResponse.data;
+    console.log('User info received:', { 
+      id: userInfo.id, 
+      email: userInfo.email, 
+      name: userInfo.name 
+    });
 
     // 사용자 정보 생성
     const user = {
@@ -50,6 +63,7 @@ router.post('/google', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    console.log('JWT token generated successfully');
     res.json({
       success: true,
       token,
@@ -58,7 +72,12 @@ router.post('/google', async (req, res) => {
 
   } catch (error) {
     console.error('Google OAuth error:', error.response?.data || error.message);
+    console.error('Error status:', error.response?.status);
+    console.error('Error headers:', error.response?.headers);
+    
     res.status(500).json({ 
+      success: false,
+      message: 'Google OAuth 인증에 실패했습니다.',
       error: 'Google OAuth authentication failed',
       details: error.response?.data || error.message
     });

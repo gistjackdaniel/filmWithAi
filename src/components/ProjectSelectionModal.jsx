@@ -2,30 +2,76 @@ import {
   Box, 
   Typography, 
   Modal,
-  Card,
-  CardContent,
-  Grid,
+  TextField,
   Button,
-  IconButton
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip
 } from '@mui/material'
 import { 
   Close,
   Create,
-  Movie,
-  AutoFixHigh,
   ArrowForward
 } from '@mui/icons-material'
+import { useState } from 'react'
 
 /**
- * 프로젝트 선택 모달 컴포넌트
- * 새 프로젝트 생성 시 AI 스토리 생성과 콘티 생성 중 선택할 수 있는 모달
+ * 프로젝트 생성 모달 컴포넌트
+ * 새 프로젝트 생성 시 제목과 시놉시스를 입력할 수 있는 모달
  */
 const ProjectSelectionModal = ({ 
   open, 
   onClose, 
-  onSelectStoryGeneration, 
-  onSelectConteGeneration 
+  onConfirm 
 }) => {
+  // 로컬 상태 관리
+  const [projectTitle, setProjectTitle] = useState('')
+  const [synopsis, setSynopsis] = useState('')
+  const [genre, setGenre] = useState('일반')
+  const [storyGenerationType, setStoryGenerationType] = useState('ai') // 'ai' 또는 'direct'
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 제출 핸들러
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!projectTitle.trim()) {
+      alert('프로젝트 제목을 입력해주세요.')
+      return
+    }
+
+    setIsSubmitting(true)
+    
+    try {
+      await onConfirm({
+        title: projectTitle.trim(),
+        synopsis: synopsis.trim(),
+        genre: genre,
+        storyGenerationType: storyGenerationType
+      })
+      
+      // 성공 시 폼 초기화
+      setProjectTitle('')
+      setSynopsis('')
+      setGenre('일반')
+    } catch (error) {
+      console.error('프로젝트 생성 실패:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // 모달 닫기 시 폼 초기화
+  const handleClose = () => {
+    setProjectTitle('')
+    setSynopsis('')
+    setGenre('일반')
+    setStoryGenerationType('ai')
+    onClose()
+  }
   return (
     <Modal
       open={open}
@@ -59,172 +105,124 @@ const ProjectSelectionModal = ({
           <Typography variant="h5" component="h2">
             🎬 새 프로젝트 만들기
           </Typography>
-          <IconButton onClick={onClose} sx={{ color: 'white' }}>
+          <IconButton onClick={handleClose} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
         </Box>
 
         {/* 모달 내용 */}
-        <Box sx={{ p: 4 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ p: 4 }}>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4, textAlign: 'center' }}>
-            어떤 방식으로 프로젝트를 시작하시겠습니까?
+            새 프로젝트의 기본 정보를 입력해주세요.
           </Typography>
           
-          <Grid container spacing={3}>
-            {/* AI 스토리 생성 옵션 */}
-            <Grid item xs={12} md={6}>
-              <Card 
-                sx={{ 
-                  cursor: 'pointer',
-                  height: '100%',
-                  border: '2px solid transparent',
-                  '&:hover': { 
-                    transform: 'translateY(-4px)', 
-                    transition: '0.3s',
-                    borderColor: 'primary.main',
-                    boxShadow: '0 8px 25px rgba(33, 150, 243, 0.3)'
-                  }
-                }}
-                onClick={onSelectStoryGeneration}
-              >
-                <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                  <Box sx={{ 
-                    width: 80, 
-                    height: 80, 
-                    borderRadius: '50%', 
-                    bgcolor: 'primary.main', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    mx: 'auto',
-                    mb: 3
-                  }}>
-                    <AutoFixHigh sx={{ fontSize: 40, color: 'white' }} />
-                  </Box>
-                  
-                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    AI 스토리 생성
-                  </Typography>
-                  
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    시놉시스를 입력하면 AI가 자동으로 상세한 스토리를 생성합니다.
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      ✨ 시놉시스 기반 스토리 생성
-                    </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      🎭 다양한 장르와 스타일 지원
-                    </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      📝 품질 개선 및 편집 기능
-                    </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      🎬 콘티 생성으로 이어지는 워크플로우
-                    </Typography>
-                  </Box>
-                  
-                  <Button
-                    variant="contained"
-                    size="large"
-                    endIcon={<ArrowForward />}
-                    sx={{ 
-                      mt: 3,
-                      px: 4,
-                      py: 1.5,
-                      borderRadius: 2,
-                      background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 20px rgba(33, 150, 243, 0.4)'
-                      }
-                    }}
-                  >
-                    스토리 생성 시작
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
+          {/* 프로젝트 제목 입력 */}
+          <TextField
+            fullWidth
+            label="프로젝트 제목"
+            value={projectTitle}
+            onChange={(e) => setProjectTitle(e.target.value)}
+            placeholder="예: 로맨스 영화, 액션 영화..."
+            required
+            sx={{ mb: 3 }}
+            disabled={isSubmitting}
+          />
 
-            {/* 콘티 생성 옵션 */}
-            <Grid item xs={12} md={6}>
-              <Card 
-                sx={{ 
-                  cursor: 'pointer',
-                  height: '100%',
-                  border: '2px solid transparent',
-                  '&:hover': { 
-                    transform: 'translateY(-4px)', 
-                    transition: '0.3s',
-                    borderColor: 'success.main',
-                    boxShadow: '0 8px 25px rgba(76, 175, 80, 0.3)'
-                  }
-                }}
-                onClick={onSelectConteGeneration}
+          {/* 장르 선택 */}
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel>장르</InputLabel>
+            <Select
+              value={genre}
+              label="장르"
+              onChange={(e) => setGenre(e.target.value)}
+              disabled={isSubmitting}
+            >
+              <MenuItem value="일반">일반</MenuItem>
+              <MenuItem value="로맨스">로맨스</MenuItem>
+              <MenuItem value="액션">액션</MenuItem>
+              <MenuItem value="코미디">코미디</MenuItem>
+              <MenuItem value="드라마">드라마</MenuItem>
+              <MenuItem value="스릴러">스릴러</MenuItem>
+              <MenuItem value="SF">SF</MenuItem>
+              <MenuItem value="판타지">판타지</MenuItem>
+              <MenuItem value="호러">호러</MenuItem>
+              <MenuItem value="다큐멘터리">다큐멘터리</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* 스토리 생성 방식 선택 */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              스토리 생성 방식
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant={storyGenerationType === 'ai' ? 'contained' : 'outlined'}
+                onClick={() => setStoryGenerationType('ai')}
+                disabled={isSubmitting}
+                sx={{ flex: 1 }}
+                startIcon={<Create />}
               >
-                <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                  <Box sx={{ 
-                    width: 80, 
-                    height: 80, 
-                    borderRadius: '50%', 
-                    bgcolor: 'success.main', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    mx: 'auto',
-                    mb: 3
-                  }}>
-                    <Movie sx={{ fontSize: 40, color: 'white' }} />
-                  </Box>
-                  
-                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    콘티 생성
-                  </Typography>
-                  
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    직접 스토리를 작성하고 AI가 콘티를 자동으로 생성합니다.
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      ✍️ 직접 스토리 작성
-                    </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      🎬 AI 콘티 자동 생성
-                    </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      🖼️ 씬별 이미지 생성
-                    </Typography>
-                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      ⏱️ 타임라인 시각화
-                    </Typography>
-                  </Box>
-                  
-                  <Button
-                    variant="contained"
-                    size="large"
-                    endIcon={<ArrowForward />}
-                    sx={{ 
-                      mt: 3,
-                      px: 4,
-                      py: 1.5,
-                      borderRadius: 2,
-                      background: 'linear-gradient(45deg, #4CAF50 30%, #66BB6A 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #388E3C 30%, #43A047 90%)',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 20px rgba(76, 175, 80, 0.4)'
-                      }
-                    }}
-                  >
-                    콘티 생성 시작
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                AI 스토리 생성
+              </Button>
+              <Button
+                variant={storyGenerationType === 'direct' ? 'contained' : 'outlined'}
+                onClick={() => setStoryGenerationType('direct')}
+                disabled={isSubmitting}
+                sx={{ flex: 1 }}
+                startIcon={<Create />}
+              >
+                직접 스토리 작성
+              </Button>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              {storyGenerationType === 'ai' 
+                ? '시놉시스를 바탕으로 AI가 스토리를 생성합니다.' 
+                : '나만의 스토리를 직접 작성할 수 있습니다.'}
+            </Typography>
+          </Box>
+
+          {/* 시놉시스 입력 (AI 스토리 생성 시에만 표시) */}
+          {storyGenerationType === 'ai' && (
+            <TextField
+              fullWidth
+              label="시놉시스 (선택사항)"
+              value={synopsis}
+              onChange={(e) => setSynopsis(e.target.value)}
+              placeholder="영화의 기본 줄거리를 간단히 설명해주세요..."
+              multiline
+              rows={4}
+              sx={{ mb: 4 }}
+              disabled={isSubmitting}
+              helperText="시놉시스는 나중에 수정할 수 있습니다."
+            />
+          )}
+
+          {/* 버튼 영역 */}
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Button
+              variant="outlined"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              취소
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<Create />}
+              endIcon={<ArrowForward />}
+              disabled={isSubmitting || !projectTitle.trim()}
+              sx={{
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                }
+              }}
+            >
+              {isSubmitting ? '생성 중...' : '프로젝트 생성'}
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Modal>

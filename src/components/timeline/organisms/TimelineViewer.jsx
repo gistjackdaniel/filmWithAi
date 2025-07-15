@@ -340,7 +340,8 @@ const TimelineViewer = (props) => {
       const searchLower = filters.search.toLowerCase()
       filtered = filtered.filter(scene => 
         scene.description?.toLowerCase().includes(searchLower) ||
-        scene.components?.description?.toLowerCase().includes(searchLower)
+        scene.title?.toLowerCase().includes(searchLower) ||
+        scene.dialogue?.toLowerCase().includes(searchLower)
       )
     }
 
@@ -353,8 +354,7 @@ const TimelineViewer = (props) => {
     if (filters.sceneNumber) {
       const sceneNumber = parseInt(filters.sceneNumber)
       filtered = filtered.filter(scene => 
-        scene.scene === sceneNumber || 
-        scene.components?.sceneNumber === sceneNumber
+        scene.scene === sceneNumber
       )
     }
 
@@ -480,7 +480,8 @@ const TimelineViewer = (props) => {
           filters={filters}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          sceneTypes={Object.values(CaptionCardType)}
+          totalScenes={safeScenes.length}
+          filteredCount={safeFilteredScenes.length}
         />
         
         {/* 스케줄러 버튼 */}

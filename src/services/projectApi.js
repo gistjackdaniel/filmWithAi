@@ -33,7 +33,7 @@ import api from './api'
  */
 export const createProject = async (projectData) => {
   try {
-    const response = await api.post('/project/save', projectData, {
+    const response = await api.post('/projects', projectData, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -88,11 +88,20 @@ export const updateStory = async (projectId, story) => {
 /**
  * 프로젝트 조회
  * @param {string} projectId - 프로젝트 ID
+ * @param {Object} options - 조회 옵션
+ * @param {boolean} options.includeContes - 콘티 목록 포함 여부 (기본값: true)
  * @returns {Promise<ProjectResponse>} 프로젝트 정보
  */
-export const getProject = async (projectId) => {
+export const getProject = async (projectId, options = {}) => {
   try {
-    const response = await api.get(`/api/projects/${projectId}`, {
+    const { includeContes = true } = options
+    const params = new URLSearchParams()
+    
+    if (includeContes) {
+      params.append('includeContes', 'true')
+    }
+    
+    const response = await api.get(`/api/projects/${projectId}?${params.toString()}`, {
       timeout: 5000
     })
     return response.data
@@ -107,7 +116,7 @@ export const getProject = async (projectId) => {
  */
 export const getProjects = async () => {
   try {
-    const response = await api.get('/project/list', {
+    const response = await api.get('/projects', {
       timeout: 5000
     })
     return response.data
@@ -150,6 +159,47 @@ export const autoSaveProject = async (projectId, projectData) => {
     // 자동 저장 실패는 사용자에게 알리지 않음 (백그라운드에서 처리)
     console.warn('자동 저장 실패:', error)
     return null
+  }
+}
+
+/**
+ * 콘티 생성
+ * @param {string} projectId - 프로젝트 ID
+ * @param {Object} conteData - 콘티 데이터
+ * @returns {Promise<Object>} 생성된 콘티 정보
+ */
+export const createConte = async (projectId, conteData) => {
+  try {
+    const response = await api.post(`/api/projects/${projectId}/contes`, conteData, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data
+  } catch (error) {
+    handleProjectError(error, '콘티 생성')
+  }
+}
+
+/**
+ * 콘티 업데이트
+ * @param {string} projectId - 프로젝트 ID
+ * @param {string} conteId - 콘티 ID
+ * @param {Object} conteData - 업데이트할 콘티 데이터
+ * @returns {Promise<Object>} 업데이트된 콘티 정보
+ */
+export const updateConte = async (projectId, conteId, conteData) => {
+  try {
+    const response = await api.put(`/api/projects/${projectId}/contes/${conteId}`, conteData, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data
+  } catch (error) {
+    handleProjectError(error, '콘티 업데이트')
   }
 }
 

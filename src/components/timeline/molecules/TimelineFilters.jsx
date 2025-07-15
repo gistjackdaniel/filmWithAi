@@ -32,8 +32,7 @@ const TimelineFilters = ({
   totalScenes = 0,
   filteredCount = 0,
   showAdvancedFilters = false,
-  onToggleAdvancedFilters,
-  ...props
+  onToggleAdvancedFilters
 }) => {
   const [searchText, setSearchText] = useState(filters.search || '')
   const [typeFilter, setTypeFilter] = useState(filters.type || '')
@@ -82,7 +81,6 @@ const TimelineFilters = ({
         border: '1px solid var(--color-border)',
         mb: 2
       }}
-      {...props}
     >
       {/* 필터 헤더 */}
       <Box sx={{ 

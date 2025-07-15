@@ -29,9 +29,13 @@ import {
   ExpandMore,
   Close,
   Edit,
-  Timeline
+  Timeline,
+  Refresh,
+  Error
 } from '@mui/icons-material'
-import { useNavigate, useLocation } from 'react-router-dom'
+
+import { useNavigate, useLocation, useParams } from 'react-router-dom'
+
 import toast from 'react-hot-toast'
 import SynopsisInputForm from '../components/StoryGeneration/SynopsisInputForm'
 import LoadingSpinner from '../components/StoryGeneration/LoadingSpinner'
@@ -46,18 +50,22 @@ import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import { generateStoryWithRetry, regenerateConteWithRetry, generateSceneImage } from '../services/storyGenerationApi'
 import { autoSaveProject } from '../services/projectApi'
+import api from '../services/api'
 import useStoryGenerationStore from '../stores/storyGenerationStore'
 import useStoryHistoryStore from '../stores/storyHistoryStore'
 
 /**
- * AI 스토리 생성 페이지 컴포넌트
- * 사용자가 시놉시스를 입력하고 AI가 스토리를 생성하는 메인 페이지
- * PRD 2.1.2 AI 스토리 생성 기능의 핵심 UI
+ * AI 콘티 생성 페이지 컴포넌트
+ * 프로젝트 ID 기반으로 시놉시스를 입력하고 AI가 콘티를 생성하는 페이지
+ * PRD 2.1.3 AI 콘티 생성 기능의 핵심 UI
  */
-const StoryGenerationPage = () => {
+const ConteGenerationPage = () => {
   // React Router 네비게이션 훅
   const navigate = useNavigate()
   const location = useLocation()
+  
+  // URL 파라미터에서 프로젝트 ID 가져오기
+  const { projectId } = useParams()
   
   // 로컬 상태 관리
   const [activeTab, setActiveTab] = useState(0) // 활성 탭 (0: 생성, 1: 히스토리, 2: 템플릿, 3: 품질 개선, 4: 콘티 생성)
@@ -168,6 +176,53 @@ const StoryGenerationPage = () => {
 
   // 콘티 생성 상태
   const { isConteGenerating, generatedConte } = conteGeneration
+  
+  // 프로젝트 정보 상태
+  const [projectInfo, setProjectInfo] = useState(null)
+  const [loadingProject, setLoadingProject] = useState(true)
+  
+  // 프로젝트 정보 로드
+  useEffect(() => {
+    const loadProjectInfo = async () => {
+      if (!projectId) {
+        console.error('프로젝트 ID가 없습니다.')
+        navigate('/')
+        return
+      }
+      
+      try {
+        setLoadingProject(true)
+        const response = await api.get(`/projects/${projectId}`)
+        
+        if (response.data.success) {
+          const project = response.data.data.project
+          setProjectInfo(project)
+          
+          // 프로젝트에 시놉시스가 있으면 설정
+          if (project.synopsis) {
+            setSynopsis(project.synopsis)
+          }
+          
+          // 프로젝트에 스토리가 있으면 설정
+          if (project.story) {
+            updateGeneratedStory(project.story)
+          }
+          
+          console.log('✅ 프로젝트 정보 로드 완료:', project.projectTitle)
+        } else {
+          throw new Error(response.data.message || '프로젝트를 찾을 수 없습니다.')
+        }
+      } catch (error) {
+        console.error('프로젝트 정보 로드 실패:', error)
+        toast.error('프로젝트 정보를 불러오는데 실패했습니다.')
+        navigate('/')
+      } finally {
+        setLoadingProject(false)
+      }
+    }
+    
+    loadProjectInfo()
+  }, [projectId, navigate, setSynopsis, updateGeneratedStory])
 
   /**
    * 콘티 데이터 콘솔 출력 효과
@@ -256,6 +311,21 @@ const StoryGenerationPage = () => {
         generationTime
       })
       
+      // 생성된 스토리를 프로젝트에 저장
+      if (projectId) {
+        try {
+          console.log('💾 생성된 스토리를 프로젝트에 저장 중...')
+          await api.put(`/projects/${projectId}`, {
+            story: response.story,
+            status: 'story_ready'
+          })
+          console.log('✅ 스토리 저장 완료')
+        } catch (saveError) {
+          console.error('❌ 스토리 저장 실패:', saveError)
+          // 저장 실패해도 스토리 생성은 성공으로 처리
+        }
+      }
+      
       toast.success('스토리 생성이 완료되었습니다.')
     } catch (error) {
       console.error('스토리 생성 실패:', error)
@@ -342,8 +412,70 @@ const StoryGenerationPage = () => {
    * 콘티 생성 완료 핸들러
    * @param {Array} conteList - 생성된 콘티 리스트
    */
-  const handleConteGenerationComplete = () => {
+  const handleConteGenerationComplete = async (conteList) => {
     // 스토어에서 이미 처리됨
+    
+    // 생성된 콘티를 프로젝트에 저장
+    if (projectId && conteList && conteList.length > 0) {
+      try {
+        console.log('💾 생성된 콘티를 프로젝트에 저장 중...', conteList.length, '개')
+        
+        // 각 콘티를 개별적으로 저장
+        const { conteAPI } = await import('../services/api')
+        
+        const savedContes = await Promise.all(
+          conteList.map(async (conte, index) => {
+            try {
+              console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
+              
+              const conteData = {
+                scene: conte.scene,
+                title: conte.title,
+                description: conte.description,
+                dialogue: conte.dialogue || '',
+                cameraAngle: conte.cameraAngle || '',
+                cameraWork: conte.cameraWork || '',
+                characterLayout: conte.characterLayout || '',
+                props: conte.props || '',
+                weather: conte.weather || '',
+                lighting: conte.lighting || '',
+                visualDescription: conte.visualDescription || '',
+                transition: conte.transition || '',
+                lensSpecs: conte.lensSpecs || '',
+                visualEffects: conte.visualEffects || '',
+                type: conte.type || 'live_action',
+                estimatedDuration: conte.estimatedDuration || '5분',
+                keywords: conte.keywords || {},
+                weights: conte.weights || {},
+                order: conte.order || index + 1,
+                imageUrl: conte.imageUrl || null
+              }
+              
+              const response = await conteAPI.createConte(projectId, conteData)
+              console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
+              return response.data
+            } catch (error) {
+              console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
+              throw error
+            }
+          })
+        )
+        
+        console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
+        
+        // 프로젝트 상태를 conte_ready로 업데이트
+        await api.put(`/projects/${projectId}`, {
+          status: 'conte_ready'
+        })
+        
+        console.log('✅ 프로젝트 상태 업데이트 완료: conte_ready')
+        
+      } catch (conteError) {
+        console.error('❌ 콘티 저장 중 오류:', conteError)
+        // 콘티 저장 실패해도 스토리 생성은 성공으로 처리
+        toast.error('콘티 저장에 실패했지만 콘티는 정상적으로 생성되었습니다.')
+      }
+    }
   }
 
   /**
@@ -577,10 +709,18 @@ const StoryGenerationPage = () => {
                 <ArrowBack />
               </IconButton>
               
-              {/* 페이지 제목 */}
-              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                AI 스토리 생성
-              </Typography>
+              {/* 프로젝트 정보 */}
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography variant="h6" component="div">
+                  {projectInfo?.projectTitle || 'AI 콘티 생성'}
+                </Typography>
+                {projectInfo && (
+                  <Typography variant="caption" color="inherit" sx={{ opacity: 0.8 }}>
+                    상태: {projectInfo.status || 'draft'} | 
+                    콘티: {projectInfo.conteCount || 0}개
+                  </Typography>
+                )}
+              </Box>
               
               {/* 저장 버튼 */}
               <Button 
@@ -596,10 +736,45 @@ const StoryGenerationPage = () => {
 
           {/* 메인 컨텐츠 */}
           <Container maxWidth="lg" sx={{ mt: 4 }}>
-            {/* 페이지 제목 */}
-            <Typography variant="h4" gutterBottom>
-              🎬 AI 스토리 생성
-            </Typography>
+            {/* 프로젝트 정보 헤더 */}
+            <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+              <Typography variant="h4" gutterBottom>
+                🎬 {projectInfo?.projectTitle || 'AI 콘티 생성'}
+              </Typography>
+              
+              {/* 프로젝트 상태 정보 */}
+              {projectInfo && (
+                <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                  <Chip 
+                    label={`상태: ${projectInfo.status || 'draft'}`} 
+                    color="primary" 
+                    size="small" 
+                  />
+                  <Chip 
+                    label={`콘티: ${projectInfo.conteCount || 0}개`} 
+                    color="secondary" 
+                    size="small" 
+                  />
+                  <Chip 
+                    label={`생성일: ${new Date(projectInfo.createdAt).toLocaleDateString()}`} 
+                    variant="outlined" 
+                    size="small" 
+                  />
+                </Box>
+              )}
+              
+              {/* 시놉시스 편집 섹션 */}
+              {projectInfo?.synopsis && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    📝 시놉시스
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {projectInfo.synopsis}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             
             {/* 설명 텍스트 */}
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
@@ -652,7 +827,19 @@ const StoryGenerationPage = () => {
 
                 {/* 로딩 상태 표시 */}
                 {isGenerating && (
-                  <LoadingSpinner message="AI 스토리 생성 중..." />
+                  <Box sx={{ 
+                    mt: 3, 
+                    p: 3, 
+                    bgcolor: 'background.paper', 
+                    borderRadius: 2, 
+                    boxShadow: 1,
+                    textAlign: 'center'
+                  }}>
+                    <LoadingSpinner message="AI 스토리 생성 중..." />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                      시놉시스를 분석하고 상세한 스토리를 생성하고 있습니다...
+                    </Typography>
+                  </Box>
                 )}
 
                 {/* 생성된 스토리 표시 */}
@@ -676,10 +863,44 @@ const StoryGenerationPage = () => {
 
                 {/* 에러 상태 표시 */}
                 {generationError && (
-                  <Box sx={{ mt: 2, p: 2, backgroundColor: 'var(--color-danger)', borderRadius: 1 }}>
-                    <Typography variant="body2" color="white">
-                      ❌ {generationError}
+                  <Box sx={{ 
+                    mt: 3, 
+                    p: 3, 
+                    bgcolor: 'background.paper', 
+                    borderRadius: 2, 
+                    boxShadow: 1,
+                    border: '1px solid #f44336'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Error sx={{ color: '#f44336', mr: 1 }} />
+                      <Typography variant="h6" color="error">
+                        스토리 생성 실패
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                      {generationError}
                     </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<Refresh />}
+                        onClick={() => {
+                          if (synopsis) {
+                            handleGenerateStory(synopsis)
+                          }
+                        }}
+                        size="small"
+                      >
+                        다시 시도
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={() => setActiveTab(2)} // 템플릿 탭으로 이동
+                        size="small"
+                      >
+                        템플릿 사용
+                      </Button>
+                    </Box>
                   </Box>
                 )}
               </Box>
@@ -930,4 +1151,4 @@ const StoryGenerationPage = () => {
   )
 }
 
-export default StoryGenerationPage 
+export default ConteGenerationPage 

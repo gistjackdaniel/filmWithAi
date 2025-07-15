@@ -137,7 +137,7 @@ Authorization: Bearer jwt_token
 }
 ```
 
-### 3.2 프로젝트 생성
+### 3.2 프로젝트 생성 (시놉시스 선택적 입력)
 **POST** `/projects`
 
 **헤더**:
@@ -149,7 +149,8 @@ Authorization: Bearer jwt_token
 ```json
 {
   "projectTitle": "영화 제목",
-  "synopsis": "시놉시스 내용"
+  "synopsis": "시놉시스 내용 (선택사항)",
+  "status": "draft"
 }
 ```
 
@@ -163,12 +164,50 @@ Authorization: Bearer jwt_token
       "projectTitle": "영화 제목",
       "synopsis": "시놉시스 내용",
       "story": "",
+      "status": "draft",
       "conteList": [],
       "createdAt": "2024-01-01T00:00:00.000Z",
       "updatedAt": "2024-01-01T00:00:00.000Z"
     }
   },
   "message": "프로젝트 생성 성공"
+}
+```
+
+### 3.3 프로젝트 업데이트
+**PUT** `/projects/:projectId`
+
+**헤더**:
+```
+Authorization: Bearer jwt_token
+```
+
+**요청 본문**:
+```json
+{
+  "projectTitle": "영화 제목",
+  "synopsis": "시놉시스 내용",
+  "story": "스토리 내용",
+  "status": "in_progress"
+}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "project": {
+      "_id": "project_id",
+      "projectTitle": "영화 제목",
+      "synopsis": "시놉시스 내용",
+      "story": "스토리 내용",
+      "status": "in_progress",
+      "conteList": [],
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  },
+  "message": "프로젝트 업데이트 성공"
 }
 ```
 
@@ -296,7 +335,7 @@ Authorization: Bearer jwt_token
 }
 ```
 
-### 4.2 콘티 생성
+### 4.2 콘티 생성 (프로젝트 기반)
 **POST** `/ai/generate-conte`
 
 **헤더**:
@@ -308,7 +347,12 @@ Authorization: Bearer jwt_token
 ```json
 {
   "story": "스토리 내용",
-  "projectId": "project_id"
+  "projectId": "project_id",
+  "settings": {
+    "genre": "액션",
+    "maxScenes": 10,
+    "estimatedDuration": "90분"
+  }
 }
 ```
 
@@ -383,6 +427,12 @@ Authorization: Bearer jwt_token
   projectTitle: String,
   synopsis: String,
   story: String,
+  status: String, // "draft", "story_generated", "conte_generated", "in_progress", "completed"
+  settings: {
+    genre: String,
+    maxScenes: Number,
+    estimatedDuration: String
+  },
   conteList: [{
     scene: Number,
     description: String,
@@ -396,7 +446,7 @@ Authorization: Bearer jwt_token
 
 ## 7. API 사용 예시
 
-### 7.1 전체 플로우 예시
+### 7.1 전체 플로우 예시 (3->(4)->5->6->7)
 ```javascript
 // 1. Google OAuth 로그인
 const loginResponse = await fetch('/api/auth/google', {
@@ -405,17 +455,21 @@ const loginResponse = await fetch('/api/auth/google', {
   body: JSON.stringify({ credential, clientId })
 });
 
-// 2. 프로젝트 생성
+// 2. 프로젝트 생성 (시놉시스 선택적 입력)
 const projectResponse = await fetch('/api/projects', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`
   },
-  body: JSON.stringify({ projectTitle, synopsis })
+  body: JSON.stringify({ 
+    projectTitle, 
+    synopsis, // 선택사항
+    status: 'draft' 
+  })
 });
 
-// 3. AI 스토리 생성
+// 3. (선택사항) AI 스토리 생성
 const storyResponse = await fetch('/api/ai/generate-story', {
   method: 'POST',
   headers: {
@@ -425,14 +479,36 @@ const storyResponse = await fetch('/api/ai/generate-story', {
   body: JSON.stringify({ synopsis, projectId })
 });
 
-// 4. AI 콘티 생성
+// 4. AI 콘티 생성 (프로젝트 기반)
 const conteResponse = await fetch('/api/ai/generate-conte', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`
   },
-  body: JSON.stringify({ story, projectId })
+  body: JSON.stringify({ 
+    story, 
+    projectId,
+    settings: {
+      genre: '액션',
+      maxScenes: 10,
+      estimatedDuration: '90분'
+    }
+  })
+});
+
+// 5. 프로젝트 상태 업데이트
+const updateResponse = await fetch(`/api/projects/${projectId}`, {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({ 
+    status: 'conte_generated',
+    story,
+    conteList 
+  })
 });
 ```
 

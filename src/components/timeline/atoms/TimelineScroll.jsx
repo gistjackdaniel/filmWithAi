@@ -1,11 +1,11 @@
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, forwardRef } from 'react'
 import { Box } from '@mui/material'
 
 /**
  * 타임라인 스크롤 컴포넌트
  * 스크롤 최적화 및 네비게이션 기능을 제공
  */
-const TimelineScroll = ({ 
+const TimelineScroll = forwardRef(({ 
   children, 
   height = 'auto',
   showScrollbar = true,
@@ -14,7 +14,7 @@ const TimelineScroll = ({
   scrollPosition = 0,
   onScrollPositionChange,
   ...props 
-}) => {
+}, ref) => {
   const scrollRef = useRef(null)
   const isScrolling = useRef(false)
   const scrollTimeout = useRef(null)
@@ -130,7 +130,7 @@ const TimelineScroll = ({
 
   return (
     <Box
-      ref={scrollRef}
+      ref={ref || scrollRef}
       tabIndex={0} // 키보드 포커스 가능하도록 설정
       sx={{
         width: '100%',
@@ -179,6 +179,8 @@ const TimelineScroll = ({
       {children}
     </Box>
   )
-}
+})
+
+TimelineScroll.displayName = 'TimelineScroll'
 
 export default TimelineScroll 

@@ -55,7 +55,7 @@ class TimelineService {
       const response = await timelineAPI.get(`/projects/${projectId}`)
       console.log('timelineService API response:', response.data)
       
-      const conteList = response.data.project?.conteList || []
+      const conteList = response.data.data?.conteList || []
       console.log('timelineService conteList extracted:', conteList, 'count:', conteList.length)
       
       return {

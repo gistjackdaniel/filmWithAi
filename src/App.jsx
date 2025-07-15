@@ -5,7 +5,7 @@ import SplashScreen from './components/SplashScreen'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import ProjectPage from './pages/ProjectPage'
-import StoryGenerationPage from './pages/StoryGenerationPage'
+import ConteGenerationPage from './pages/ConteGenerationPage'
 import DirectStoryPage from './pages/DirectStoryPage'
 import SchedulerPage from './pages/SchedulerPage'
 import SchedulerTestPage from './pages/SchedulerTestPage'
@@ -80,16 +80,7 @@ function App() {
           } 
         />
         
-        {/* 스토리 생성 페이지 라우트 */}
-        <Route 
-          path="/story-generation" 
-          element={
-            <ProtectedRoute>
-              <StoryGenerationPage />
-            </ProtectedRoute>
-          } 
-        />
-        
+        {/* 프로젝트 기반 라우팅 구조 */}
         {/* 프로젝트 상세 페이지 라우트 */}
         <Route 
           path="/project/:projectId" 
@@ -100,7 +91,17 @@ function App() {
           } 
         />
         
-        {/* 직접 스토리 생성 페이지 라우트 */}
+        {/* 프로젝트 콘티 생성 페이지 라우트 */}
+        <Route 
+          path="/project/:projectId/conte" 
+          element={
+            <ProtectedRoute>
+              <ConteGenerationPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* 직접 스토리 생성 페이지 라우트 (임시) */}
         <Route 
           path="/direct-story" 
           element={

@@ -24,7 +24,8 @@ const projectSchema = new mongoose.Schema({
   // 시놉시스 (AI 스토리 생성의 입력)
   synopsis: {
     type: String,
-    required: true,
+    required: false,
+    default: '',
     trim: true,
     maxlength: 2000
   },
@@ -40,7 +41,7 @@ const projectSchema = new mongoose.Schema({
   // 프로젝트 상태
   status: {
     type: String,
-    enum: ['draft', 'story_generated', 'conte_generated', 'completed'],
+    enum: ['draft', 'story_ready', 'conte_ready', 'production_ready'],
     default: 'draft'
   },
   
@@ -79,6 +80,12 @@ const projectSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  
+  // 마지막 조회 시간
+  lastViewedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   // 자동으로 생성/수정 시간 관리
@@ -115,6 +122,14 @@ projectSchema.virtual('liveActionConteCount', {
   match: { type: 'live_action' }
 });
 
+// 가상 필드: 콘티 목록 (실제 콘티 데이터)
+projectSchema.virtual('contes', {
+  ref: 'Conte',
+  localField: '_id',
+  foreignField: 'projectId',
+  options: { sort: { order: 1 } }
+});
+
 // 인덱스 설정
 projectSchema.index({ userId: 1, createdAt: -1 });
 projectSchema.index({ userId: 1, status: 1 });
@@ -123,10 +138,18 @@ projectSchema.index({ tags: 1 });
 
 // 미들웨어: 프로젝트 생성 시 상태 업데이트
 projectSchema.pre('save', function(next) {
-  // 스토리가 생성되면 상태 업데이트
-  if (this.story && this.story.length > 0 && this.status === 'draft') {
-    this.status = 'story_generated';
+  // 시놉시스가 있고 스토리가 없으면 draft 상태 유지
+  if (this.synopsis && this.synopsis.length > 0 && (!this.story || this.story.length === 0)) {
+    this.status = 'draft';
   }
+  
+  // 스토리가 생성되면 story_ready 상태로 업데이트
+  if (this.story && this.story.length > 0 && this.status === 'draft') {
+    this.status = 'story_ready';
+  }
+  
+  // 콘티가 생성되면 상태 업데이트 (콘티 수는 가상 필드이므로 별도 처리 필요)
+  // 실제 콘티 생성 시에는 별도 API에서 상태 업데이트
   next();
 });
 
@@ -139,9 +162,29 @@ projectSchema.statics.findByUserId = function(userId, options = {}) {
   }
   
   return this.find(query)
-    .sort({ updatedAt: -1 })
+    .sort({ lastViewedAt: -1, updatedAt: -1 }) // 최근 조회 순으로 정렬, 동일한 경우 수정일 순
     .populate('userId', 'name email picture')
     .limit(options.limit || 50);
+};
+
+// 정적 메서드: 프로젝트와 콘티 목록 함께 조회 (사용자 권한 확인 포함)
+projectSchema.statics.findByIdWithContes = function(projectId, userId, options = {}) {
+  const populateOptions = {
+    path: 'contes',
+    options: { sort: { order: 1 } }
+  };
+  
+  if (options.conteType) {
+    populateOptions.match = { type: options.conteType };
+  }
+  
+  return this.findOne({
+    _id: projectId,
+    userId: userId,
+    isDeleted: false
+  })
+    .populate('userId', 'name email picture')
+    .populate(populateOptions);
 };
 
 // 정적 메서드: 프로젝트 검색
@@ -154,12 +197,28 @@ projectSchema.statics.searchProjects = function(userId, searchTerm) {
       { synopsis: { $regex: searchTerm, $options: 'i' } },
       { tags: { $in: [new RegExp(searchTerm, 'i')] } }
     ]
-  }).sort({ updatedAt: -1 });
+  }).sort({ lastViewedAt: -1, updatedAt: -1 }); // 최근 조회 순으로 정렬
 };
 
 // 인스턴스 메서드: 프로젝트 상태 업데이트
 projectSchema.methods.updateStatus = function(newStatus) {
   this.status = newStatus;
+  return this.save();
+};
+
+// 인스턴스 메서드: 콘티 수에 따른 상태 자동 업데이트
+projectSchema.methods.updateStatusByConteCount = async function() {
+  const Conte = require('./Conte');
+  const conteCount = await Conte.countDocuments({ projectId: this._id });
+  
+  if (conteCount > 0) {
+    this.status = 'conte_ready';
+  } else if (this.story && this.story.length > 0) {
+    this.status = 'story_ready';
+  } else if (this.synopsis && this.synopsis.length > 0) {
+    this.status = 'draft';
+  }
+  
   return this.save();
 };
 

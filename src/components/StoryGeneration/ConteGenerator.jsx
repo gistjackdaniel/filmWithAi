@@ -29,6 +29,7 @@ import ConteResult from './ConteResult'
 import ConteEditModal from './ConteEditModal'
 import useStoryGenerationStore from '../../stores/storyGenerationStore'
 import toast from 'react-hot-toast'
+import useProjectStore from '../../stores/projectStore'
 
 /**
  * AI 캡션 카드 생성 컴포넌트
@@ -192,11 +193,16 @@ const ConteGenerator = ({
       return
     }
 
+
     // crew/equipment/cameras/timeOfDay 프롬프트를 story에 명시적으로 추가
     const storyWithCrewEquipmentCamerasGuide =
       story +
       '\n\n' +
       '[모든 씬의 keywords에는 반드시 crew(필요 인력: 촬영감독, 카메라맨, 조명기사 등), equipment(필요 장비: 카메라, 조명, 마이크 등), 그리고 cameras(카메라: C1~C20 중 1개 이상, 여러 개 가능)를 배열로 포함해 주세요. 예시: cameras: ["C1", "C5", "C12"]. 또한, timeOfDay(시간대)는 반드시 "낮" 또는 "밤" 중 하나로만 작성해 주세요.]';
+
+    let processedConteList = null
+    let conteWithImages = null
+
 
     try {
       startConteGeneration()
@@ -245,7 +251,7 @@ const ConteGenerator = ({
       }
 
       // API 응답 데이터를 그대로 사용 (서버에서 올바른 형식으로 제공됨)
-      const processedConteList = conteList.map((card, index) => ({
+      processedConteList = conteList.map((card, index) => ({
         ...card,
         id: card.id || `scene_${index + 1}`,
         scene: card.scene || index + 1,
@@ -257,9 +263,9 @@ const ConteGenerator = ({
 
       console.log('✅ 처리된 캡션 카드 리스트:', processedConteList)
 
-      // 스토어에 캡션 카드 결과 저장
-      completeConteGeneration(processedConteList)
+      // 콘티 데이터를 로컬 상태에만 저장 (부모 컴포넌트로 전달하지 않음)
       setShowResult(true)
+      completeConteGeneration(processedConteList)
 
       // 생성된 캡션 카드를 부모 컴포넌트로 전달 (이미지 생성 전에 먼저 전달)
       if (onConteGenerated) {
@@ -277,15 +283,18 @@ const ConteGenerator = ({
       }
       
       try {
-        const conteWithImages = await generateSceneImages(processedConteList)
+        conteWithImages = await generateSceneImages(processedConteList)
         
-        // 이미지가 추가된 콘티 리스트를 스토어에 업데이트
+        // 이미지가 추가된 콘티 리스트를 로컬 상태에 업데이트
         completeConteGeneration(conteWithImages)
         
-        // 부모 컴포넌트에 최종 콘티 전달 (이미지 포함)
+        // 이미지 생성 완료 후에만 부모 컴포넌트에 콘티 데이터 전달
         if (onConteGenerated) {
           onConteGenerated(conteWithImages)
         }
+        
+        // 이미지 생성 완료 후 부모 컴포넌트에서 프로젝트와 콘티를 함께 저장하도록 전달
+        console.log('✅ 이미지가 포함된 콘티 생성 완료 - 부모 컴포넌트에서 프로젝트와 함께 저장 예정')
         
         console.log('✅ 모든 씬 이미지 생성 완료')
         toast.success('모든 씬 이미지가 생성되었습니다!')
@@ -293,21 +302,26 @@ const ConteGenerator = ({
       } catch (imageError) {
         console.error('❌ 이미지 생성 실패:', imageError)
         
-        // 이미지 생성 실패 시에도 기본 콘티는 전달
+        // 이미지 생성 실패 시에도 기본 콘티는 전달 (저장하지 않고 데이터만 전달)
         if (onConteGenerated) {
           onConteGenerated(processedConteList)
         }
         
+        // 이미지 생성 실패 시에도 기본 콘티는 부모 컴포넌트에서 저장하도록 전달
+        console.log('⚠️ 이미지 생성 실패 - 기본 콘티는 부모 컴포넌트에서 저장 예정')
+        
         toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.')
       } finally {
-        // 이미지 생성 완료 후에는 onGenerationComplete를 호출하지 않음
-        // 이미 콘티 생성 완료 시점에 호출되었기 때문
-        console.log('✅ 이미지 생성 완료 - onGenerationComplete 호출하지 않음')
+        // 이미지 생성 완료 후 onGenerationComplete 호출
+        console.log('✅ 이미지 생성 완료 - onGenerationComplete 호출')
         
         // 이미지 생성 완료 시 부모 컴포넌트에 알림
         if (onImageGenerationUpdate) {
           onImageGenerationUpdate(false, 0)
         }
+        
+        // 이미지 생성 완료 후 콘티 데이터는 이미 onConteGenerated를 통해 전달됨
+        console.log('✅ 이미지 생성 완료 - 콘티 데이터 전달 완료')
       }
 
     } catch (error) {
