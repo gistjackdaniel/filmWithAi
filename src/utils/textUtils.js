@@ -37,10 +37,10 @@ export const removeMarkdown = (text) => {
     .replace(/^>\s+/gm, '')
     // 수평선 제거 (---, ***, ___)
     .replace(/^[-*_]{3,}$/gm, '')
-    // 줄바꿈 정리 (연속된 줄바꿈을 2개로 제한)
-    .replace(/\n{3,}/g, '\n\n')
-    // 앞뒤 공백 제거
-    .trim()
+    // // 줄바꿈 정리 (연속된 줄바꿈을 2개로 제한)
+    // .replace(/\n{3,}/g, '\n\n')
+    // // 앞뒤 공백 제거
+    // .trim()
 }
 
 /**
@@ -54,10 +54,10 @@ export const cleanStoryText = (story) => {
   }
 
   return removeMarkdown(story)
-    // 문단 구분을 위한 줄바꿈 정리 (빈 줄을 2개로 통일)
-    .replace(/\n\s*\n\s*\n+/g, '\n\n')
-    // 앞뒤 공백 제거
-    .trim()
+    // // 문단 구분을 위한 줄바꿈 정리 (빈 줄을 2개로 통일)
+    // .replace(/\n\s*\n\s*\n+/g, '\n\n')
+    // // 앞뒤 공백 제거
+    // .trim()
 }
 
 /**
@@ -71,10 +71,10 @@ export const cleanConteDescription = (description) => {
   }
 
   return removeMarkdown(description)
-    // 불필요한 공백 정리
-    .replace(/\s+/g, ' ')
-    // 앞뒤 공백 제거
-    .trim()
+    // // 불필요한 공백 정리
+    // .replace(/\s+/g, ' ')
+    // // 앞뒤 공백 제거
+    // .trim()
 }
 
 /**
@@ -108,8 +108,8 @@ export const cleanSynopsisText = (synopsis) => {
   }
 
   return removeMarkdown(synopsis)
-    // 불필요한 공백 정리
-    .replace(/\s+/g, ' ')
-    // 앞뒤 공백 제거
-    .trim()
+    // // 불필요한 공백 정리
+    // .replace(/\s+/g, ' ')
+    // // 앞뒤 공백 제거
+    // .trim()
 } 

@@ -899,11 +899,6 @@ const ConteGenerationPage = () => {
                     size="small" 
                   />
                   <Chip 
-                    label={`콘티: ${projectInfo.conteCount || 0}개`} 
-                    color="secondary" 
-                    size="small" 
-                  />
-                  <Chip 
                     label={`생성일: ${new Date(projectInfo.createdAt).toLocaleDateString()}`} 
                     variant="outlined" 
                     size="small" 
