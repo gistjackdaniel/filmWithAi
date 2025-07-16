@@ -226,14 +226,14 @@ const ConteGenerationPage = () => {
             resetForNewProject()
           } else {
             // 기존 프로젝트인 경우 데이터 로드
-            if (project.synopsis) {
-              setSynopsis(project.synopsis)
+          if (project.synopsis) {
+            setSynopsis(project.synopsis)
             } else {
               setSynopsis('')
-            }
-            
-            if (project.story) {
-              updateGeneratedStory(project.story)
+          }
+          
+          if (project.story) {
+            updateGeneratedStory(project.story)
             } else {
               updateGeneratedStory('')
             }
@@ -342,7 +342,7 @@ const ConteGenerationPage = () => {
         } else if (updateData.synopsis) {
           toast.success('시놉시스가 저장되었습니다.')
         } else if (updateData.story) {
-          toast.success('스토리가 저장되었습니다.')
+    toast.success('스토리가 저장되었습니다.')
         }
       } else {
         throw new Error(response.data.message || '저장에 실패했습니다.')
@@ -557,52 +557,52 @@ const ConteGenerationPage = () => {
             return // 일부 실패 시 DB 저장하지 않음
           }
           
-          const { conteAPI } = await import('../services/api')
-          
-          const savedContes = await Promise.all(
+        const { conteAPI } = await import('../services/api')
+        
+        const savedContes = await Promise.all(
             contesWithImages.map(async (conte, index) => {
-              try {
-                console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
-                
-                const conteData = {
-                  scene: conte.scene,
-                  title: conte.title,
-                  description: conte.description,
-                  dialogue: conte.dialogue || '',
-                  cameraAngle: conte.cameraAngle || '',
-                  cameraWork: conte.cameraWork || '',
-                  characterLayout: conte.characterLayout || '',
-                  props: conte.props || '',
-                  weather: conte.weather || '',
-                  lighting: conte.lighting || '',
-                  visualDescription: conte.visualDescription || '',
-                  transition: conte.transition || '',
-                  lensSpecs: conte.lensSpecs || '',
-                  visualEffects: conte.visualEffects || '',
-                  type: conte.type || 'live_action',
-                  estimatedDuration: conte.estimatedDuration || '5분',
-                  keywords: conte.keywords || {},
-                  weights: conte.weights || {},
-                  order: conte.order || index + 1,
+            try {
+              console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
+              
+              const conteData = {
+                scene: conte.scene,
+                title: conte.title,
+                description: conte.description,
+                dialogue: conte.dialogue || '',
+                cameraAngle: conte.cameraAngle || '',
+                cameraWork: conte.cameraWork || '',
+                characterLayout: conte.characterLayout || '',
+                props: conte.props || '',
+                weather: conte.weather || '',
+                lighting: conte.lighting || '',
+                visualDescription: conte.visualDescription || '',
+                transition: conte.transition || '',
+                lensSpecs: conte.lensSpecs || '',
+                visualEffects: conte.visualEffects || '',
+                type: conte.type || 'live_action',
+                estimatedDuration: conte.estimatedDuration || '5분',
+                keywords: conte.keywords || {},
+                weights: conte.weights || {},
+                order: conte.order || index + 1,
                   imageUrl: conte.imageUrl,
                   imagePrompt: conte.imagePrompt || null,
                   imageGeneratedAt: conte.imageGeneratedAt || null,
                   imageModel: conte.imageModel || null,
                   isFreeTier: conte.isFreeTier || false
-                }
-                
-                const response = await conteAPI.createConte(projectId, conteData)
-                console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
-                return response.data
-              } catch (error) {
-                console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
-                throw error
               }
-            })
-          )
-          
-          console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
-          
+              
+              const response = await conteAPI.createConte(projectId, conteData)
+              console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
+              return response.data
+            } catch (error) {
+              console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
+              throw error
+            }
+          })
+        )
+        
+        console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
+        
           toast.success('이미지 생성이 완료되어 콘티가 DB에 저장되었습니다!')
 
           // 프로젝트 정보 업데이트
@@ -616,8 +616,8 @@ const ConteGenerationPage = () => {
           console.log('🔄 프로젝트 상태를 conte_ready로 업데이트 중...')
           try {
             const statusResponse = await api.put(`/projects/${projectId}`, {
-              status: 'conte_ready'
-            })
+          status: 'conte_ready'
+        })
             console.log('✅ 프로젝트 상태 업데이트 완료:', statusResponse.data)
             
             // 콘티 생성 완료 (조용히 처리)
@@ -871,15 +871,15 @@ const ConteGenerationPage = () => {
             showBackButton={true}
             onBack={handleBack}
           >
-            {/* 저장 버튼 */}
-            <Button 
-              color="inherit" 
-              startIcon={<Save />}
-              onClick={handleSave}
-              disabled={!generatedStory}
-            >
-              저장
-            </Button>
+              {/* 저장 버튼 */}
+              <Button 
+                color="inherit" 
+                startIcon={<Save />}
+                onClick={handleSave}
+                disabled={!generatedStory}
+              >
+                저장
+              </Button>
           </CommonHeader>
 
           {/* 메인 컨텐츠 */}
@@ -1178,16 +1178,16 @@ const ConteGenerationPage = () => {
                                 backgroundColor: 'var(--color-card-bg)'
                               }}>
                                 {conte.imageUrl ? (
-                                  <img 
-                                    src={conte.imageUrl} 
-                                    alt={`씬 ${conte.scene} 이미지`}
-                                    style={{
-                                      width: '100%',
-                                      height: '100%',
-                                      objectFit: 'cover'
-                                    }}
-                                    onError={(e) => handleImageLoadError(conte.id, e)}
-                                  />
+                                <img 
+                                  src={conte.imageUrl} 
+                                  alt={`씬 ${conte.scene} 이미지`}
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover'
+                                  }}
+                                  onError={(e) => handleImageLoadError(conte.id, e)}
+                                />
                                 ) : isGeneratingImages ? (
                                   <Box sx={{ 
                                     width: '100%', 
@@ -1337,4 +1337,4 @@ const ConteGenerationPage = () => {
   )
 }
 
-export default ConteGenerationPage
+export default ConteGenerationPage 

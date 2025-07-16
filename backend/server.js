@@ -71,8 +71,7 @@ app.use('/uploads', (req, res, next) => {
 const MONGODB_URI = process.env.MONGODB_URI // || 'mongodb://localhost:27017/sceneforge_db'
 
 mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+  // Node.js Driver 4.0.0 이후로는 deprecated된 옵션들 제거
 })
 .then(() => {
   console.log('✅ MongoDB 연결 성공:', MONGODB_URI)
