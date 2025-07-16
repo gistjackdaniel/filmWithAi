@@ -7,7 +7,7 @@ import {
   Chip,
   Alert
 } from '@mui/material'
-import { AutoStories, Info } from '@mui/icons-material'
+import { AutoStories, Info, Save } from '@mui/icons-material'
 import useStoryGenerationStore from '../../stores/storyGenerationStore'
 
 /**
@@ -16,7 +16,7 @@ import useStoryGenerationStore from '../../stores/storyGenerationStore'
  * 무료 버전 사용량 정보도 함께 표시
  * PRD 2.1.2 AI 스토리 생성 기능의 핵심 입력 컴포넌트
  */
-const SynopsisInputForm = ({ onSubmit, isGenerating = false }) => {
+const SynopsisInputForm = ({ onSubmit, onSave, isGenerating = false }) => {
   // Zustand 스토어에서 상태 가져오기
   const { synopsis, setSynopsis } = useStoryGenerationStore()
   
@@ -42,7 +42,7 @@ const SynopsisInputForm = ({ onSubmit, isGenerating = false }) => {
   }
 
   /**
-   * 폼 제출 핸들러
+   * 폼 제출 핸들러 (AI 스토리 생성)
    * @param {Event} e - 제출 이벤트
    */
   const handleSubmit = (e) => {
@@ -61,6 +61,27 @@ const SynopsisInputForm = ({ onSubmit, isGenerating = false }) => {
     
     // 부모 컴포넌트에 제출
     onSubmit(synopsis.trim())
+  }
+
+  /**
+   * 시놉시스 저장 핸들러
+   */
+  const handleSaveSynopsis = () => {
+    // 입력 유효성 검사
+    if (!synopsis.trim()) {
+      setError('시놉시스를 입력해주세요.')
+      return
+    }
+    
+    if (synopsis.trim().length < MIN_LENGTH) {
+      setError(`시놉시스는 최소 ${MIN_LENGTH}자 이상 입력해주세요.`)
+      return
+    }
+    
+    // 부모 컴포넌트에 저장 요청
+    if (onSave) {
+      onSave(synopsis.trim())
+    }
   }
 
   /**
@@ -153,27 +174,55 @@ const SynopsisInputForm = ({ onSubmit, isGenerating = false }) => {
           />
         </Box>
 
-        {/* 제출 버튼 */}
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          startIcon={<AutoStories />}
-          disabled={isGenerating || synopsis.trim().length < MIN_LENGTH}
-          sx={{
-            mt: 3,
-            backgroundColor: 'var(--color-primary)',
-            '&:hover': {
-              backgroundColor: 'var(--color-accent)',
-            },
-            '&:disabled': {
-              backgroundColor: '#444',
-              color: '#666',
-            },
-          }}
-        >
-          {isGenerating ? 'AI 스토리 생성 중...' : 'AI 스토리 생성하기'}
-        </Button>
+        {/* 버튼 그룹 */}
+        <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+          {/* 저장 버튼 */}
+          <Button
+            type="button"
+            variant="outlined"
+            size="large"
+            startIcon={<Save />}
+            disabled={isGenerating || synopsis.trim().length < MIN_LENGTH}
+            onClick={handleSaveSynopsis}
+            sx={{
+              flex: 1,
+              borderColor: 'var(--color-accent)',
+              color: 'var(--color-accent)',
+              '&:hover': {
+                borderColor: 'var(--color-accent)',
+                backgroundColor: 'rgba(212, 175, 55, 0.1)',
+              },
+              '&:disabled': {
+                borderColor: '#444',
+                color: '#666',
+              },
+            }}
+          >
+            시놉시스 저장
+          </Button>
+
+          {/* AI 스토리 생성 버튼 */}
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            startIcon={<AutoStories />}
+            disabled={isGenerating || synopsis.trim().length < MIN_LENGTH}
+            sx={{
+              flex: 2,
+              backgroundColor: 'var(--color-primary)',
+              '&:hover': {
+                backgroundColor: 'var(--color-accent)',
+              },
+              '&:disabled': {
+                backgroundColor: '#444',
+                color: '#666',
+              },
+            }}
+          >
+            {isGenerating ? 'AI 스토리 생성 중...' : 'AI 스토리 생성하기'}
+          </Button>
+        </Box>
       </Box>
     </Box>
   )

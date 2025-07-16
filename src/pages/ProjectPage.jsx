@@ -365,18 +365,20 @@ const ProjectPage = () => {
       
       // 서버에 변경사항 저장
       const timelineService = (await import('../services/timelineService')).default
-      const result = await timelineService.updateScene(projectId, editedScene)
+      const result = await timelineService.updateScene(projectId, editedScene.id, editedScene)
       
       if (result.success) {
-        toast.success('씬이 저장되었습니다.')
+        console.log('✅ 씬 저장 성공:', editedScene.id)
+        // 성공 시 모달 닫기
+        handleEditModalClose()
       } else {
-        toast.error(result.error || '씬 저장에 실패했습니다.')
+        console.error('❌ 씬 저장 실패:', result.error)
+        throw new Error(result.error || '씬 저장에 실패했습니다.')
       }
     } catch (error) {
-      console.error('씬 저장 실패:', error)
-      toast.error('씬 저장에 실패했습니다.')
+      console.error('❌ 씬 저장 실패:', error)
+      throw error // 에러를 다시 던져서 ConteEditModal에서 처리하도록 함
     }
-    handleEditModalClose()
   }, [projectId, handleEditModalClose])
 
   /**

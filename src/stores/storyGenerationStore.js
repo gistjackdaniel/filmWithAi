@@ -392,6 +392,48 @@ const useStoryGenerationStore = create((set, get) => ({
     })
   },
 
+  /**
+   * 프로젝트별 스토리 상태 초기화
+   * 새 프로젝트를 시작할 때 호출
+   */
+  resetForNewProject: () => {
+    set({
+      synopsis: '',
+      synopsisError: '',
+      generatedStory: '',
+      isGenerating: false,
+      generationError: '',
+      currentHistoryIndex: -1,
+      conteGeneration: {
+        isGenerating: false,
+        generatedConte: [],
+        generationError: '',
+        conteSettings: {
+          maxScenes: 2,
+          genre: '일반',
+          focus: '균형'
+        }
+      }
+    })
+    console.log('🔄 새 프로젝트를 위한 스토리 상태 초기화 완료')
+  },
+
+  /**
+   * 콘티 생성 상태만 초기화
+   * 콘티 생성 탭에서 새 프로젝트 감지 시 호출
+   */
+  resetConteGeneration: () => {
+    set((state) => ({
+      conteGeneration: {
+        ...state.conteGeneration,
+        isGenerating: false,
+        generatedConte: [],
+        generationError: ''
+      }
+    }))
+    console.log('🔄 콘티 생성 상태 초기화 완료')
+  },
+
   // ===== 계산된 상태 (getter) =====
 
   /**

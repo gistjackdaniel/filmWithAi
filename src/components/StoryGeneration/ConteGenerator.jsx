@@ -52,10 +52,20 @@ const ConteGenerator = ({
     startConteGeneration,
     completeConteGeneration,
     failConteGeneration,
-    updateConteSettings
+    updateConteSettings,
+    resetConteGeneration
   } = useStoryGenerationStore()
 
   const { isGenerating, generatedConte, generationError, conteSettings } = conteGeneration
+
+  // 새 프로젝트 감지 및 초기화
+  useEffect(() => {
+    // 스토리가 없고 기존 콘티가 있는 경우 새 프로젝트로 간주
+    if (!story && generatedConte && generatedConte.length > 0) {
+      console.log('🆕 ConteGenerator - 새 프로젝트 감지, 콘티 상태 초기화')
+      resetConteGeneration()
+    }
+  }, [story, generatedConte, resetConteGeneration])
 
   // 로컬 상태 관리
   const [showResult, setShowResult] = useState(false) // 결과 표시 여부
@@ -101,6 +111,12 @@ const ConteGenerator = ({
   const generateSceneImages = async (conteList) => {
     setGeneratingImages(true)
     setImageGenerationProgress(0)
+    
+    // 이미지 생성 시작 토스트 메시지
+    toast.success('캡션카드에 이미지가 생성 중이니 잠시만 기다려 주세요', {
+      duration: 4000,
+      icon: '🎨'
+    })
     
     // 부모 컴포넌트에 이미지 생성 시작 알림
     if (onImageGenerationUpdate) {
@@ -151,10 +167,17 @@ const ConteGenerator = ({
         await new Promise(resolve => setTimeout(resolve, 500))
       }
       
+      // 이미지 생성 완료 토스트 메시지
+      toast.success('이미지 생성이 완료되었습니다.', {
+        duration: 3000,
+        icon: '✅'
+      })
+      
       return updatedConteList
       
     } catch (error) {
       console.error('❌ 이미지 생성 전체 실패:', error)
+      toast.error('이미지 생성에 실패했습니다.')
       throw error
     } finally {
       setGeneratingImages(false)
