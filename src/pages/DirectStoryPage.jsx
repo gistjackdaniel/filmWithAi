@@ -634,6 +634,7 @@ const DirectStoryPage = () => {
       
       // 타임라인 스토어에 콘티 데이터 직접 설정
       const { setScenes, setCurrentProjectId } = useTimelineStore.getState()
+      const { currentProject } = useProjectStore.getState() // 현재 프로젝트 정보 가져오기
       
       // 콘티 데이터를 타임라인 형식으로 변환
       const timelineScenes = generatedConte.map((conte, index) => {
@@ -697,7 +698,12 @@ const DirectStoryPage = () => {
       // 타임라인 스토어에 데이터 설정
       console.log('🔧 타임라인 스토어에 데이터 설정 중...')
       setScenes(timelineScenes)
-      setCurrentProjectId('temp-project-id') // 임시 프로젝트 ID 설정
+      // 실제 프로젝트 ID로 타임라인 연결
+      let projectId = 'temp-project-id'
+      if (currentProject && (currentProject._id || currentProject.id)) {
+        projectId = currentProject._id || currentProject.id
+      }
+      setCurrentProjectId(projectId)
       console.log('✅ 타임라인 스토어 데이터 설정 완료')
       
       // 로컬 스토리지에도 백업 저장
@@ -705,9 +711,9 @@ const DirectStoryPage = () => {
       localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
       console.log('✅ 로컬 스토리지 백업 저장 완료')
       
-      // 타임라인 페이지로 이동
+      // 타임라인 페이지로 이동 (실제 프로젝트 ID 사용)
       console.log('🚀 타임라인 페이지로 이동 중...')
-      navigate('/project/temp-project-id')
+      navigate(`/project/${projectId}`)
       
       toast.success(`${timelineScenes.length}개의 콘티가 타임라인에 로드되었습니다.`)
     } else {

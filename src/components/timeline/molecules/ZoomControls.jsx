@@ -7,24 +7,30 @@ import {
   Slider, 
   Menu, 
   MenuItem,
-  Button
+  Button,
+  TextField,
+  InputAdornment
 } from '@mui/material'
 import { 
   ZoomIn, 
   ZoomOut, 
   Fullscreen,
   FullscreenExit,
-  FitScreen
+  FitScreen,
+  KeyboardArrowDown
 } from '@mui/icons-material'
 
 /**
  * 줌 컨트롤 컴포넌트
  * 타임라인의 줌 레벨을 조정하고 전체 보기 기능을 제공
+ * - 긴 슬라이더 바로 정밀한 줌 조절
+ * - 드롭다운으로 빠른 배율 선택
+ * - 직접 입력으로 정확한 배율 설정
  */
 const ZoomControls = ({
   zoomLevel = 1,
   minZoom = 0.5,
-  maxZoom = 8,
+  maxZoom = 100,
   onZoomChange,
   onFitToScreen,
   showSlider = true,
@@ -35,6 +41,10 @@ const ZoomControls = ({
 }) => {
   // 줌 메뉴 상태
   const [zoomMenuAnchor, setZoomMenuAnchor] = useState(null)
+  // 직접 입력 모드 상태
+  const [isDirectInput, setIsDirectInput] = useState(false)
+  // 직접 입력 값
+  const [directInputValue, setDirectInputValue] = useState(zoomLevel.toString())
 
   // 줌 변경 핸들러
   const handleZoomChange = (newZoomLevel) => {
@@ -56,7 +66,8 @@ const ZoomControls = ({
 
   // 줌 슬라이더 핸들러
   const handleSliderChange = (event, newValue) => {
-    handleZoomChange(newValue)
+    const zoomValue = sliderValueToZoom(newValue)
+    handleZoomChange(zoomValue)
   }
 
   // 전체 보기 핸들러
@@ -66,13 +77,46 @@ const ZoomControls = ({
     }
   }
 
-  // 줌 레벨 옵션
+  // 직접 입력 핸들러
+  const handleDirectInputChange = (event) => {
+    const value = event.target.value
+    setDirectInputValue(value)
+  }
+
+  const handleDirectInputKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      const numValue = parseFloat(directInputValue)
+      if (!isNaN(numValue) && numValue >= minZoom && numValue <= maxZoom) {
+        handleZoomChange(numValue)
+        setIsDirectInput(false)
+      }
+    } else if (event.key === 'Escape') {
+      setDirectInputValue(zoomLevel.toString())
+      setIsDirectInput(false)
+    }
+  }
+
+  const handleDirectInputBlur = () => {
+    const numValue = parseFloat(directInputValue)
+    if (!isNaN(numValue) && numValue >= minZoom && numValue <= maxZoom) {
+      handleZoomChange(numValue)
+    } else {
+      setDirectInputValue(zoomLevel.toString())
+    }
+    setIsDirectInput(false)
+  }
+
+  // 줌 레벨 옵션 (더 세밀한 배율 추가)
   const zoomOptions = [
     { label: '0.5x', value: 0.5 },
     { label: '1x', value: 1 },
     { label: '2x', value: 2 },
     { label: '4x', value: 4 },
-    { label: '8x', value: 8 }
+    { label: '8x', value: 8 },
+    { label: '16x', value: 16 },
+    { label: '32x', value: 32 },
+    { label: '50x', value: 50 },
+    { label: '100x', value: 100 }
   ]
 
   // 줌 레벨을 슬라이더 값으로 변환 (로그 스케일)
@@ -122,9 +166,9 @@ const ZoomControls = ({
         </Tooltip>
       )}
 
-      {/* 줌 슬라이더 */}
+      {/* 줌 슬라이더 - 더 길게 */}
       {showSlider && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 200 }}>
           <Slider
             value={zoomToSliderValue(zoomLevel)}
             onChange={handleSliderChange}
@@ -134,29 +178,82 @@ const ZoomControls = ({
             size="small"
             sx={{
               color: 'var(--color-accent)',
+              minWidth: 150,
               '& .MuiSlider-thumb': {
                 backgroundColor: 'var(--color-accent)',
+                width: 16,
+                height: 16,
               },
               '& .MuiSlider-track': {
                 backgroundColor: 'var(--color-accent)',
+                height: 3,
               },
               '& .MuiSlider-rail': {
                 backgroundColor: 'var(--color-scene-card-border)',
+                height: 3,
               }
             }}
           />
           
-          <Typography
-            variant="caption"
-            sx={{
-              font: 'var(--font-caption)',
-              color: 'var(--color-text-secondary)',
-              minWidth: '35px',
-              textAlign: 'center'
-            }}
-          >
-            {zoomLevel.toFixed(1)}x
-          </Typography>
+          {/* 줌 레벨 표시 - 클릭 가능한 드롭다운 */}
+          {!isDirectInput ? (
+            <Tooltip title="클릭하여 직접 입력">
+              <Typography
+                variant="caption"
+                onClick={() => {
+                  setIsDirectInput(true)
+                  setDirectInputValue(zoomLevel.toString())
+                }}
+                sx={{
+                  font: 'var(--font-caption)',
+                  color: 'var(--color-text-secondary)',
+                  minWidth: '45px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--color-scene-card-border)',
+                  backgroundColor: 'var(--color-hover)',
+                  '&:hover': {
+                    backgroundColor: 'var(--color-hover)',
+                    color: 'var(--color-accent)',
+                    borderColor: 'var(--color-accent)',
+                  }
+                }}
+              >
+                {zoomLevel.toFixed(1)}x
+              </Typography>
+            </Tooltip>
+          ) : (
+            <TextField
+              size="small"
+              value={directInputValue}
+              onChange={handleDirectInputChange}
+              onKeyDown={handleDirectInputKeyDown}
+              onBlur={handleDirectInputBlur}
+              autoFocus
+              variant="outlined"
+              InputProps={{
+                endAdornment: <InputAdornment position="end">x</InputAdornment>,
+                sx: {
+                  font: 'var(--font-caption)',
+                  fontSize: '0.75rem',
+                  height: '24px',
+                  '& input': {
+                    padding: '2px 4px',
+                    textAlign: 'center',
+                  }
+                }
+              }}
+              sx={{
+                width: '60px',
+                '& .MuiOutlinedInput-root': {
+                  height: '24px',
+                  fontSize: '0.75rem',
+                }
+              }}
+            />
+          )}
         </Box>
       )}
 
@@ -183,37 +280,45 @@ const ZoomControls = ({
         </Tooltip>
       )}
 
-      {/* 줌 레벨 메뉴 */}
+      {/* 줌 레벨 드롭다운 메뉴 */}
       {showMenu && (
         <>
-          <Tooltip title="줌 레벨 선택">
-            <IconButton
+          <Tooltip title="빠른 배율 선택">
+            <Button
               size="small"
+              variant="outlined"
               onClick={(e) => setZoomMenuAnchor(e.currentTarget)}
-              sx={{
-                color: 'var(--color-text-secondary)',
-                '&:hover': {
-                  color: 'var(--color-accent)',
-                  backgroundColor: 'var(--color-hover)',
-                }
-              }}
+              endIcon={<KeyboardArrowDown />}
+                          sx={{
+              minWidth: 'auto',
+              px: 1,
+              py: 0.5,
+              fontSize: '0.75rem',
+              color: 'var(--color-text-secondary)',
+              borderColor: 'var(--color-scene-card-border)',
+              backgroundColor: 'var(--color-card-bg)',
+              '&:hover': {
+                color: 'var(--color-accent)',
+                borderColor: 'var(--color-accent)',
+                backgroundColor: 'var(--color-hover)',
+              }
+            }}
             >
-              <Typography
-                variant="caption"
-                sx={{
-                  font: 'var(--font-caption)',
-                  color: 'inherit'
-                }}
-              >
-                ▼
-              </Typography>
-            </IconButton>
+              배율
+            </Button>
           </Tooltip>
 
           <Menu
             anchorEl={zoomMenuAnchor}
             open={Boolean(zoomMenuAnchor)}
             onClose={() => setZoomMenuAnchor(null)}
+            PaperProps={{
+              sx: {
+                backgroundColor: 'var(--color-card-bg)',
+                border: '1px solid var(--color-scene-card-border)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              }
+            }}
           >
             {zoomOptions.map((option) => (
               <MenuItem
@@ -227,7 +332,16 @@ const ZoomControls = ({
                   font: 'var(--font-caption)',
                   color: Math.abs(zoomLevel - option.value) < 0.1
                     ? 'var(--color-accent)' 
-                    : 'var(--color-text-secondary)'
+                    : 'var(--color-text-secondary)',
+                  '&:hover': {
+                    backgroundColor: 'var(--color-hover)',
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: 'var(--color-accent-light)',
+                    '&:hover': {
+                      backgroundColor: 'var(--color-accent-light)',
+                    }
+                  }
                 }}
               >
                 {option.label}
@@ -254,22 +368,6 @@ const ZoomControls = ({
             <FitScreen fontSize="small" />
           </IconButton>
         </Tooltip>
-      )}
-
-      {/* 줌 레벨 표시 (슬라이더가 없을 때) */}
-      {!showSlider && (
-        <Typography
-          variant="body2"
-          sx={{
-            font: 'var(--font-body-2)',
-            color: 'var(--color-accent)',
-            fontWeight: 500,
-            minWidth: '40px',
-            textAlign: 'center'
-          }}
-        >
-          {zoomLevel.toFixed(1)}x
-        </Typography>
       )}
     </Box>
   )

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Box, Typography, CircularProgress, Button } from '@mui/material'
-import { Schedule } from '@mui/icons-material'
+import { Schedule, PlayArrow } from '@mui/icons-material'
 import {
   DndContext,
   closestCenter,
@@ -48,6 +48,7 @@ const TimelineViewer = (props) => {
     onSceneEdit,
     onSceneInfo,
     onScenesReorder,
+    onGenerateConte, // 콘티 생성 핸들러
     emptyMessage = "콘티가 없습니다. AI를 사용하여 콘티를 생성해보세요.",
     // 시간 기반 타임라인 관련 props
     timeScale = 1, // 픽셀당 시간 (초)
@@ -543,8 +544,58 @@ const TimelineViewer = (props) => {
         gap: 2
       }}
     >
-      {/* 상단 네비게이션 및 필터 */}
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      {/* 상단 필터 및 버튼 행 */}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+        <TimelineFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
+          totalScenes={safeScenes.length}
+          filteredCount={safeFilteredScenes.length}
+        />
+
+        {/* 콘티 추가 버튼 */}
+        <Button 
+          variant="outlined" 
+          startIcon={<PlayArrow />}
+          onClick={onGenerateConte}
+          size="small"
+          sx={{
+            borderColor: 'var(--color-primary)',
+            color: 'var(--color-primary)',
+            '&:hover': {
+              borderColor: 'var(--color-primary)',
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+            }
+          }}
+        >
+          콘티 추가
+        </Button>
+
+        {/* 스케줄러 버튼 */}
+        {onViewSchedule && (
+          <Button
+            variant="contained"
+            startIcon={<Schedule />}
+            onClick={onViewSchedule}
+            size="small"
+            sx={{
+              backgroundColor: 'var(--color-primary)',
+              '&:hover': {
+                backgroundColor: 'var(--color-accent)',
+              },
+              minWidth: '140px',
+              px: 3
+            }}
+          >
+            스케줄러 보기
+          </Button>
+        )}
+      </Box>
+
+      {/* 하단 네비게이션 및 줌 컨트롤 */}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
         <TimelineNavigation
           currentSceneIndex={currentSceneIndex}
           totalScenes={safeFilteredScenes.length}
@@ -564,61 +615,127 @@ const TimelineViewer = (props) => {
           showTimeNavigation={showTimeInfo}
           showZoomControls={true}
         />
-        
-        <TimelineFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-          totalScenes={safeScenes.length}
-          filteredCount={safeFilteredScenes.length}
-        />
-        
-        {/* 스케줄러 버튼 */}
-        {onViewSchedule && (
-          <Button
-            variant="contained"
-            startIcon={<Schedule />}
-            onClick={onViewSchedule}
-            sx={{
-              backgroundColor: 'var(--color-primary)',
-              '&:hover': {
-                backgroundColor: 'var(--color-accent)',
-              },
-              ml: 2,
-              minWidth: '140px', // 최소 너비 설정
-              px: 3 // 좌우 패딩 증가
-            }}
-          >
-            스케줄러 보기
-          </Button>
-        )}
       </Box>
 
-      {/* 시간 눈금 */}
-      {showTimeInfo && calculatedTotalDuration > 0 && (
-        <TimeRuler
-          totalDuration={calculatedTotalDuration}
-          currentTime={timeBasedScrollPosition}
+      {/* 시간 눈금과 타임라인 스크롤 영역을 함께 감싸는 컨테이너 */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          overflow: 'hidden',
+          position: 'relative'
+        }}
+      >
+        {/* 스크롤바를 TimeRuler 위에 표시하기 위한 컨테이너 */}
+        <Box
+          sx={{
+            position: 'relative',
+            height: '48px', // TimeRuler 높이 + 스크롤바 높이
+            overflow: 'hidden'
+          }}
+        >
+          {/* 시간 눈금 */}
+          {showTimeInfo && calculatedTotalDuration > 0 && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '8px', // 스크롤바 아래에 위치
+                left: 0,
+                right: 0,
+                overflow: 'hidden',
+                borderBottom: '1px solid var(--color-scene-card-border)'
+              }}
+            >
+              <TimeRuler
+                totalDuration={calculatedTotalDuration}
+                currentTime={timeBasedScrollPosition}
+                zoomLevel={currentZoomLevel}
+                baseScale={baseScale}
+                timeScale={calculatedTimeScale}
+                height={40}
+                showCurrentTime={true}
+                showGrid={true}
+                onTimeClick={handleScrollToTime}
+                scrollPosition={scrollPosition}
+                sx={{
+                  width: timelineWidth > 0 ? timelineWidth : 'fit-content',
+                  transform: `translateX(-${scrollPosition}px)`,
+                  transition: 'transform 0.1s ease-out'
+                }}
+              />
+            </Box>
+          )}
+          
+          {/* 스크롤바를 TimeRuler 위에 표시 */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '8px',
+              overflow: 'hidden',
+              zIndex: 10
+            }}
+          >
+            <Box
+              ref={(el) => {
+                if (el) {
+                  // 타임라인 스크롤과 동기화
+                  el.scrollLeft = scrollPosition
+                }
+              }}
+              sx={{
+                width: '100%',
+                height: '100%',
+                overflowX: 'auto', // 스크롤바 복원
+                overflowY: 'hidden',
+                // 스크롤바 스타일 복원
+                '&::-webkit-scrollbar': {
+                  height: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: 'var(--color-timeline-track)',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: 'var(--color-accent)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    backgroundColor: 'var(--color-primary)',
+                  },
+                },
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'var(--color-accent) var(--color-timeline-track)'
+              }}
+              onScroll={(e) => {
+                // 스크롤바와 타임라인 스크롤 동기화
+                if (scrollRef.current) {
+                  scrollRef.current.scrollLeft = e.target.scrollLeft
+                }
+              }}
+            >
+              <Box sx={{ width: timelineWidth > 0 ? timelineWidth : 'fit-content', height: '1px' }} />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* 타임라인 스크롤 영역 */}
+        <TimelineScroll
+          ref={scrollRef}
+          onScrollPositionChange={handleScrollPositionChange}
+          showScrollbar={false} // 스크롤바 완전히 숨김
           zoomLevel={currentZoomLevel}
           baseScale={baseScale}
           timeScale={calculatedTimeScale}
-          height={40}
-          showCurrentTime={true}
-          showGrid={true}
-          onTimeClick={handleScrollToTime}
-        />
-      )}
-
-      {/* 타임라인 스크롤 영역 */}
-      <TimelineScroll
-        ref={scrollRef}
-        onScrollPositionChange={handleScrollPositionChange}
-        sx={{
-          flex: 1,
-          minHeight: 300,
-          width: '100%'
-        }}
-      >
+          sx={{
+            flex: 1,
+            minHeight: 300,
+            width: '100%',
+            overflow: 'hidden' // 스크롤바 제거
+          }}
+        >
         {/* 드래그 앤 드롭 컨텍스트 */}
         <DndContext
           sensors={sensors}
@@ -668,6 +785,38 @@ const TimelineViewer = (props) => {
                 // 씬의 시작 위치 계산 (픽셀 단위)
                 const sceneStartPosition = timeToPixels(sceneStartTime, calculatedTimeScale)
                 
+                // 씬 카드의 너비 계산 - 시간 기반으로 정확하게 계산
+                const sceneDuration = scene?.duration || 0
+                let cardWidth = 120 // 기본 너비
+                
+                if (calculatedTimeScale > 0 && sceneDuration > 0) {
+                  // 시간을 픽셀로 변환 (1초당 픽셀 수)
+                  const pixelsPerSecond = 1 / calculatedTimeScale
+                  const timeBasedWidth = sceneDuration * pixelsPerSecond
+                  
+                  // 최소/최대 너비 제한 - 줌 레벨에 따라 동적 조정
+                  const minWidth = calculateMinSceneWidth(currentZoomLevel, 80)
+                  const maxWidth = Math.max(800, currentZoomLevel * 200)
+                  
+                  cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
+                  
+                  // 디버깅 로그
+                  console.log(`TimelineViewer 씬 ${scene.scene}: duration=${sceneDuration}s, timeScale=${calculatedTimeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, minWidth=${minWidth}px, maxWidth=${maxWidth}px, finalWidth=${cardWidth}px`)
+                } else if (sceneDuration > 0) {
+                  // timeScale이 0이지만 duration이 있는 경우 기본 계산
+                  const minWidth = calculateMinSceneWidth(currentZoomLevel, 80)
+                  const estimatedWidth = Math.max(sceneDuration * 4, minWidth)
+                  cardWidth = Math.min(estimatedWidth, 200)
+                  
+                  console.log(`TimelineViewer 씬 ${scene.scene}: fallback calculation, duration=${sceneDuration}s, minWidth=${minWidth}px, estimatedWidth=${estimatedWidth}px, finalWidth=${cardWidth}px`)
+                }
+                
+                // 씬 카드가 TimeRuler 가시 영역을 넘어가는지 확인
+                const containerWidth = 800 // TimeRuler 컨테이너의 대략적인 너비
+                const sceneEndPosition = sceneStartPosition + cardWidth
+                const isVisible = sceneStartPosition < (scrollPosition + containerWidth) && 
+                                 sceneEndPosition > scrollPosition
+                
                 return (
                   <Box
                     key={scene.id}
@@ -677,7 +826,10 @@ const TimelineViewer = (props) => {
                       top: 16, // 패딩 고려
                       bottom: 16,
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      // 가시 영역을 넘어가는 경우 숨김
+                      visibility: isVisible ? 'visible' : 'hidden',
+                      opacity: isVisible ? 1 : 0
                     }}
                   >
                     <SceneCard
@@ -702,6 +854,8 @@ const TimelineViewer = (props) => {
                       timeScale={calculatedTimeScale}
                       zoomLevel={currentZoomLevel}
                       showTimeInfo={showTimeInfo}
+                      // 외부에서 계산된 너비 전달
+                      width={cardWidth}
                     />
                   </Box>
                 )
@@ -710,6 +864,7 @@ const TimelineViewer = (props) => {
           </SortableContext>
         </DndContext>
       </TimelineScroll>
+      </Box>
 
       {/* 하단 정보 */}
       <Box

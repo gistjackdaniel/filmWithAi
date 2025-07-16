@@ -16,6 +16,7 @@ import toast from 'react-hot-toast'
 import TimelineViewer from '../components/timeline/organisms/TimelineViewer'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
+import StoryResult from '../components/StoryGeneration/StoryResult' // StoryResult 컴포넌트 추가
 import useTimelineStore from '../stores/timelineStore'
 import CommonHeader from '../components/CommonHeader'
 
@@ -733,9 +734,6 @@ const ProjectPage = () => {
             <Typography variant="body2" color="text.secondary">
               생성일: {new Date(project.createdAt).toLocaleDateString()}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              콘티 수: {project.conteList?.length || 0}개
-            </Typography>
           </Box>
 
           {/* 시놉시스 섹션 */}
@@ -753,12 +751,21 @@ const ProjectPage = () => {
           {/* 스토리 섹션 (있는 경우에만 표시) */}
           {project.story && (
             <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                스토리
-              </Typography>
-              <Typography variant="body1" paragraph>
-                {project.story}
-              </Typography>
+              <StoryResult 
+                story={project.story}
+                onSave={(editedStory) => {
+                  // 스토리 저장 로직
+                  console.log('스토리 편집 완료:', editedStory)
+                  toast.success('스토리가 업데이트되었습니다.')
+                }}
+                onRegenerate={() => {
+                  // 스토리 재생성 로직 (현재는 안내 메시지만)
+                  toast.info('스토리 재생성은 콘티 생성 페이지에서 가능합니다.')
+                }}
+                isGenerating={false}
+                onAutoSave={null}
+                projectId={projectId}
+              />
             </Box>
           )}
         </Box>
@@ -769,14 +776,6 @@ const ProjectPage = () => {
             <Typography variant="h6">
               타임라인
             </Typography>
-            <Button 
-              variant="outlined" 
-              startIcon={<PlayArrow />}
-              onClick={handleGenerateConte}
-              size="small"
-            >
-              콘티 추가
-            </Button>
           </Box>
           
           {/* 디버깅 로그 추가 */}
@@ -806,25 +805,7 @@ const ProjectPage = () => {
           />
         </Box>
 
-        {/* 프로젝트가 완성되지 않은 경우 안내 메시지 */}
-        {(!project.story || !project.conteList || project.conteList.length === 0) && (
-          <Box sx={{ textAlign: 'center', py: 8, bgcolor: 'background.paper', borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              프로젝트가 아직 완성되지 않았습니다.
-            </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              AI를 사용하여 스토리와 콘티를 생성해보세요.
-            </Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<PlayArrow />}
-              onClick={handleGenerateConte}
-              size="large"
-            >
-              콘티 생성하기
-            </Button>
-          </Box>
-        )}
+
       </Container>
 
 

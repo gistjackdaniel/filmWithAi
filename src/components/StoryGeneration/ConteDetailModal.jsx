@@ -10,7 +10,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   Chip,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material'
 import { 
   Close,
@@ -32,7 +33,9 @@ const ConteDetailModal = ({
   onEdit,
   onImageRetry,
   imageLoadErrors = {},
-  onImageLoadError
+  onImageLoadError,
+  isGeneratingImages = false,
+  imageGenerationProgress = 0
 }) => {
   if (!conte) return null
 
@@ -91,7 +94,7 @@ const ConteDetailModal = ({
         <Box sx={{ p: 3 }}>
           <Grid container spacing={3}>
             {/* 씬 이미지 */}
-            {conte.imageUrl && (
+            {(conte.imageUrl || isGeneratingImages) && (
               <Grid item xs={12}>
                 <Box sx={{ 
                   width: '100%', 
@@ -100,18 +103,44 @@ const ConteDetailModal = ({
                   overflow: 'hidden',
                   border: '1px solid #ddd',
                   mb: 2,
-                  position: 'relative'
+                  position: 'relative',
+                  backgroundColor: 'var(--color-card-bg)'
                 }}>
-                  <img 
-                    src={conte.imageUrl} 
-                    alt={`씬 ${conte.scene} 이미지`}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
-                    onError={(e) => onImageLoadError && onImageLoadError(conte.id, e)}
-                  />
+                  {conte.imageUrl ? (
+                    <img 
+                      src={conte.imageUrl} 
+                      alt={`씬 ${conte.scene} 이미지`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => onImageLoadError && onImageLoadError(conte.id, e)}
+                    />
+                  ) : isGeneratingImages ? (
+                    <Box sx={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      backgroundColor: 'rgba(0, 0, 0, 0.1)'
+                    }}>
+                      <CircularProgress 
+                        size={60} 
+                        sx={{ color: 'var(--color-accent)', mb: 2 }} 
+                      />
+                      <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', mb: 1 }}>
+                        이미지 생성 중...
+                      </Typography>
+                      {imageGenerationProgress > 0 && (
+                        <Typography variant="body2" color="text.secondary">
+                          {Math.round(imageGenerationProgress)}% 완료
+                        </Typography>
+                      )}
+                    </Box>
+                  ) : null}
                   {imageLoadErrors[conte.id] && (
                     <Box sx={{ 
                       position: 'absolute', 

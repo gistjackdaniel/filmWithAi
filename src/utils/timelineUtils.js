@@ -62,7 +62,15 @@ export const formatTimeShort = (seconds) => {
  * @returns {number} 픽셀당 시간 (초)
  */
 export const calculateTimeScale = (zoomLevel = 1, baseScale = 1) => {
-  return baseScale / zoomLevel
+  // 줌 레벨이 높을수록 더 세밀한 시간 표시를 위해 스케일을 조정
+  // baseScale은 기본적으로 1초당 몇 픽셀인지를 나타냄
+  const adjustedScale = baseScale / Math.max(zoomLevel, 0.1) // 최소 0.1배 줌 보장
+  
+  // 줌 레벨이 너무 높을 때 스케일이 너무 작아지는 것을 방지
+  const minScale = 0.01 // 최소 0.01초당 1픽셀
+  const maxScale = 10 // 최대 10초당 1픽셀
+  
+  return Math.max(minScale, Math.min(maxScale, adjustedScale))
 }
 
 /**
@@ -265,15 +273,17 @@ export const sortScenesByDuration = (scenes, order = 'desc') => {
  * @returns {number} 눈금 간격 (초)
  */
 export const calculateTickInterval = (zoomLevel) => {
-  const baseInterval = 1 // 1초 기본 간격
+  // 줌 레벨에 따른 동적 눈금 간격 계산
+  if (zoomLevel <= 0.5) return 300 // 5분
+  if (zoomLevel <= 1) return 60   // 1분
+  if (zoomLevel <= 2) return 30   // 30초
+  if (zoomLevel <= 4) return 10   // 10초
+  if (zoomLevel <= 8) return 5    // 5초
+  if (zoomLevel <= 16) return 2   // 2초
+  if (zoomLevel <= 32) return 1   // 1초
+  if (zoomLevel <= 50) return 0.5 // 0.5초
   
-  if (zoomLevel <= 1) return 60 // 1분
-  if (zoomLevel <= 2) return 30 // 30초
-  if (zoomLevel <= 4) return 10 // 10초
-  if (zoomLevel <= 8) return 5  // 5초
-  if (zoomLevel <= 16) return 1 // 1초
-  
-  return 0.5 // 0.5초
+  return 0.2 // 0.2초 (매우 높은 줌)
 }
 
 /**
@@ -283,7 +293,22 @@ export const calculateTickInterval = (zoomLevel) => {
  * @returns {number} 최소 씬 너비 (픽셀)
  */
 export const calculateMinSceneWidth = (zoomLevel, baseWidth = 100) => {
-  return Math.max(baseWidth * zoomLevel, 50) // 최소 50px
+  // 줌 레벨에 따른 동적 최소 너비 계산
+  // 줌 레벨이 높을수록 더 큰 최소 너비를 가져야 함
+  const minWidth = Math.max(baseWidth * zoomLevel, 50) // 최소 50px
+  
+  // 줌 레벨이 매우 높을 때 (16배 이상) 최소 너비를 더 크게 설정
+  if (zoomLevel >= 16) {
+    return Math.max(minWidth, 200) // 최소 200px
+  } else if (zoomLevel >= 8) {
+    return Math.max(minWidth, 150) // 최소 150px
+  } else if (zoomLevel >= 4) {
+    return Math.max(minWidth, 120) // 최소 120px
+  } else if (zoomLevel >= 2) {
+    return Math.max(minWidth, 100) // 최소 100px
+  }
+  
+  return minWidth
 }
 
 /**

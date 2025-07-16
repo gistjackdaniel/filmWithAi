@@ -32,9 +32,8 @@ import {
   Refresh,
   Error
 } from '@mui/icons-material'
-
+import { CircularProgress } from '@mui/material'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
-
 import toast from 'react-hot-toast'
 import SynopsisInputForm from '../components/StoryGeneration/SynopsisInputForm'
 import LoadingSpinner from '../components/StoryGeneration/LoadingSpinner'
@@ -76,6 +75,10 @@ const ConteGenerationPage = () => {
   
   // 이미지 로딩 실패 상태 관리
   const [imageLoadErrors, setImageLoadErrors] = useState({})
+
+  // 이미지 생성 상태 관리
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false)
+  const [imageGenerationProgress, setImageGenerationProgress] = useState(0)
   
   // 상태 복원 (뒤로가기 시) - 중복 토스트 방지용 플래그 추가
   const hasRestored = useRef(false);
@@ -168,7 +171,8 @@ const ConteGenerationPage = () => {
     getCurrentError,
     completeConteGeneration,
     startConteGeneration,
-    failConteGeneration
+    failConteGenerationfailConteGeneration,
+    resetForNewProject
   } = useStoryGenerationStore()
 
   // 히스토리 스토어
@@ -213,14 +217,26 @@ const ConteGenerationPage = () => {
           const project = response.data.data.project
           setProjectInfo(project)
           
-          // 프로젝트에 시놉시스가 있으면 설정
-          if (project.synopsis) {
-            setSynopsis(project.synopsis)
-          }
+          // 새 프로젝트인지 확인 (시놉시스와 스토리가 모두 없는 경우)
+          const isNewProject = !project.synopsis && !project.story
           
-          // 프로젝트에 스토리가 있으면 설정
-          if (project.story) {
-            updateGeneratedStory(project.story)
+          if (isNewProject) {
+            // 새 프로젝트인 경우 스토어 초기화
+            console.log('🆕 새 프로젝트 감지 - 스토어 초기화')
+            resetForNewProject()
+          } else {
+            // 기존 프로젝트인 경우 데이터 로드
+            if (project.synopsis) {
+              setSynopsis(project.synopsis)
+            } else {
+              setSynopsis('')
+            }
+            
+            if (project.story) {
+              updateGeneratedStory(project.story)
+            } else {
+              updateGeneratedStory('')
+            }
           }
           
           console.log('✅ 프로젝트 정보 로드 완료:', project.projectTitle)
@@ -274,10 +290,68 @@ const ConteGenerationPage = () => {
 
   /**
    * 저장 버튼 핸들러
-   * 현재는 개발 중 메시지만 표시
+   * 시놉시스 또는 스토리를 프로젝트에 저장
    */
-  const handleSave = () => {
-    toast.success('스토리가 저장되었습니다.')
+  const handleSave = async () => {
+    if (!projectId) {
+      toast.error('저장할 프로젝트가 없습니다.')
+      return
+    }
+
+    try {
+      console.log('💾 프로젝트 저장 시작:', {
+        hasSynopsis: !!synopsis,
+        hasStory: !!generatedStory,
+        projectId
+      })
+
+      // 저장할 데이터 구성
+      const updateData = {}
+      
+      // 시놉시스가 있으면 저장
+      if (synopsis && synopsis.trim()) {
+        updateData.synopsis = synopsis.trim()
+        console.log('📝 시놉시스 저장:', synopsis.trim().substring(0, 50) + '...')
+      }
+      
+      // 스토리가 있으면 저장
+      if (generatedStory && generatedStory.trim()) {
+        updateData.story = generatedStory.trim()
+        updateData.status = 'story_ready'
+        console.log('📝 스토리 저장:', generatedStory.trim().substring(0, 50) + '...')
+      }
+
+      // 저장할 데이터가 없으면 에러
+      if (Object.keys(updateData).length === 0) {
+        toast.error('저장할 내용이 없습니다. 시놉시스나 스토리를 입력해주세요.')
+        return
+      }
+
+      // 프로젝트 업데이트
+      const response = await api.put(`/projects/${projectId}`, updateData)
+      
+      if (response.data.success) {
+        console.log('✅ 프로젝트 저장 완료:', response.data)
+        
+        // 프로젝트 정보 업데이트
+        await updateProjectInfo()
+        
+        // 성공 메시지
+        if (updateData.synopsis && updateData.story) {
+          toast.success('시놉시스와 스토리가 저장되었습니다.')
+        } else if (updateData.synopsis) {
+          toast.success('시놉시스가 저장되었습니다.')
+        } else if (updateData.story) {
+          toast.success('스토리가 저장되었습니다.')
+        }
+      } else {
+        throw new Error(response.data.message || '저장에 실패했습니다.')
+      }
+      
+    } catch (error) {
+      console.error('❌ 프로젝트 저장 실패:', error)
+      toast.error('저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'))
+    }
   }
 
   /**
@@ -428,6 +502,16 @@ const ConteGenerationPage = () => {
     // 스토어에서 이미 처리됨
   }
 
+   /**
+   * 이미지 생성 상태 업데이트 핸들러
+   * @param {boolean} isGenerating - 이미지 생성 중 여부
+   * @param {number} progress - 진행률 (0-100)
+   */
+   const handleImageGenerationUpdate = (isGenerating, progress) => {
+    setIsGeneratingImages(isGenerating)
+    setImageGenerationProgress(progress)
+  }
+
   /**
    * 콘티 생성 완료 핸들러
    * @param {Array} conteList - 생성된 콘티 리스트
@@ -447,15 +531,30 @@ const ConteGenerationPage = () => {
     if (projectId && conteList && conteList.length > 0) {
       try {
         if (isImageUpdate) {
-          // 이미지 생성 완료 시 - 이미지가 포함된 콘티를 DB에 저장
+          // 이미지 생성 완료 시 - 모든 콘티의 이미지 생성 상태 재확인
           console.log('💾 이미지 생성 완료 - 콘티를 DB에 저장 중...', conteList.length, '개')
           
           // 이미지가 포함된 콘티만 필터링
           const contesWithImages = conteList.filter(conte => conte.imageUrl)
+          const totalContes = conteList.length
+          const contesWithImagesCount = contesWithImages.length
           
-          if (contesWithImages.length === 0) {
-            console.log('⚠️ 이미지가 포함된 콘티가 없어 저장을 건너뜀')
-            return
+          console.log('💾 DB 저장 전 최종 확인:', {
+            totalContes,
+            contesWithImagesCount,
+            allImagesGenerated: contesWithImagesCount === totalContes
+          })
+          
+          // 모든 콘티의 이미지가 생성된 경우에만 DB 저장 진행
+          if (contesWithImagesCount === totalContes) {
+            console.log('✅ 모든 콘티의 이미지 생성 완료 - DB 저장 진행')
+          } else {
+            console.log('⚠️ 일부 콘티의 이미지 생성 실패 - DB 저장 건너뜀:', {
+              successCount: contesWithImagesCount,
+              totalCount: totalContes,
+              failedCount: totalContes - contesWithImagesCount
+            })
+            return // 일부 실패 시 DB 저장하지 않음
           }
           
           const { conteAPI } = await import('../services/api')
@@ -503,8 +602,9 @@ const ConteGenerationPage = () => {
           )
           
           console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
-          toast.success('콘티가 성공적으로 생성되고 저장되었습니다!')
           
+          toast.success('이미지 생성이 완료되어 콘티가 DB에 저장되었습니다!')
+
           // 프로젝트 정보 업데이트
           await updateProjectInfo()
           
@@ -520,8 +620,7 @@ const ConteGenerationPage = () => {
             })
             console.log('✅ 프로젝트 상태 업데이트 완료:', statusResponse.data)
             
-            // 성공 메시지 표시
-            toast.success('콘티가 생성되었습니다. 이미지 생성이 완료되면 저장됩니다.')
+            // 콘티 생성 완료 (조용히 처리)
             
             // 프로젝트 정보 업데이트
             await updateProjectInfo()
@@ -542,7 +641,7 @@ const ConteGenerationPage = () => {
               status: 'conte_ready'
             })
             console.log('✅ 프로젝트 상태 업데이트 완료 (콘티 생성 실패 후)')
-            toast.success('콘티는 생성되었지만 저장에 실패했습니다.')
+
           } catch (statusError) {
             console.error('❌ 프로젝트 상태 업데이트도 실패:', statusError)
             toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
@@ -566,6 +665,17 @@ const ConteGenerationPage = () => {
    */
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue)
+
+    // 탭 변경 시 프로젝트 정보 업데이트 (특히 콘티 생성 탭으로 이동할 때)
+    if (newValue === 4) { // 콘티 생성 탭
+      updateProjectInfo()
+
+      // 새 프로젝트인 경우 콘티 생성 상태 초기화
+      if (projectInfo && !projectInfo.synopsis && !projectInfo.story) {
+        console.log('🆕 콘티 생성 탭 - 새 프로젝트 감지, 콘티 상태 초기화')
+        resetForNewProject()
+      }
+    }
   }
 
   /**
@@ -689,15 +799,16 @@ const ConteGenerationPage = () => {
    * 타임라인 보기 핸들러
    */
   const handleViewTimeline = () => {
-    // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
+    // 콘티 데이터를 로컬 스토리지에 저장하고 실제 프로젝트 ID로 타임라인 페이지로 이동
     if (generatedConte && generatedConte.length > 0) {
       localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
-      navigate('/project/temp-project-id')
+      // useParams로 받은 projectId를 사용하여 이동
+      navigate(`/project/${projectId}`)
     } else {
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
     }
   }
-  
+
   /**
    * 이미지 재시도 핸들러
    * @param {Object} conte - 콘티 객체
@@ -859,6 +970,7 @@ const ConteGenerationPage = () => {
                 {/* 시놉시스 입력 폼 */}
                 <SynopsisInputForm 
                   onSubmit={handleGenerateStory}
+                  onSave={handleSave}
                   isGenerating={isGenerating}
                 />
 
@@ -997,6 +1109,7 @@ const ConteGenerationPage = () => {
                   onConteGenerated={handleConteGenerationComplete}
                   onGenerationStart={handleConteGenerationStart}
                   onGenerationComplete={handleConteGenerationComplete}
+                  onImageGenerationUpdate={handleImageGenerationUpdate}
                 />
                 
                 {/* 생성된 콘티 결과 표시 */}
@@ -1053,7 +1166,7 @@ const ConteGenerationPage = () => {
                       >
                         <Grid container spacing={2}>
                           {/* 씬 이미지 */}
-                          {conte.imageUrl && (
+                          {(conte.imageUrl || isGeneratingImages) && (
                             <Grid item xs={12} sm={4}>
                               <Box sx={{ 
                                 width: '100%', 
@@ -1061,18 +1174,44 @@ const ConteGenerationPage = () => {
                                 borderRadius: 1,
                                 overflow: 'hidden',
                                 border: '1px solid #ddd',
-                                position: 'relative'
+                                position: 'relative',
+                                backgroundColor: 'var(--color-card-bg)'
                               }}>
-                                <img 
-                                  src={conte.imageUrl} 
-                                  alt={`씬 ${conte.scene} 이미지`}
-                                  style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover'
-                                  }}
-                                  onError={(e) => handleImageLoadError(conte.id, e)}
-                                />
+                                {conte.imageUrl ? (
+                                  <img 
+                                    src={conte.imageUrl} 
+                                    alt={`씬 ${conte.scene} 이미지`}
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover'
+                                    }}
+                                    onError={(e) => handleImageLoadError(conte.id, e)}
+                                  />
+                                ) : isGeneratingImages ? (
+                                  <Box sx={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    display: 'flex', 
+                                    flexDirection: 'column',
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    backgroundColor: 'rgba(0, 0, 0, 0.1)'
+                                  }}>
+                                    <CircularProgress 
+                                      size={40} 
+                                      sx={{ color: 'var(--color-accent)', mb: 1 }} 
+                                    />
+                                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                                      이미지 생성 중...
+                                    </Typography>
+                                    {imageGenerationProgress > 0 && (
+                                      <Typography variant="caption" color="text.secondary">
+                                        {Math.round(imageGenerationProgress)}%
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                ) : null}
                                 {imageLoadErrors[conte.id] && (
                                   <Box sx={{ 
                                     position: 'absolute', 
@@ -1112,7 +1251,7 @@ const ConteGenerationPage = () => {
                           )}
                           
                           {/* 씬 정보 */}
-                          <Grid item xs={12} sm={conte.imageUrl ? 8 : 12}>
+                          <Grid item xs={12} sm={(conte.imageUrl || isGeneratingImages) ? 8 : 12}>
                             <Typography variant="subtitle1" gutterBottom>
                               씬 {conte.scene || index + 1}: {conte.title}
                             </Typography>
@@ -1124,14 +1263,22 @@ const ConteGenerationPage = () => {
                                 타입: {conte.type === 'generated_video' ? 'AI 생성 비디오' : '실사 촬영용'}
                               </Typography>
                               <Box sx={{ display: 'flex', gap: 1 }}>
-                                {conte.imageUrl && (
+                                {conte.imageUrl ? (
                                   <Chip 
                                     label="이미지 있음" 
                                     size="small" 
                                     color="success" 
                                     variant="outlined"
                                   />
-                                )}
+                                ) : isGeneratingImages ? (
+                                  <Chip 
+                                    label="이미지 생성 중" 
+                                    size="small" 
+                                    color="warning" 
+                                    variant="outlined"
+                                    icon={<CircularProgress size={12} />}
+                                  />
+                                ) : null}
                                 <Chip 
                                   label="상세보기" 
                                   size="small" 
@@ -1172,6 +1319,8 @@ const ConteGenerationPage = () => {
           onImageRetry={handleImageRetry}
           imageLoadErrors={imageLoadErrors}
           onImageLoadError={handleImageLoadError}
+          isGeneratingImages={isGeneratingImages}
+          imageGenerationProgress={imageGenerationProgress}
         />
 
         {/* 콘티 편집 모달 */}
@@ -1188,4 +1337,4 @@ const ConteGenerationPage = () => {
   )
 }
 
-export default ConteGenerationPage 
+export default ConteGenerationPage

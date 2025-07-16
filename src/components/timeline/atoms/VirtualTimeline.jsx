@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Box } from '@mui/material'
 import SceneCard from './SceneCard'
+import { 
+  calculateTimeScale,
+  timeToPixels,
+  calculateMinSceneWidth
+} from '../../../utils/timelineUtils'
 
 /**
  * 가상 스크롤링 타임라인 컴포넌트
  * 대용량 콘티 데이터를 효율적으로 렌더링하기 위한 가상화 구현
+ * 줌 레벨에 따른 동적 씬 너비 계산 지원
  */
 const VirtualTimeline = ({
   scenes = [],
-  itemWidth = 280, // 씬 카드 너비
   itemHeight = 200, // 씬 카드 높이
   gap = 16, // 카드 간 간격
   containerHeight = 400, // 컨테이너 높이
@@ -17,11 +22,26 @@ const VirtualTimeline = ({
   onSceneInfo,
   selectedSceneId = null,
   loading = false,
+  // 줌 관련 props 추가
+  zoomLevel = 1,
+  baseScale = 1,
+  timeScale = null, // 외부에서 전달된 시간 스케일
   ...props
 }) => {
   const containerRef = useRef(null)
   const [scrollLeft, setScrollLeft] = useState(0)
   const [containerWidth, setContainerWidth] = useState(0)
+
+  // 시간 스케일 계산
+  const calculatedTimeScale = useMemo(() => {
+    if (timeScale !== null) return timeScale
+    return calculateTimeScale(zoomLevel, baseScale)
+  }, [timeScale, zoomLevel, baseScale])
+
+  // 줌 레벨에 따른 동적 씬 너비 계산
+  const itemWidth = useMemo(() => {
+    return calculateMinSceneWidth(zoomLevel, 280) // 기본 너비 280px
+  }, [zoomLevel])
 
   // 컨테이너 크기 감지
   useEffect(() => {

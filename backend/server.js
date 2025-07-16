@@ -178,9 +178,12 @@ app.post('/api/story/generate', async (req, res) => {
 
     console.log('✅ AI 스토리 생성 완료:', { tokenCount, storyLength: story.length })
 
+    // 마크다운 제거 후 응답
+    const cleanedStory = cleanStoryText(story)
+
     res.json({
       success: true,
-      story: story,
+      story: cleanedStory,
       generatedAt: new Date().toISOString(),
       tokenCount: tokenCount,
       model: 'gpt-4o',
@@ -1000,19 +1003,19 @@ JSON 이외의 텍스트는 포함하지 마세요.
         const processedCard = {
           id: card.id || `scene_${index + 1}`,
           scene: card.scene || index + 1,
-          title: card.title || `씬 ${card.scene || index + 1}`,
-          description: card.description || '설명 없음',
-          dialogue: card.dialogue || '대사 없음',
-          cameraAngle: card.cameraAngle || '설정 없음',
-          cameraWork: card.cameraWork || '설정 없음',
-          characterLayout: card.characterLayout || '설정 없음',
-          props: card.props || '설정 없음',
-          weather: card.weather || '설정 없음',
-          lighting: card.lighting || '설정 없음',
-          visualDescription: card.visualDescription || '설명 없음',
-          transition: card.transition || '설정 없음',
-          lensSpecs: card.lensSpecs || '설정 없음',
-          visualEffects: card.visualEffects || '설정 없음',
+          title: removeMarkdown(card.title || `씬 ${card.scene || index + 1}`),
+          description: removeMarkdown(card.description || '설명 없음'),
+          dialogue: removeMarkdown(card.dialogue || '대사 없음'),
+          cameraAngle: removeMarkdown(card.cameraAngle || '설정 없음'),
+          cameraWork: removeMarkdown(card.cameraWork || '설정 없음'),
+          characterLayout: removeMarkdown(card.characterLayout || '설정 없음'),
+          props: removeMarkdown(card.props || '설정 없음'),
+          weather: removeMarkdown(card.weather || '설정 없음'),
+          lighting: removeMarkdown(card.lighting || '설정 없음'),
+          visualDescription: removeMarkdown(card.visualDescription || '설명 없음'),
+          transition: removeMarkdown(card.transition || '설정 없음'),
+          lensSpecs: removeMarkdown(card.lensSpecs || '설정 없음'),
+          visualEffects: removeMarkdown(card.visualEffects || '설정 없음'),
           type: card.type || 'generated_video', // 기본값: AI 생성 비디오
           estimatedDuration: card.estimatedDuration || '5분',
           // 키워드 노드 정보 - timeOfDay가 반드시 포함되도록 파싱
@@ -1104,7 +1107,63 @@ JSON 이외의 텍스트는 포함하지 마세요.
   }
 })
 
-// 기존 임시 API 제거 - MongoDB 연동 API로 대체됨
+/**
+ * 마크다운 문법을 제거하고 깔끔한 텍스트로 변환하는 유틸리티 함수
+ * @param {string} text - 원본 텍스트
+ * @returns {string} 마크다운이 제거된 텍스트
+ */
+const removeMarkdown = (text) => {
+  if (!text || typeof text !== 'string') {
+    return text
+  }
+
+  return text
+    // 헤딩 제거 (###, ##, #)
+    .replace(/^#{1,6}\s+/gm, '')
+    // 볼드 제거 (**text** 또는 __text__)
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    // 이탤릭 제거 (*text* 또는 _text_)
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    // 코드 블록 제거 (```code```)
+    .replace(/```[\s\S]*?```/g, '')
+    // 인라인 코드 제거 (`code`)
+    .replace(/`([^`]+)`/g, '$1')
+    // 링크 제거 ([text](url))
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 이미지 제거 (![alt](url))
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    // 리스트 마커 제거 (-, *, +)
+    .replace(/^[\s]*[-*+]\s+/gm, '')
+    // 번호 리스트 제거 (1., 2., etc.)
+    .replace(/^[\s]*\d+\.\s+/gm, '')
+    // 인용 제거 (> text)
+    .replace(/^>\s+/gm, '')
+    // 수평선 제거 (---, ***, ___)
+    .replace(/^[-*_]{3,}$/gm, '')
+    // 줄바꿈 정리 (연속된 줄바꿈을 2개로 제한)
+    .replace(/\n{3,}/g, '\n\n')
+    // 앞뒤 공백 제거
+    .trim()
+}
+
+/**
+ * 스토리 텍스트를 정리하는 함수
+ * @param {string} story - 원본 스토리 텍스트
+ * @returns {string} 정리된 스토리 텍스트
+ */
+const cleanStoryText = (story) => {
+  if (!story || typeof story !== 'string') {
+    return story
+  }
+
+  return removeMarkdown(story)
+    // 문단 구분을 위한 줄바꿈 정리 (빈 줄을 2개로 통일)
+    .replace(/\n\s*\n\s*\n+/g, '\n\n')
+    // 앞뒤 공백 제거
+    .trim()
+}
 
 /**
  * 서버 상태 확인 API

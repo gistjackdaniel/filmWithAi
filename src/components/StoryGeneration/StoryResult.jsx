@@ -19,6 +19,7 @@ import {
   AutoFixHigh
 } from '@mui/icons-material'
 import toast from 'react-hot-toast'
+import { cleanStoryText } from '../../utils/textUtils' // 마크다운 제거 유틸리티 추가
 
 /**
  * 스토리 결과 표시 컴포넌트
@@ -276,7 +277,7 @@ const StoryResult = ({
             </Box>
           </Box>
         ) : (
-          // 읽기 모드
+          // 읽기 모드 - 마크다운 제거된 텍스트 표시
           <Typography 
             variant="body1" 
             sx={{ 
@@ -285,7 +286,7 @@ const StoryResult = ({
               font: 'var(--font-body-1)'
             }}
           >
-            {story}
+            {cleanStoryText(story)}
           </Typography>
         )}
       </Box>

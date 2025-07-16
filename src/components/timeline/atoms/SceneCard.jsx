@@ -46,7 +46,8 @@ const SceneCard = React.memo(({
   onMouseLeave,
   timeScale = 1, // 픽셀당 시간 (초)
   zoomLevel = 1, // 줌 레벨
-  showTimeInfo = true // 시간 정보 표시 여부
+  showTimeInfo = true, // 시간 정보 표시 여부
+  width = null // 외부에서 전달된 너비 (우선 사용)
 }) => {
   // scene 객체가 유효하지 않으면 빈 카드 반환
   if (!scene || !scene.id) {
@@ -54,7 +55,7 @@ const SceneCard = React.memo(({
     return (
       <Box
         sx={{
-          width: 280,
+          width: width || 280,
           height: 200,
           backgroundColor: 'var(--color-card-bg)',
           borderRadius: '12px',
@@ -129,32 +130,38 @@ const SceneCard = React.memo(({
 
   const typeInfo = getSceneTypeInfo(scene.type || 'default')
 
-  // 시간 기반 너비 계산
+  // 카드 너비 계산 - 외부에서 전달된 너비 우선 사용
   const sceneDuration = scene?.duration || 0
-  const baseWidth = 120 // 기본 너비를 120px로 축소
-  const minWidth = Math.max(calculateMinSceneWidth(zoomLevel, 40), 80) // 최소 너비를 80px로 축소
+  let cardWidth = width || 280 // 외부에서 전달된 너비가 있으면 사용, 없으면 기본값
   
-  // 시간 기반 너비 계산 개선
-  let cardWidth = baseWidth
-  
-  if (timeScale > 0 && sceneDuration > 0) {
-    // 시간을 픽셀로 변환 (1초당 픽셀 수)
-    const pixelsPerSecond = 1 / timeScale // timeScale이 작을수록 더 많은 픽셀 필요
-    const timeBasedWidth = sceneDuration * pixelsPerSecond
+  // 외부에서 너비가 전달되지 않은 경우에만 내부 계산 수행
+  if (width === null) {
+    const baseWidth = 120 // 기본 너비를 120px로 축소
+    const minWidth = Math.max(calculateMinSceneWidth(zoomLevel, 40), 80) // 최소 너비를 80px로 축소
     
-    // 최소 너비와 최대 너비 제한 - 줌 레벨에 따라 동적 조정
-    const maxWidth = Math.max(800, (1 / timeScale) * 200) // 줌 레벨에 따라 최대 너비 조정
-    cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
-    
-    // 디버깅 로그
-    console.log(`Scene ${scene.scene}: duration=${sceneDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
-  } else if (sceneDuration > 0) {
-    // timeScale이 0이지만 duration이 있는 경우 기본 계산
-    const estimatedWidth = Math.max(sceneDuration * 4, minWidth) // 1초당 4픽셀로 조정
-    cardWidth = Math.min(estimatedWidth, 200) // 최대 200픽셀로 축소
-    
-    // 디버깅 로그
-    console.log(`Scene ${scene.scene}: duration=${sceneDuration}s, fallback width=${cardWidth}px`)
+    // 시간 기반 너비 계산 개선
+    if (timeScale > 0 && sceneDuration > 0) {
+      // 시간을 픽셀로 변환 (1초당 픽셀 수)
+      const pixelsPerSecond = 1 / timeScale // timeScale이 작을수록 더 많은 픽셀 필요
+      const timeBasedWidth = sceneDuration * pixelsPerSecond
+      
+      // 최소 너비와 최대 너비 제한 - 줌 레벨에 따라 동적 조정
+      const maxWidth = Math.max(800, (1 / timeScale) * 200) // 줌 레벨에 따라 최대 너비 조정
+      cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
+      
+      // 디버깅 로그
+      console.log(`SceneCard 내부 계산 씬 ${scene.scene}: duration=${sceneDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
+    } else if (sceneDuration > 0) {
+      // timeScale이 0이지만 duration이 있는 경우 기본 계산
+      const estimatedWidth = Math.max(sceneDuration * 4, minWidth) // 1초당 4픽셀로 조정
+      cardWidth = Math.min(estimatedWidth, 200) // 최대 200픽셀로 축소
+      
+      // 디버깅 로그
+      console.log(`SceneCard 내부 계산 씬 ${scene.scene}: duration=${sceneDuration}s, fallback width=${cardWidth}px`)
+    }
+  } else {
+    // 외부에서 전달된 너비 사용 시 로그
+    console.log(`SceneCard 외부 너비 사용 씬 ${scene.scene}: width=${width}px`)
   }
 
   // 시간 정보 포맷팅

@@ -7,11 +7,10 @@ import {
   LastPage,
   KeyboardArrowLeft,
   KeyboardArrowRight,
-  ZoomIn,
-  ZoomOut,
   Schedule
 } from '@mui/icons-material'
 import { formatTimeFromSeconds } from '../../../utils/timelineUtils'
+import ZoomControls from './ZoomControls'
 
 /**
  * 타임라인 네비게이션 컴포넌트
@@ -45,8 +44,7 @@ const TimelineNavigation = ({
   const [timeJumpAnchor, setTimeJumpAnchor] = useState(null)
   const [timeJumpValue, setTimeJumpValue] = useState('')
   
-  // 줌 메뉴 상태
-  const [zoomAnchor, setZoomAnchor] = useState(null)
+
   // 씬 점프 버튼들 (최대 5개씩 표시)
   const getSceneJumpButtons = () => {
     if (totalScenes <= 1) return []
@@ -95,13 +93,7 @@ const TimelineNavigation = ({
     return -1
   }
 
-  // 줌 변경 핸들러
-  const handleZoomChange = (newZoomLevel) => {
-    if (onZoomChange) {
-      onZoomChange(newZoomLevel)
-    }
-    setZoomAnchor(null)
-  }
+
 
   // 미리 정의된 시간 점프 옵션
   const timeJumpOptions = [
@@ -112,14 +104,7 @@ const TimelineNavigation = ({
     { label: '10분', value: 600 }
   ]
 
-  // 줌 레벨 옵션
-  const zoomOptions = [
-    { label: '0.5x', value: 0.5 },
-    { label: '1x', value: 1 },
-    { label: '2x', value: 2 },
-    { label: '4x', value: 4 },
-    { label: '8x', value: 8 }
-  ]
+
 
   return (
     <Box
@@ -325,108 +310,25 @@ const TimelineNavigation = ({
           </Box>
         )}
 
-        {/* 줌 컨트롤 */}
+        {/* 줌 컨트롤 - 개선된 컴포넌트 사용 */}
         {showZoomControls && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title="줌 아웃">
-              <IconButton
-                size="small"
-                onClick={() => handleZoomChange(Math.max(0.5, zoomLevel / 2))}
-                disabled={zoomLevel <= 0.5}
-                sx={{
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-accent)',
-                    backgroundColor: 'var(--color-hover)',
-                  },
-                  '&.Mui-disabled': {
-                    color: 'var(--color-text-disabled)',
-                  }
-                }}
-              >
-                <ZoomOut fontSize="small" />
-              </IconButton>
-            </Tooltip>
-
-            <Typography
-              variant="caption"
-              sx={{
-                font: 'var(--font-caption)',
-                color: 'var(--color-text-secondary)',
-                minWidth: '30px',
-                textAlign: 'center'
-              }}
-            >
-              {zoomLevel}x
-            </Typography>
-
-            <Tooltip title="줌 인">
-              <IconButton
-                size="small"
-                onClick={() => handleZoomChange(Math.min(8, zoomLevel * 2))}
-                disabled={zoomLevel >= 8}
-                sx={{
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-accent)',
-                    backgroundColor: 'var(--color-hover)',
-                  },
-                  '&.Mui-disabled': {
-                    color: 'var(--color-text-disabled)',
-                  }
-                }}
-              >
-                <ZoomIn fontSize="small" />
-              </IconButton>
-            </Tooltip>
-
-            {/* 줌 레벨 메뉴 */}
-            <Tooltip title="줌 레벨 선택">
-              <IconButton
-                size="small"
-                onClick={(e) => setZoomAnchor(e.currentTarget)}
-                sx={{
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-accent)',
-                    backgroundColor: 'var(--color-hover)',
-                  }
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    font: 'var(--font-caption)',
-                    color: 'inherit'
-                  }}
-                >
-                  ▼
-                </Typography>
-              </IconButton>
-            </Tooltip>
-
-            <Menu
-              anchorEl={zoomAnchor}
-              open={Boolean(zoomAnchor)}
-              onClose={() => setZoomAnchor(null)}
-            >
-              {zoomOptions.map((option) => (
-                <MenuItem
-                  key={option.value}
-                  onClick={() => handleZoomChange(option.value)}
-                  selected={zoomLevel === option.value}
-                  sx={{
-                    font: 'var(--font-caption)',
-                    color: zoomLevel === option.value 
-                      ? 'var(--color-accent)' 
-                      : 'var(--color-text-secondary)'
-                  }}
-                >
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Menu>
-          </Box>
+          <ZoomControls
+            zoomLevel={zoomLevel}
+            minZoom={0.5}
+            maxZoom={100}
+            onZoomChange={onZoomChange}
+            showSlider={true}
+            showButtons={true}
+            showMenu={true}
+            showFitButton={false}
+            sx={{
+              flex: 1,
+              minWidth: 300,
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: 0
+            }}
+          />
         )}
       </Box>
 

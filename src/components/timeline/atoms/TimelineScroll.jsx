@@ -1,9 +1,15 @@
-import React, { useRef, useEffect, useCallback, forwardRef } from 'react'
+import React, { useRef, useEffect, useCallback, forwardRef, useMemo } from 'react'
 import { Box } from '@mui/material'
+import { 
+  calculateTimeScale,
+  timeToPixels,
+  calculateMinSceneWidth
+} from '../../../utils/timelineUtils'
 
 /**
  * 타임라인 스크롤 컴포넌트
  * 스크롤 최적화 및 네비게이션 기능을 제공
+ * 줌 레벨에 따른 동적 씬 너비 계산 지원
  */
 const TimelineScroll = forwardRef(({ 
   children, 
@@ -13,11 +19,26 @@ const TimelineScroll = forwardRef(({
   onScroll,
   scrollPosition = 0,
   onScrollPositionChange,
+  // 줌 관련 props 추가
+  zoomLevel = 1,
+  baseScale = 1,
+  timeScale = null,
   ...props 
 }, ref) => {
   const scrollRef = useRef(null)
   const isScrolling = useRef(false)
   const scrollTimeout = useRef(null)
+
+  // 시간 스케일 계산
+  const calculatedTimeScale = useMemo(() => {
+    if (timeScale !== null) return timeScale
+    return calculateTimeScale(zoomLevel, baseScale)
+  }, [timeScale, zoomLevel, baseScale])
+
+  // 줌 레벨에 따른 동적 씬 너비 계산
+  const sceneWidth = useMemo(() => {
+    return calculateMinSceneWidth(zoomLevel, 280) // 기본 너비 280px
+  }, [zoomLevel])
 
   // 스크롤 위치 복원
   useEffect(() => {
@@ -61,11 +82,11 @@ const TimelineScroll = forwardRef(({
   // 특정 씬으로 스크롤
   const scrollToScene = useCallback((sceneIndex, smooth = true) => {
     if (scrollRef.current) {
-      const sceneWidth = 280 // 씬 카드 너비 (gap 포함)
-      const scrollPosition = sceneIndex * sceneWidth
+      const sceneWidthWithGap = sceneWidth + 16 // gap 포함
+      const scrollPosition = sceneIndex * sceneWidthWithGap
       scrollToPosition(scrollPosition, smooth)
     }
-  }, [scrollToPosition])
+  }, [scrollToPosition, sceneWidth])
 
   // 좌우 스크롤 버튼 핸들러
   const handleScrollLeft = useCallback(() => {
@@ -145,24 +166,39 @@ const TimelineScroll = forwardRef(({
         scrollBehavior: 'smooth',
         // 스크롤 성능 최적화
         willChange: 'scroll-position',
-        // 커스텀 스크롤바
-        '&::-webkit-scrollbar': {
-          height: showScrollbar ? '8px' : '0px',
-        },
-        '&::-webkit-scrollbar-track': {
-          backgroundColor: 'var(--color-timeline-track)',
-          borderRadius: '4px',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'var(--color-accent)',
-          borderRadius: '4px',
-          '&:hover': {
-            backgroundColor: 'var(--color-primary)',
+        // 커스텀 스크롤바 - showScrollbar가 false일 때 완전히 숨김
+        ...(showScrollbar ? {
+          '&::-webkit-scrollbar': {
+            height: '8px',
           },
-        },
-        // Firefox 스크롤바 스타일링
-        scrollbarWidth: showScrollbar ? 'thin' : 'none',
-        scrollbarColor: showScrollbar ? 'var(--color-accent) var(--color-timeline-track)' : 'transparent transparent',
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'var(--color-timeline-track)',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'var(--color-accent)',
+            borderRadius: '4px',
+            '&:hover': {
+              backgroundColor: 'var(--color-primary)',
+            },
+          },
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'var(--color-accent) var(--color-timeline-track)',
+        } : {
+          '&::-webkit-scrollbar': {
+            display: 'none',
+            width: '0px',
+            height: '0px',
+          },
+          '&::-webkit-scrollbar-track': {
+            display: 'none',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            display: 'none',
+          },
+          scrollbarWidth: 'none',
+          scrollbarColor: 'transparent transparent',
+        }),
         // 포커스 스타일
         '&:focus': {
           outline: '2px solid var(--color-accent)',
@@ -171,7 +207,8 @@ const TimelineScroll = forwardRef(({
         // 스크롤 중 시각적 피드백
         '&.scrolling': {
           cursor: 'grabbing',
-        }
+        },
+
       }}
       onScroll={handleScroll}
       {...props}

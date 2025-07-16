@@ -79,85 +79,57 @@ const TimelineFilters = ({
         borderRadius: 'var(--spacing-border-radius)',
         padding: 'var(--spacing-component-padding)',
         border: '1px solid var(--color-border)',
-        mb: 2
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        flex: 1
       }}
     >
-      {/* 필터 헤더 */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        mb: 2
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FilterList sx={{ color: 'var(--color-accent)' }} />
-          <Typography 
-            variant="h6" 
+      {/* 필터 헤더 - 컴팩트 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <FilterList sx={{ color: 'var(--color-accent)', fontSize: '18px' }} />
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            font: 'var(--font-body-2)',
+            color: 'var(--color-text-secondary)',
+            fontSize: '14px',
+            fontWeight: 500
+          }}
+        >
+          필터
+        </Typography>
+        {activeFiltersCount > 0 && (
+          <Chip 
+            label={`${activeFiltersCount}`}
+            size="small"
             sx={{ 
-              font: 'var(--font-heading-2)',
-              color: 'var(--color-text-primary)'
+              backgroundColor: 'var(--color-accent)',
+              color: 'var(--color-text-primary)',
+              height: '20px',
+              fontSize: '12px'
             }}
-          >
-            필터
-          </Typography>
-          {activeFiltersCount > 0 && (
-            <Chip 
-              label={`${activeFiltersCount}개 활성`}
-              size="small"
-              color="primary"
-              sx={{ 
-                backgroundColor: 'var(--color-accent)',
-                color: 'var(--color-text-primary)'
-              }}
-            />
-          )}
-        </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              font: 'var(--font-body-2)',
-              color: 'var(--color-text-secondary)'
-            }}
-          >
-            {filteredCount} / {totalScenes} 씬
-          </Typography>
-          
-          {activeFiltersCount > 0 && (
-            <Tooltip title="모든 필터 초기화">
-              <IconButton
-                size="small"
-                onClick={handleClearAll}
-                sx={{
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-danger)',
-                  }
-                }}
-              >
-                <Clear fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
+          />
+        )}
       </Box>
 
-      {/* 기본 필터 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+      {/* 기본 필터 - 한 행에 배치 */}
+      <Box sx={{ display: 'flex', gap: 1, flex: 1, alignItems: 'center' }}>
         {/* 검색 필터 */}
         <TextField
           size="small"
-          placeholder="씬 설명으로 검색..."
+          placeholder="검색..."
           value={searchText}
           onChange={handleSearchChange}
           InputProps={{
-            startAdornment: <Search sx={{ color: 'var(--color-text-secondary)', mr: 1 }} />
+            startAdornment: <Search sx={{ color: 'var(--color-text-secondary)', mr: 0.5, fontSize: '18px' }} />
           }}
           sx={{
-            minWidth: 200,
+            minWidth: 120,
             '& .MuiOutlinedInput-root': {
               color: 'var(--color-text-primary)',
+              height: '36px',
+              fontSize: '14px',
               '& fieldset': {
                 borderColor: 'var(--color-border)',
               },
@@ -171,15 +143,17 @@ const TimelineFilters = ({
             '& .MuiInputBase-input::placeholder': {
               color: 'var(--color-text-secondary)',
               opacity: 1,
+              fontSize: '14px',
             },
           }}
         />
 
         {/* 타입 필터 */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 100 }}>
           <InputLabel 
             sx={{ 
               color: 'var(--color-text-secondary)',
+              fontSize: '14px',
               '&.Mui-focused': {
                 color: 'var(--color-accent)',
               }
@@ -193,6 +167,8 @@ const TimelineFilters = ({
             label="타입"
             sx={{
               color: 'var(--color-text-primary)',
+              height: '36px',
+              fontSize: '14px',
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'var(--color-border)',
               },
@@ -228,9 +204,11 @@ const TimelineFilters = ({
           onChange={handleSceneNumberChange}
           type="number"
           sx={{
-            minWidth: 120,
+            minWidth: 80,
             '& .MuiOutlinedInput-root': {
               color: 'var(--color-text-primary)',
+              height: '36px',
+              fontSize: '14px',
               '& fieldset': {
                 borderColor: 'var(--color-border)',
               },
@@ -244,100 +222,28 @@ const TimelineFilters = ({
             '& .MuiInputBase-input::placeholder': {
               color: 'var(--color-text-secondary)',
               opacity: 1,
+              fontSize: '14px',
             },
           }}
         />
       </Box>
 
-      {/* 고급 필터 토글 */}
-      <Collapse in={showAdvancedFilters}>
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 2, 
-          pt: 2, 
-          borderTop: '1px solid var(--color-border)',
-          flexWrap: 'wrap'
-        }}>
-          {/* 날짜 범위 필터 (향후 구현) */}
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              font: 'var(--font-body-2)',
+      {/* 필터 초기화 버튼 */}
+      {activeFiltersCount > 0 && (
+        <Tooltip title="모든 필터 초기화">
+          <IconButton
+            size="small"
+            onClick={handleClearAll}
+            sx={{
               color: 'var(--color-text-secondary)',
-              fontStyle: 'italic'
+              '&:hover': {
+                color: 'var(--color-danger)',
+              }
             }}
           >
-            고급 필터 기능은 향후 구현 예정입니다.
-          </Typography>
-        </Box>
-      </Collapse>
-
-      {/* 활성 필터 표시 */}
-      {activeFiltersCount > 0 && (
-        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {filters.search && (
-            <Chip
-              label={`검색: "${filters.search}"`}
-              size="small"
-              onDelete={() => {
-                setSearchText('')
-                onFilterChange({ ...filters, search: '' })
-              }}
-              sx={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'var(--color-text-primary)',
-                '& .MuiChip-deleteIcon': {
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-danger)',
-                  }
-                }
-              }}
-            />
-          )}
-          
-          {filters.type && (
-            <Chip
-              label={`타입: ${filters.type === CaptionCardType.GENERATED_VIDEO ? 'AI 비디오' : '실사 촬영'}`}
-              size="small"
-              onDelete={() => {
-                setTypeFilter('')
-                onFilterChange({ ...filters, type: '' })
-              }}
-              sx={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'var(--color-text-primary)',
-                '& .MuiChip-deleteIcon': {
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-danger)',
-                  }
-                }
-              }}
-            />
-          )}
-          
-          {filters.sceneNumber && (
-            <Chip
-              label={`씬 번호: ${filters.sceneNumber}`}
-              size="small"
-              onDelete={() => {
-                setSceneNumberFilter('')
-                onFilterChange({ ...filters, sceneNumber: '' })
-              }}
-              sx={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'var(--color-text-primary)',
-                '& .MuiChip-deleteIcon': {
-                  color: 'var(--color-text-secondary)',
-                  '&:hover': {
-                    color: 'var(--color-danger)',
-                  }
-                }
-              }}
-            />
-          )}
-        </Box>
+            <Clear fontSize="small" />
+          </IconButton>
+        </Tooltip>
       )}
     </Box>
   )
