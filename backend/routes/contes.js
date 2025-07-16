@@ -109,7 +109,11 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       imagePrompt,
       imageGeneratedAt,
       imageModel,
-      isFreeTier
+      isFreeTier,
+      // 스케줄링 관련 필드들 추가
+      requiredPersonnel,
+      requiredEquipment,
+      camera
     } = req.body;
 
     console.log('💾 콘티 저장 요청 시작:', { 
@@ -213,7 +217,11 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       imagePrompt: imagePrompt || null,
       imageGeneratedAt: imageGeneratedAt || null,
       imageModel: imageModel || null,
-      isFreeTier: isFreeTier || false
+      isFreeTier: isFreeTier || false,
+      // 스케줄링 관련 필드들 추가
+      requiredPersonnel: requiredPersonnel || '',
+      requiredEquipment: requiredEquipment || '',
+      camera: camera || ''
     });
 
     console.log('💾 콘티 저장 중...', { 
@@ -318,6 +326,10 @@ router.get('/:projectId/contes', authenticateToken, checkProjectAccess, async (r
               imageGeneratedAt: conte.imageGeneratedAt,
               imageModel: conte.imageModel,
               isFreeTier: conte.isFreeTier,
+              // 스케줄링 관련 필드들 추가
+              requiredPersonnel: conte.requiredPersonnel,
+              requiredEquipment: conte.requiredEquipment,
+              camera: conte.camera,
               createdAt: conte.createdAt,
               updatedAt: conte.updatedAt
             }))
@@ -384,6 +396,10 @@ router.get('/:projectId/contes/:conteId', authenticateToken, checkProjectAccess,
           imageGeneratedAt: conte.imageGeneratedAt,
           imageModel: conte.imageModel,
           isFreeTier: conte.isFreeTier,
+          // 스케줄링 관련 필드들 추가
+          requiredPersonnel: conte.requiredPersonnel,
+          requiredEquipment: conte.requiredEquipment,
+          camera: conte.camera,
           lastModified: conte.lastModified,
           modifiedBy: conte.modifiedBy,
           createdAt: conte.createdAt,

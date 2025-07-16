@@ -60,6 +60,10 @@ const DirectStoryPage = () => {
   const { createConte, saveStoryAndConteAsProject } = useProjectStore()
   const location = useLocation()
   
+  // 전달받은 프로젝트 정보
+  const passedProjectId = location.state?.projectId
+  const passedProjectTitle = location.state?.projectTitle
+  
   // 상태 관리
   const [synopsis, setSynopsis] = useState('')
   const [story, setStory] = useState('')
@@ -235,6 +239,10 @@ const DirectStoryPage = () => {
       props: conte.props || '기본 소품',
       weather: conte.weather || '맑음',
       lighting: conte.lighting || '자연광',
+      // 스케줄링 관련 필드 추가
+      requiredPersonnel: conte.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+      requiredEquipment: conte.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+      camera: conte.camera || 'C1',
       createdAt: new Date().toISOString(),
       isDevelopment: true // 개발용 플래그 추가
     }))
@@ -463,7 +471,7 @@ const DirectStoryPage = () => {
       
       // 프로젝트 데이터 구성 (콘티 없이)
       const projectData = {
-        projectTitle: `직접 작성 스토리 - ${new Date().toLocaleDateString()}`,
+        projectTitle: passedProjectTitle || `직접 작성 스토리 - ${new Date().toLocaleDateString()}`,
         synopsis: storySynopsis,
         story: story,
         storyLength: story.length,
@@ -491,6 +499,16 @@ const DirectStoryPage = () => {
           
           // 각 콘티를 개별적으로 저장
           for (const conte of conteWithImages) {
+            console.log(`💾 콘티 저장 중: ${conte.title}`)
+            console.log(`📋 저장할 콘티 데이터:`, {
+              scene: conte.scene,
+              title: conte.title,
+              description: conte.description,
+              requiredPersonnel: conte.requiredPersonnel,
+              requiredEquipment: conte.requiredEquipment,
+              camera: conte.camera,
+              keywords: conte.keywords
+            })
             await saveConte(projectId, conte)
             console.log(`✅ 콘티 저장 완료: ${conte.title}`)
           }
@@ -519,6 +537,9 @@ const DirectStoryPage = () => {
           // 성공 메시지 표시
           toast.success(`✅ 프로젝트와 ${conteWithImages.length}개의 콘티가 성공적으로 저장되었습니다!`)
 
+          // currentProject 상태 업데이트
+          setCurrentProject(newProject)
+          
           // 저장된 프로젝트 페이지로 이동
           navigate(`/project/${projectId}`)
           
@@ -1110,6 +1131,7 @@ const DirectStoryPage = () => {
                 onGenerationComplete={handleConteGenerationComplete}
                 onImageGenerationUpdate={handleImageGenerationUpdate}
                 isDirectMode={true}
+                projectId={passedProjectId || currentProject?._id || currentProject?.id || null}
               />
             </Box>
           </Box>

@@ -56,14 +56,29 @@ const OPENAI_LIMITS = {
  * @returns {Promise<StoryGenerationResponse>} 생성된 스토리 응답
  */
 export const generateStory = async (requestData) => {
+  console.log('📝 스토리 생성 API 호출 시작:', {
+    synopsisLength: requestData.synopsis?.length || 0,
+    maxLength: requestData.maxLength,
+    genre: requestData.genre,
+    requestData: requestData
+  })
+  
   try {
     // 요청 데이터 검증
     if (!requestData.synopsis || !requestData.synopsis.trim()) {
+      console.error('❌ 시놉시스 검증 실패: 빈 시놉시스')
       throw new Error('시놉시스가 필요합니다.')
     }
 
+    console.log('✅ 요청 데이터 검증 통과')
+
     // OpenAI 제한 적용
     const maxLength = Math.min(requestData.maxLength || 3000, OPENAI_LIMITS.MAX_STORY_LENGTH)
+    console.log('📏 길이 제한 적용:', {
+      requestedLength: requestData.maxLength,
+      maxAllowedLength: OPENAI_LIMITS.MAX_STORY_LENGTH,
+      finalLength: maxLength
+    })
     
     // 기본값 설정
     const request = {
@@ -74,24 +89,67 @@ export const generateStory = async (requestData) => {
       isFreeTier: false // OpenAI는 유료 서비스
     }
 
+    console.log('📤 API 요청 데이터 준비 완료:', {
+      synopsis: request.synopsis.substring(0, 100) + '...',
+      maxLength: request.maxLength,
+      genre: request.genre,
+      model: request.model,
+      isFreeTier: request.isFreeTier
+    })
+
     // OpenAI GPT-4o API 호출
+    console.log('🚀 OpenAI GPT-4o API 호출 시작...')
     const response = await api.post('/story/generate', request, {
       timeout: 60000, // 60초 타임아웃
       headers: {
         'Content-Type': 'application/json'
       }
     })
+    console.log('스토리 생성 응답 전체:', JSON.stringify(response, null, 2));
 
-    return {
+    console.log('✅ 스토리 생성 API 응답 수신:', {
+      status: response.status,
+      responseData: response.data,
+      storyLength: response.data?.story?.length || 0,
+      tokenCount: response.data?.tokenCount,
+      model: response.data?.model,
+      generatedAt: response.data?.generatedAt
+    })
+
+    // 응답 데이터 파싱 및 검증
+    const result = {
       ...response.data,
       isFreeTier: false
     }
+
+    console.log('📊 최종 스토리 생성 결과:', {
+      storyLength: result.story?.length || 0,
+      tokenCount: result.tokenCount,
+      model: result.model,
+      generatedAt: result.generatedAt,
+      isFreeTier: result.isFreeTier
+    })
+
+    return result
   } catch (error) {
+    console.error('❌ 스토리 생성 API 오류:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data
+    })
+    
     // 에러 처리 및 재시도 로직
     if (error.response) {
       // 서버 응답 에러
       const status = error.response.status
       const message = error.response.data?.message || '알 수 없는 오류가 발생했습니다.'
+      
+      console.error('🔍 서버 응답 오류 분석:', {
+        status: status,
+        message: message,
+        responseData: error.response.data
+      })
       
       switch (status) {
         case 400:
@@ -107,9 +165,11 @@ export const generateStory = async (requestData) => {
       }
     } else if (error.request) {
       // 네트워크 에러
+      console.error('🌐 네트워크 오류:', error.request)
       throw new Error('네트워크 연결을 확인해주세요.')
     } else {
       // 기타 에러
+      console.error('⚠️ 기타 오류:', error)
       throw new Error(error.message || '알 수 없는 오류가 발생했습니다.')
     }
   }
@@ -121,16 +181,41 @@ export const generateStory = async (requestData) => {
  * @returns {Promise<ImageGenerationResponse>} 생성된 이미지 응답
  */
 export const generateSceneImage = async (requestData) => {
+  console.log('🎨 이미지 생성 API 호출 시작:', {
+    sceneDescriptionLength: requestData.sceneDescription?.length || 0,
+    style: requestData.style,
+    genre: requestData.genre,
+    size: requestData.size,
+    requestData: requestData
+  })
+  
   try {
     // 요청 데이터 검증
     if (!requestData.sceneDescription || !requestData.sceneDescription.trim()) {
+      console.error('❌ 씬 설명 검증 실패: 빈 씬 설명')
       throw new Error('씬 설명이 필요합니다.')
     }
 
-    console.log('🎨 이미지 생성 시작:', requestData.sceneDescription)
+    console.log('✅ 씬 설명 검증 통과:', {
+      sceneDescription: requestData.sceneDescription.substring(0, 100) + '...',
+      descriptionLength: requestData.sceneDescription.length
+    })
+
+    console.log('🎨 DALL-E 3 이미지 생성 시작...')
 
     try {
       // 실제 이미지 생성 API 호출 시도
+      console.log('📤 이미지 생성 API 요청 전송:', {
+        url: '/image/generate',
+        timeout: 60000,
+        requestData: {
+          sceneDescription: requestData.sceneDescription.substring(0, 50) + '...',
+          style: requestData.style,
+          genre: requestData.genre,
+          size: requestData.size
+        }
+      })
+      
       const response = await api.post('/image/generate', requestData, {
         timeout: 60000, // 1분 타임아웃
         headers: {
@@ -138,18 +223,44 @@ export const generateSceneImage = async (requestData) => {
         }
       })
 
-      console.log('✅ 실제 이미지 생성 완료:', response.data)
+      console.log('✅ 이미지 생성 API 응답 수신:', {
+        status: response.status,
+        responseData: response.data,
+        imageUrl: response.data?.imageUrl,
+        prompt: response.data?.prompt,
+        model: response.data?.model,
+        generatedAt: response.data?.generatedAt
+      })
+
+      // 응답 데이터 파싱 및 검증
+      console.log('📊 이미지 생성 결과 분석:', {
+        hasImageUrl: !!response.data?.imageUrl,
+        imageUrlLength: response.data?.imageUrl?.length || 0,
+        promptLength: response.data?.prompt?.length || 0,
+        model: response.data?.model,
+        isFreeTier: response.data?.isFreeTier
+      })
+
       return response.data
 
     } catch (apiError) {
-      console.error('❌ 실제 API 호출 실패:', apiError.message)
+      console.error('❌ 이미지 생성 API 호출 실패:', {
+        errorType: apiError.constructor.name,
+        message: apiError.message,
+        responseStatus: apiError.response?.status,
+        responseData: apiError.response?.data
+      })
       
       // 실제 API 실패 시 에러를 던져서 더미데이터 생성 방지
       throw new Error(`이미지 생성에 실패했습니다: ${apiError.message}`)
     }
 
   } catch (error) {
-    console.error('❌ 이미지 생성 완전 실패:', error)
+    console.error('❌ 이미지 생성 완전 실패:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      stack: error.stack
+    })
     throw error
   }
 }
@@ -240,37 +351,97 @@ export const saveStoryHistory = async (request, response) => {
  * @returns {Promise<ConteGenerationResponse>} 생성된 콘티 응답
  */
 export const generateConte = async (requestData) => {
+  console.log('🎬 콘티 생성 API 호출 시작:', {
+    storyLength: requestData.story?.length || 0,
+    maxScenes: requestData.maxScenes,
+    genre: requestData.genre,
+    style: requestData.style,
+    requestData: requestData
+  })
+  
   try {
     // 요청 데이터 검증
     if (!requestData.story || !requestData.story.trim()) {
+      console.error('❌ 스토리 검증 실패: 빈 스토리')
       throw new Error('스토리가 필요합니다.')
     }
 
-    console.log('🎬 콘티 생성 시작:', { 
+    console.log('✅ 스토리 검증 통과:', {
       storyLength: requestData.story.length,
-      maxScenes: requestData.maxScenes,
-      genre: requestData.genre
+      storyPreview: requestData.story.substring(0, 100) + '...'
     })
 
+    console.log('🎬 GPT-4o 콘티 생성 시작...')
+
     // 실제 API 호출
+    console.log('📤 콘티 생성 API 요청 전송:', {
+      url: '/conte/generate',
+      timeout: 120000,
+      requestData: {
+        storyLength: requestData.story.length,
+        maxScenes: requestData.maxScenes,
+        genre: requestData.genre,
+        style: requestData.style
+      }
+    })
+    
     const response = await api.post('/conte/generate', requestData, {
       timeout: 120000, // 2분 타임아웃
       headers: {
         'Content-Type': 'application/json'
       }
     })
+    console.log('콘티 생성 응답 전체:', JSON.stringify(response, null, 2));
 
-    console.log('✅ 콘티 생성 완료:', response.data)
+    console.log('✅ 콘티 생성 API 응답 수신:', {
+      status: response.status,
+      responseData: response.data,
+      contesCount: Array.isArray(response.data) ? response.data.length : 'N/A',
+      isArray: Array.isArray(response.data)
+    })
+
+    // 응답 데이터 파싱 및 검증
+    if (Array.isArray(response.data)) {
+      console.log('📊 콘티 생성 결과 분석:', {
+        totalContes: response.data.length,
+        contesWithImages: response.data.filter(c => c.imageUrl).length,
+        averageSceneLength: response.data.reduce((acc, c) => acc + (c.description?.length || 0), 0) / response.data.length,
+        sampleConte: response.data[0] ? {
+          id: response.data[0].id,
+          scene: response.data[0].scene,
+          title: response.data[0].title,
+          descriptionLength: response.data[0].description?.length || 0,
+          hasImage: !!response.data[0].imageUrl
+        } : null
+      })
+    } else {
+      console.log('📊 콘티 생성 결과 분석 (단일 객체):', {
+        responseType: typeof response.data,
+        keys: Object.keys(response.data || {}),
+        data: response.data
+      })
+    }
     
     return response.data
 
   } catch (error) {
-    console.error('❌ 콘티 생성 실패:', error)
+    console.error('❌ 콘티 생성 API 오류:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data
+    })
     
     // 에러 처리
     if (error.response) {
       const status = error.response.status
       const message = error.response.data?.message || '콘티 생성에 실패했습니다.'
+      
+      console.error('🔍 서버 응답 오류 분석:', {
+        status: status,
+        message: message,
+        responseData: error.response.data
+      })
       
       switch (status) {
         case 400:
@@ -285,8 +456,10 @@ export const generateConte = async (requestData) => {
           throw new Error(message)
       }
     } else if (error.request) {
+      console.error('🌐 네트워크 오류:', error.request)
       throw new Error('네트워크 연결을 확인해주세요.')
     } else {
+      console.error('⚠️ 기타 오류:', error)
       throw new Error(error.message || '콘티 생성에 실패했습니다.')
     }
   }

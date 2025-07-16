@@ -108,6 +108,17 @@ export const aiAPI = {
 // 모든 API 요청이 전송되기 전에 실행되는 미들웨어
 api.interceptors.request.use(
   (config) => {
+    console.log('🚀 API 요청 시작:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers,
+      data: config.data,
+      params: config.params,
+      timeout: config.timeout
+    })
+    
     // 먼저 세션 스토리지에서 토큰 확인
     let token = sessionStorage.getItem('auth-token')
     
@@ -139,6 +150,7 @@ api.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error('❌ API 요청 설정 오류:', error)
     // 요청 설정 오류 시 Promise 거부
     return Promise.reject(error)
   }
@@ -148,13 +160,53 @@ api.interceptors.request.use(
 // 모든 API 응답이 처리되기 전에 실행되는 미들웨어
 api.interceptors.response.use(
   (response) => {
+    console.log('✅ API 응답 성공:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      method: response.config.method?.toUpperCase(),
+      headers: response.headers,
+      data: response.data,
+      responseTime: response.headers['x-response-time'] || 'N/A'
+    })
+    
+    // 응답 데이터 구조 분석
+    if (response.data) {
+      console.log('📊 응답 데이터 구조 분석:', {
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        keys: typeof response.data === 'object' ? Object.keys(response.data) : 'N/A',
+        dataLength: Array.isArray(response.data) ? response.data.length : 
+                   typeof response.data === 'string' ? response.data.length : 'N/A'
+      })
+      
+      // 배열인 경우 첫 번째 항목 구조 분석
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        console.log('📋 배열 첫 번째 항목 구조:', {
+          itemType: typeof response.data[0],
+          itemKeys: typeof response.data[0] === 'object' ? Object.keys(response.data[0]) : 'N/A',
+          sampleData: response.data[0]
+        })
+      }
+    }
+    
     // 성공 응답은 그대로 반환
     return response
   },
   async (error) => {
+    console.error('❌ API 응답 오류:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase(),
+      responseData: error.response?.data,
+      responseHeaders: error.response?.headers
+    })
+    
     // 네트워크 오류 처리
     if (!error.response) {
-      console.error('Network error:', error.message)
+      console.error('🌐 네트워크 오류:', error.message)
       // 네트워크 오류 시 사용자에게 알림
       if (typeof window !== 'undefined' && window.toast) {
         window.toast.error('네트워크 연결을 확인해주세요.')
@@ -191,19 +243,19 @@ api.interceptors.response.use(
         break
       
       case 403:
-        console.error('Forbidden:', error.response.data)
+        console.error('🚫 Forbidden:', error.response.data)
         return Promise.reject(new Error('접근 권한이 없습니다.'))
       
       case 404:
-        console.error('Not found:', error.response.data)
+        console.error('🔍 Not found:', error.response.data)
         return Promise.reject(new Error('요청한 리소스를 찾을 수 없습니다.'))
       
       case 500:
-        console.error('Server error:', error.response.data)
+        console.error('💥 Server error:', error.response.data)
         return Promise.reject(new Error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'))
       
       default:
-        console.error('API error:', error.response.data)
+        console.error('⚠️ API error:', error.response.data)
         return Promise.reject(new Error(error.response.data?.message || '알 수 없는 오류가 발생했습니다.'))
     }
 

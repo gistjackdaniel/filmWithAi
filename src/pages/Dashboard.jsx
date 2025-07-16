@@ -330,8 +330,13 @@ const Dashboard = () => {
         
         // 스토리 생성 방식에 따라 다른 페이지로 이동
         if (projectData.storyGenerationType === 'direct') {
-          // 직접 스토리 작성 페이지로 이동
-          navigate('/direct-story')
+          // 직접 스토리 작성 페이지로 이동 (프로젝트 ID 전달)
+          navigate('/direct-story', { 
+            state: { 
+              projectId: projectId,
+              projectTitle: projectData.title 
+            } 
+          })
         } else {
           // AI 스토리 생성 페이지로 이동
           navigate(`/project/${projectId}/conte`)

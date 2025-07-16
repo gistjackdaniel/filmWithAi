@@ -137,7 +137,7 @@ const extractLocationFromConte = (conte) => {
 }
 
 /**
- * 장비별 그룹화
+ * 장비별 그룹화 (개선된 버전)
  * @param {Array} conteData - 콘티 데이터
  * @returns {Object} 장비별 그룹화된 데이터
  */
@@ -145,13 +145,19 @@ const groupByEquipment = (conteData) => {
   const groups = {}
   
   conteData.forEach(conte => {
-    // 콘티에서 장비 정보 추출
-    const equipment = extractEquipmentFromConte(conte)
+    // 콘티에서 장비 정보 추출 (배열로 반환됨)
+    const equipmentList = extractEquipmentFromConte(conte)
     
-    if (!groups[equipment]) {
-      groups[equipment] = []
-    }
-    groups[equipment].push(conte)
+    // 각 장비별로 그룹화
+    equipmentList.forEach(equipment => {
+      if (!groups[equipment]) {
+        groups[equipment] = []
+      }
+      // 중복 방지
+      if (!groups[equipment].find(c => c.id === conte.id)) {
+        groups[equipment].push(conte)
+      }
+    })
   })
   
   return groups
@@ -786,6 +792,17 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
     actualShootingDuration: scene.actualShootingDuration
   })));
   
+  // 각 씬에 상세 정보 추가
+  const scenesWithDetails = scenes.map(scene => ({
+    ...scene,
+    // 상세 카메라 정보 추가
+    cameraDetails: extractCameraFromConte(scene),
+    // 상세 인력 정보 추가
+    crewDetails: extractCrewFromConte(scene),
+    // 상세 장비 정보 추가
+    equipmentDetails: extractEquipmentFromConte(scene)
+  }));
+  
   // 스케줄 row 반환
   return {
     day: dayNumber,
@@ -793,7 +810,7 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
     location: location,
     timeSlot: timeSlot,
     timeRange: timeRange,
-    scenes: scenes, // 최적화된 시간 정보가 포함된 씬들
+    scenes: scenesWithDetails, // 상세 정보가 포함된 씬들
     totalScenes: scenes.length,
     estimatedDuration: duration,
     crew: getRequiredCrew(scenes),
@@ -1409,7 +1426,8 @@ export const generateBreakdown = (conteData) => {
       equipment: {},
       crew: {},
       props: {},
-      costumes: {}
+      costumes: {},
+      cameras: {} // 카메라 정보 추가
     }
     
     conteData.forEach(conte => {
@@ -1469,6 +1487,17 @@ export const generateBreakdown = (conteData) => {
         }
         breakdown.costumes[costume].push(conte)
       })
+      
+      // 8. 카메라별 분류
+      const cameraInfo = extractCameraFromConte(conte)
+      const cameraKey = `${cameraInfo.model} - ${cameraInfo.lens}`
+      if (!breakdown.cameras[cameraKey]) {
+        breakdown.cameras[cameraKey] = []
+      }
+      breakdown.cameras[cameraKey].push({
+        ...conte,
+        cameraInfo: cameraInfo
+      })
     })
     
     return breakdown
@@ -1479,17 +1508,68 @@ export const generateBreakdown = (conteData) => {
 }
 
 /**
- * 콘티에서 인력 정보 추출
+ * 콘티에서 인력 정보 추출 (개선된 버전)
  * @param {Object} conte - 콘티 객체
- * @returns {Array} 추출된 인력 리스트 (반드시 keywords.cast 기반)
+ * @returns {Array} 추출된 인력 리스트
  */
 const extractCrewFromConte = (conte) => {
-  // 반드시 keywords.cast만 사용 (description fallback 제거)
-  if (conte.keywords && conte.keywords.cast && Array.isArray(conte.keywords.cast)) {
-    return conte.keywords.cast
+  console.log('👥 인력 추출:', {
+    id: conte.id,
+    title: conte.title,
+    hasScheduling: !!conte.scheduling,
+    hasKeywords: !!conte.keywords
+  });
+  
+  const crew = [];
+  
+  // 1. 스케줄링 데이터에서 상세 인력 정보 추출
+  if (conte.scheduling && conte.scheduling.crew) {
+    const crewData = conte.scheduling.crew;
+    
+    // 필수 인력 추가
+    if (crewData.director && crewData.director !== '감독') {
+      crew.push(crewData.director);
+    }
+    if (crewData.cinematographer && crewData.cinematographer !== '촬영감독') {
+      crew.push(crewData.cinematographer);
+    }
+    if (crewData.cameraOperator && crewData.cameraOperator !== '카메라맨') {
+      crew.push(crewData.cameraOperator);
+    }
+    if (crewData.lightingDirector && crewData.lightingDirector !== '조명감독') {
+      crew.push(crewData.lightingDirector);
+    }
+    if (crewData.makeupArtist && crewData.makeupArtist !== '메이크업') {
+      crew.push(crewData.makeupArtist);
+    }
+    if (crewData.costumeDesigner && crewData.costumeDesigner !== '의상') {
+      crew.push(crewData.costumeDesigner);
+    }
+    if (crewData.soundEngineer && crewData.soundEngineer !== '음향감독') {
+      crew.push(crewData.soundEngineer);
+    }
+    if (crewData.artDirector && crewData.artDirector !== '미술감독') {
+      crew.push(crewData.artDirector);
+    }
+    
+    // 추가 인력
+    if (crewData.additionalCrew && Array.isArray(crewData.additionalCrew)) {
+      crew.push(...crewData.additionalCrew);
+    }
   }
-  // 정보가 없으면 빈 배열 반환
-  return []
+  
+  // 2. keywords.cast에서 배우 정보 추가
+  if (conte.keywords && conte.keywords.cast && Array.isArray(conte.keywords.cast)) {
+    crew.push(...conte.keywords.cast);
+  }
+  
+  // 3. 기본 인력 추가 (정보가 없는 경우)
+  if (crew.length === 0) {
+    crew.push('감독', '촬영감독', '카메라맨');
+  }
+  
+  console.log('✅ 추출된 인력:', crew);
+  return crew;
 }
 
 /**
@@ -1647,23 +1727,135 @@ export const generateBreakdownCSV = (breakdownData) => {
 }
 
 /**
- * 콘티에서 장비 정보 추출
+ * 콘티에서 장비 정보 추출 (개선된 버전)
  * @param {Object} conte - 콘티 객체
- * @returns {string} 추출된 장비 정보 (반드시 keywords.equipment 기반)
+ * @returns {Array} 추출된 장비 리스트
  */
 const extractEquipmentFromConte = (conte) => {
   console.log('🎥 장비 추출:', {
     id: conte.id,
     title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsEquipment: conte.keywords?.equipment,
-    fallbackEquipment: conte.equipment
+    hasScheduling: !!conte.scheduling,
+    hasKeywords: !!conte.keywords
   });
   
-  // 반드시 keywords.equipment만 사용 (description fallback 제거)
-  if (conte.keywords && conte.keywords.equipment && conte.keywords.equipment !== '기본 장비') {
-    return conte.keywords.equipment
+  const equipment = [];
+  
+  // 1. 스케줄링 데이터에서 상세 장비 정보 추출
+  if (conte.scheduling && conte.scheduling.equipment) {
+    const equipData = conte.scheduling.equipment;
+    
+    // 카메라 장비
+    if (equipData.cameras && Array.isArray(equipData.cameras)) {
+      equipment.push(...equipData.cameras);
+    }
+    
+    // 렌즈
+    if (equipData.lenses && Array.isArray(equipData.lenses)) {
+      equipment.push(...equipData.lenses);
+    }
+    
+    // 조명 장비
+    if (equipData.lighting && Array.isArray(equipData.lighting)) {
+      equipment.push(...equipData.lighting);
+    }
+    
+    // 음향 장비
+    if (equipData.audio && Array.isArray(equipData.audio)) {
+      equipment.push(...equipData.audio);
+    }
+    
+    // 그립 장비
+    if (equipData.grip && Array.isArray(equipData.grip)) {
+      equipment.push(...equipData.grip);
+    }
+    
+    // 특수 장비
+    if (equipData.special && Array.isArray(equipData.special)) {
+      equipment.push(...equipData.special);
+    }
   }
-  // 정보가 없으면 '기본 장비' 반환
-  return '기본 장비'
+  
+  // 2. 스케줄링 카메라 정보 추가
+  if (conte.scheduling && conte.scheduling.camera) {
+    const cameraData = conte.scheduling.camera;
+    if (cameraData.model && cameraData.model !== '기본 카메라') {
+      equipment.push(cameraData.model);
+    }
+    if (cameraData.lens && cameraData.lens !== '기본 렌즈') {
+      equipment.push(cameraData.lens);
+    }
+    if (cameraData.movement && cameraData.movement !== '고정') {
+      equipment.push(cameraData.movement);
+    }
+  }
+  
+  // 3. keywords.equipment 추가
+  if (conte.keywords && conte.keywords.equipment && conte.keywords.equipment !== '기본 장비') {
+    equipment.push(conte.keywords.equipment);
+  }
+  
+  // 4. 기본 장비 추가 (정보가 없는 경우)
+  if (equipment.length === 0) {
+    equipment.push('카메라', '조명', '마이크');
+  }
+  
+  console.log('✅ 추출된 장비:', equipment);
+  return equipment;
+}
+
+/**
+ * 콘티에서 카메라 정보 추출 (개선된 버전)
+ * @param {Object} conte - 콘티 객체
+ * @returns {Object} 추출된 카메라 정보
+ */
+const extractCameraFromConte = (conte) => {
+  console.log('📹 카메라 정보 추출:', {
+    id: conte.id,
+    title: conte.title,
+    hasScheduling: !!conte.scheduling,
+    hasKeywords: !!conte.keywords
+  });
+  
+  const cameraInfo = {
+    model: '기본 카메라',
+    lens: '기본 렌즈',
+    settings: '기본 설정',
+    movement: '고정',
+    angle: '',
+    work: ''
+  };
+  
+  // 1. 스케줄링 카메라 정보
+  if (conte.scheduling && conte.scheduling.camera) {
+    const cameraData = conte.scheduling.camera;
+    if (cameraData.model && cameraData.model !== '기본 카메라') {
+      cameraInfo.model = cameraData.model;
+    }
+    if (cameraData.lens && cameraData.lens !== '기본 렌즈') {
+      cameraInfo.lens = cameraData.lens;
+    }
+    if (cameraData.settings && cameraData.settings !== '기본 설정') {
+      cameraInfo.settings = cameraData.settings;
+    }
+    if (cameraData.movement && cameraData.movement !== '고정') {
+      cameraInfo.movement = cameraData.movement;
+    }
+  }
+  
+  // 2. 기본 카메라 정보 (cameraAngle, cameraWork)
+  if (conte.cameraAngle) {
+    cameraInfo.angle = conte.cameraAngle;
+  }
+  if (conte.cameraWork) {
+    cameraInfo.work = conte.cameraWork;
+  }
+  
+  // 3. 렌즈 사양
+  if (conte.lensSpecs) {
+    cameraInfo.lens = conte.lensSpecs;
+  }
+  
+  console.log('✅ 추출된 카메라 정보:', cameraInfo);
+  return cameraInfo;
 } 

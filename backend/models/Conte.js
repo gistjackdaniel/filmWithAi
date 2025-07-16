@@ -159,6 +159,28 @@ const conteSchema = new mongoose.Schema({
     default: false
   },
   
+  // 스케줄링 관련 필드 (최상위 레벨)
+  requiredPersonnel: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 500
+  },
+  
+  requiredEquipment: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 500
+  },
+  
+  camera: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 200
+  },
+  
   // 키워드 노드 구조 (그래프 노드)
   keywords: {
     userInfo: {
@@ -208,6 +230,132 @@ const conteSchema = new mongoose.Schema({
       type: String,
       trim: true
     }]
+  },
+  
+  // 스케줄링을 위한 상세 정보
+  scheduling: {
+    // 카메라 상세 정보
+    camera: {
+      model: {
+        type: String,
+        default: '기본 카메라',
+        trim: true
+      },
+      lens: {
+        type: String,
+        default: '기본 렌즈',
+        trim: true
+      },
+      settings: {
+        type: String,
+        default: '기본 설정',
+        trim: true
+      },
+      movement: {
+        type: String,
+        default: '고정',
+        trim: true
+      }
+    },
+    
+    // 필요인력 상세 정보
+    crew: {
+      director: {
+        type: String,
+        default: '감독',
+        trim: true
+      },
+      cinematographer: {
+        type: String,
+        default: '촬영감독',
+        trim: true
+      },
+      cameraOperator: {
+        type: String,
+        default: '카메라맨',
+        trim: true
+      },
+      lightingDirector: {
+        type: String,
+        default: '조명감독',
+        trim: true
+      },
+      makeupArtist: {
+        type: String,
+        default: '메이크업',
+        trim: true
+      },
+      costumeDesigner: {
+        type: String,
+        default: '의상',
+        trim: true
+      },
+      soundEngineer: {
+        type: String,
+        default: '음향감독',
+        trim: true
+      },
+      artDirector: {
+        type: String,
+        default: '미술감독',
+        trim: true
+      },
+      additionalCrew: [{
+        type: String,
+        trim: true
+      }]
+    },
+    
+    // 장비 상세 정보
+    equipment: {
+      cameras: [{
+        type: String,
+        trim: true
+      }],
+      lenses: [{
+        type: String,
+        trim: true
+      }],
+      lighting: [{
+        type: String,
+        trim: true
+      }],
+      audio: [{
+        type: String,
+        trim: true
+      }],
+      grip: [{
+        type: String,
+        trim: true
+      }],
+      special: [{
+        type: String,
+        trim: true
+      }]
+    },
+    
+    // 촬영 설정
+    shooting: {
+      setupTime: {
+        type: Number,
+        default: 30, // 분 단위
+        min: 0
+      },
+      breakdownTime: {
+        type: Number,
+        default: 15, // 분 단위
+        min: 0
+      },
+      complexity: {
+        type: String,
+        enum: ['간단', '보통', '복잡', '매우 복잡'],
+        default: '보통'
+      },
+      specialNeeds: [{
+        type: String,
+        trim: true
+      }]
+    }
   },
   
   // 그래프 가중치 (최적화 스케줄링용)

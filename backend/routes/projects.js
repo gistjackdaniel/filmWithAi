@@ -135,7 +135,11 @@ router.post('/', authenticateToken, async (req, res) => {
             keywords: validatedKeywords,
             weights: conte.weights || {},
             order: conte.order || index + 1,
-            imageUrl: conte.imageUrl || null
+            imageUrl: conte.imageUrl || null,
+            // 스케줄링 관련 필드들 추가
+            requiredPersonnel: conte.requiredPersonnel || '',
+            requiredEquipment: conte.requiredEquipment || '',
+            camera: conte.camera || ''
           });
           return newConte.save();
         });
@@ -398,6 +402,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
           keywords: conte.keywords,
           weights: conte.weights,
           canEdit: conte.canEdit,
+          // 스케줄링 관련 필드들 추가
+          requiredPersonnel: conte.requiredPersonnel,
+          requiredEquipment: conte.requiredEquipment,
+          camera: conte.camera,
           lastModified: conte.lastModified,
           modifiedBy: conte.modifiedBy,
           createdAt: conte.createdAt,

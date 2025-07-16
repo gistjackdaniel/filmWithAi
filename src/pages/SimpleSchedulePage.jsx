@@ -274,7 +274,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911696Z",
       "modifiedBy": "AI",
-      "cameras": ["C1", "C2"]
+      "cameras": ["C1", "C2"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "Sony FX6",
+          "lens": "24-70mm f/2.8 GM",
+          "settings": "4K 60fps, S-Log3",
+          "movement": "핸드헬드"
+        },
+        "crew": {
+          "director": "김감독",
+          "cinematographer": "박촬영감독",
+          "cameraOperator": "이카메라맨",
+          "lightingDirector": "최조명감독",
+          "makeupArtist": "정메이크업",
+          "costumeDesigner": "한의상",
+          "soundEngineer": "윤음향감독",
+          "artDirector": "임미술감독",
+          "additionalCrew": ["보조감독", "스크립터"]
+        },
+        "equipment": {
+          "cameras": ["Sony FX6", "B-Cam"],
+          "lenses": ["24-70mm f/2.8 GM", "85mm f/1.4 GM"],
+          "lighting": ["LED 패널", "스탠드", "디퓨저"],
+          "audio": ["무선마이크", "보조마이크", "녹음기"],
+          "grip": ["트라이포드", "스테디캠", "크레인"],
+          "special": ["스모크머신", "팬"]
+        }
+      }
     },
     {
       "id": "scene_2",
@@ -311,7 +339,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911728Z",
       "modifiedBy": "AI",
-      "cameras": ["C3", "C5", "C7"]
+      "cameras": ["C3", "C5", "C7"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "RED Komodo",
+          "lens": "50mm f/1.4",
+          "settings": "6K RAW, 24fps",
+          "movement": "고정"
+        },
+        "crew": {
+          "director": "김감독",
+          "cinematographer": "박촬영감독",
+          "cameraOperator": "이카메라맨",
+          "lightingDirector": "최조명감독",
+          "makeupArtist": "정메이크업",
+          "costumeDesigner": "한의상",
+          "soundEngineer": "윤음향감독",
+          "artDirector": "임미술감독",
+          "additionalCrew": ["보조감독", "스크립터", "소품담당"]
+        },
+        "equipment": {
+          "cameras": ["RED Komodo", "A-Cam"],
+          "lenses": ["50mm f/1.4", "35mm f/1.4"],
+          "lighting": ["LED 패널", "스탠드", "디퓨저", "반사판"],
+          "audio": ["무선마이크", "보조마이크", "녹음기"],
+          "grip": ["트라이포드", "돌리", "크레인"],
+          "special": ["스모크머신", "팬", "비효과"]
+        }
+      }
     },
     {
       "id": "scene_3",
@@ -348,7 +404,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911728Z",
       "modifiedBy": "AI",
-      "cameras": ["C3", "C5", "C7"]
+      "cameras": ["C3", "C5", "C7"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "Canon C300 Mark III",
+          "lens": "85mm f/1.4",
+          "settings": "4K 30fps, Canon Log",
+          "movement": "고정"
+        },
+        "crew": {
+          "director": "김감독",
+          "cinematographer": "박촬영감독",
+          "cameraOperator": "이카메라맨",
+          "lightingDirector": "최조명감독",
+          "makeupArtist": "정메이크업",
+          "costumeDesigner": "한의상",
+          "soundEngineer": "윤음향감독",
+          "artDirector": "임미술감독",
+          "additionalCrew": ["보조감독", "스크립터"]
+        },
+        "equipment": {
+          "cameras": ["Canon C300 Mark III"],
+          "lenses": ["85mm f/1.4", "50mm f/1.4"],
+          "lighting": ["LED 패널", "스탠드", "디퓨저"],
+          "audio": ["무선마이크", "녹음기"],
+          "grip": ["트라이포드"],
+          "special": []
+        }
+      }
     },
     {
       "id": "scene_4",
@@ -385,7 +469,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911728Z",
       "modifiedBy": "AI",
-      "cameras": ["C3", "C5", "C7"]
+      "cameras": ["C3", "C5", "C7"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "기본 카메라",
+          "lens": "기본 렌즈",
+          "settings": "기본 설정",
+          "movement": "고정"
+        },
+        "crew": {
+          "director": "감독",
+          "cinematographer": "촬영감독",
+          "cameraOperator": "카메라맨",
+          "lightingDirector": "조명감독",
+          "makeupArtist": "메이크업",
+          "costumeDesigner": "의상",
+          "soundEngineer": "음향감독",
+          "artDirector": "미술감독",
+          "additionalCrew": []
+        },
+        "equipment": {
+          "cameras": ["카메라"],
+          "lenses": ["기본 렌즈"],
+          "lighting": ["조명"],
+          "audio": ["마이크"],
+          "grip": ["트라이포드"],
+          "special": []
+        }
+      }
     },
     {
       "id": "scene_5",
@@ -422,7 +534,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911728Z",
       "modifiedBy": "AI",
-      "cameras": ["C3", "C5", "C7"]
+      "cameras": ["C3", "C5", "C7"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "기본 카메라",
+          "lens": "기본 렌즈",
+          "settings": "기본 설정",
+          "movement": "고정"
+        },
+        "crew": {
+          "director": "감독",
+          "cinematographer": "촬영감독",
+          "cameraOperator": "카메라맨",
+          "lightingDirector": "조명감독",
+          "makeupArtist": "메이크업",
+          "costumeDesigner": "의상",
+          "soundEngineer": "음향감독",
+          "artDirector": "미술감독",
+          "additionalCrew": []
+        },
+        "equipment": {
+          "cameras": ["카메라"],
+          "lenses": ["기본 렌즈"],
+          "lighting": ["조명"],
+          "audio": ["마이크"],
+          "grip": ["트라이포드"],
+          "special": []
+        }
+      }
     },
     {
       "id": "scene_6",
@@ -459,7 +599,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911728Z",
       "modifiedBy": "AI",
-      "cameras": ["C3", "C5", "C7"]
+      "cameras": ["C3", "C5", "C7"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "기본 카메라",
+          "lens": "기본 렌즈",
+          "settings": "기본 설정",
+          "movement": "고정"
+        },
+        "crew": {
+          "director": "감독",
+          "cinematographer": "촬영감독",
+          "cameraOperator": "카메라맨",
+          "lightingDirector": "조명감독",
+          "makeupArtist": "메이크업",
+          "costumeDesigner": "의상",
+          "soundEngineer": "음향감독",
+          "artDirector": "미술감독",
+          "additionalCrew": []
+        },
+        "equipment": {
+          "cameras": ["카메라"],
+          "lenses": ["기본 렌즈"],
+          "lighting": ["조명"],
+          "audio": ["마이크"],
+          "grip": ["트라이포드"],
+          "special": []
+        }
+      }
     },
     {
       "id": "scene_7",
@@ -496,7 +664,35 @@ const SimpleSchedulePage = () => {
       "canEdit": true,
       "lastModified": "2025-07-14T07:58:53.911728Z",
       "modifiedBy": "AI",
-      "cameras": ["C3", "C5", "C7"]
+      "cameras": ["C3", "C5", "C7"],
+      // 스케줄링 상세 정보 추가
+      "scheduling": {
+        "camera": {
+          "model": "기본 카메라",
+          "lens": "기본 렌즈",
+          "settings": "기본 설정",
+          "movement": "고정"
+        },
+        "crew": {
+          "director": "감독",
+          "cinematographer": "촬영감독",
+          "cameraOperator": "카메라맨",
+          "lightingDirector": "조명감독",
+          "makeupArtist": "메이크업",
+          "costumeDesigner": "의상",
+          "soundEngineer": "음향감독",
+          "artDirector": "미술감독",
+          "additionalCrew": []
+        },
+        "equipment": {
+          "cameras": ["카메라"],
+          "lenses": ["기본 렌즈"],
+          "lighting": ["조명"],
+          "audio": ["마이크"],
+          "grip": ["트라이포드"],
+          "special": []
+        }
+      }
     },
     {
       "id": "scene_8",
@@ -962,6 +1158,11 @@ const SimpleSchedulePage = () => {
         console.log(`⚠️ 기본 시간대 사용: ${timeLabel}`);
       }
       
+      // 상세 정보 추출 (schedulerService에서 추가된 정보 우선 사용)
+      const cameraInfo = scene.cameraDetails || {};
+      const crewInfo = scene.crewDetails || [];
+      const equipmentInfo = scene.equipmentDetails || [];
+      
       // 그룹에 추가
       result.push({
         time: timeLabel,
@@ -972,7 +1173,11 @@ const SimpleSchedulePage = () => {
         // 디버깅을 위한 추가 정보
         actualShootingDuration: scene.actualShootingDuration,
         estimatedDuration: scene.estimatedDuration,
-        timeSlot: scene.keywords?.timeOfDay || scene.timeSlot
+        timeSlot: scene.keywords?.timeOfDay || scene.timeSlot,
+        // 상세 정보 추가
+        cameraDetails: cameraInfo,
+        crewDetails: crewInfo,
+        equipmentDetails: equipmentInfo
       });
     }
     
@@ -980,7 +1185,10 @@ const SimpleSchedulePage = () => {
       time: item.time,
       scene: item.scenes[0]?.scene,
       title: item.scenes[0]?.title,
-      duration: item.actualShootingDuration
+      duration: item.actualShootingDuration,
+      camera: item.cameraDetails?.model,
+      crew: item.crewDetails?.length,
+      equipment: item.equipmentDetails?.length
     })));
     
     return result;
@@ -1313,12 +1521,30 @@ const SimpleSchedulePage = () => {
                           const sceneEndTime = block.scenes[0]?.sceneEndTime || '미정';
                           const breakStart = sceneEndTime;
                           const breakEnd = sceneEndTime !== '미정' ? addMinutesToTime(sceneEndTime, BREAK_TIME_MINUTES) : '미정';
-                          // crew: keywords.crew만, 없으면 '-'
-                          const crew = block.scenes[0]?.keywords?.crew || '-';
-                          // equipment: keywords.equipment만, 없으면 '-'
-                          const equipment = block.scenes[0]?.keywords?.equipment || '-';
+                          
+                          // 상세 정보 추출 (API 응답의 실제 필드에서 가져오기)
+                          const rawCameraInfo = block.scenes[0]?.camera || '기본 카메라';
+                          const requiredPersonnel = block.scenes[0]?.requiredPersonnel || '정보 없음';
+                          const requiredEquipment = block.scenes[0]?.requiredEquipment || '정보 없음';
+                          
+                          // 카메라 정보 파싱 함수: "C1C3" -> "C1, C3"
+                          const parseCameraInfo = (cameraStr) => {
+                            if (!cameraStr || typeof cameraStr !== 'string') return cameraStr;
+                            
+                            // "C1C3" 형태를 "C1, C3"로 변환
+                            const cameraMatch = cameraStr.match(/(C\d+)/g);
+                            if (cameraMatch && cameraMatch.length > 1) {
+                              return cameraMatch.join(', ');
+                            }
+                            
+                            return cameraStr;
+                          };
+                          
+                          const cameraInfo = parseCameraInfo(rawCameraInfo);
+                          
                           // 주요 인물: cast만
                           const cast = block.scenes[0]?.keywords?.cast || [];
+                          
                           return (
                             <React.Fragment key={idx}>
                               {/* 씬 정보 행 */}
@@ -1349,11 +1575,11 @@ const SimpleSchedulePage = () => {
                                 </TableCell>
                                 {/* 장소 정보 */}
                                 <TableCell>{block.location}</TableCell>
-                                {/* 카메라 정보: cameras 배열을 표시 */}
+                                {/* 카메라 정보: API 응답의 camera 필드 사용 */}
                                 <TableCell>
-                                  {block.scenes[0]?.cameras && block.scenes[0].cameras.length > 0
-                                    ? block.scenes[0].cameras.join(', ')
-                                    : '-'}
+                                  <Typography variant="body2">
+                                    {cameraInfo}
+                                  </Typography>
                                 </TableCell>
                                 {/* 주요 인물(Chip, cast만) */}
                                 <TableCell>
@@ -1369,21 +1595,17 @@ const SimpleSchedulePage = () => {
                                       ))
                                     : (typeof cast === 'string' ? cast : '-')}
                                 </TableCell>
-                                {/* 필요 인력(crew만, Chip 또는 문자열) */}
+                                {/* 필요 인력: API 응답의 requiredPersonnel 필드 사용 */}
                                 <TableCell>
-                                  {Array.isArray(crew) && crew.length > 0
-                                    ? crew.map((person, i) => (
-                                        <Chip key={i} label={person} color="info" size="small" sx={{ mr: 0.5, mb: 0.5 }} />
-                                      ))
-                                    : (typeof crew === 'string' ? crew : '-')}
+                                  <Typography variant="body2">
+                                    {requiredPersonnel}
+                                  </Typography>
                                 </TableCell>
-                                {/* 필요 장비(equipment만, Chip 또는 문자열) */}
+                                {/* 필요 장비: API 응답의 requiredEquipment 필드 사용 */}
                                 <TableCell>
-                                  {Array.isArray(equipment) && equipment.length > 0
-                                    ? equipment.map((item, i) => (
-                                        <Chip key={i} label={item} color="success" size="small" sx={{ mr: 0.5, mb: 0.5 }} />
-                                      ))
-                                    : (typeof equipment === 'string' ? equipment : '-')}
+                                  <Typography variant="body2">
+                                    {requiredEquipment}
+                                  </Typography>
                                 </TableCell>
                                 {/* 비고(노트) */}
                                 <TableCell>{block.note}</TableCell>

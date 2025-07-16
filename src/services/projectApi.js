@@ -32,15 +32,39 @@ import api from './api'
  * @returns {Promise<ProjectResponse>} 생성된 프로젝트 정보
  */
 export const createProject = async (projectData) => {
+  console.log('📁 프로젝트 생성 API 호출 시작:', {
+    projectTitle: projectData.projectTitle,
+    synopsisLength: projectData.synopsis?.length || 0,
+    storyLength: projectData.story?.length || 0,
+    conteCount: projectData.conteList?.length || 0,
+    requestData: projectData
+  })
+  
   try {
+    console.log('📤 프로젝트 생성 API 요청 전송...')
     const response = await api.post('/projects', projectData, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
       }
     })
+    
+    console.log('✅ 프로젝트 생성 API 응답 수신:', {
+      status: response.status,
+      projectId: response.data?._id,
+      projectTitle: response.data?.projectTitle,
+      createdAt: response.data?.createdAt,
+      responseData: response.data
+    })
+    
     return response.data
   } catch (error) {
+    console.error('❌ 프로젝트 생성 API 오류:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data
+    })
     handleProjectError(error, '프로젝트 생성')
   }
 }
@@ -93,6 +117,12 @@ export const updateStory = async (projectId, story) => {
  * @returns {Promise<ProjectResponse>} 프로젝트 정보
  */
 export const getProject = async (projectId, options = {}) => {
+  console.log('📁 프로젝트 조회 API 호출 시작:', {
+    projectId: projectId,
+    options: options,
+    includeContes: options.includeContes
+  })
+  
   try {
     const { includeContes = true } = options
     const params = new URLSearchParams()
@@ -101,11 +131,51 @@ export const getProject = async (projectId, options = {}) => {
       params.append('includeContes', 'true')
     }
     
+    console.log('📤 프로젝트 조회 API 요청 전송:', {
+      url: `/projects/${projectId}?${params.toString()}`,
+      timeout: 5000
+    })
+    
     const response = await api.get(`/projects/${projectId}?${params.toString()}`, {
       timeout: 5000
     })
+    
+    console.log('✅ 프로젝트 조회 API 응답 수신:', {
+      status: response.status,
+      projectId: response.data?._id,
+      projectTitle: response.data?.projectTitle,
+      synopsisLength: response.data?.synopsis?.length || 0,
+      storyLength: response.data?.story?.length || 0,
+      conteCount: response.data?.conteList?.length || 0,
+      createdAt: response.data?.createdAt,
+      updatedAt: response.data?.updatedAt
+    })
+    
+    // 콘티 데이터가 포함된 경우 상세 분석
+    if (response.data?.conteList && Array.isArray(response.data.conteList)) {
+      console.log('📊 콘티 데이터 분석:', {
+        totalContes: response.data.conteList.length,
+        contesWithImages: response.data.conteList.filter(c => c.imageUrl).length,
+        averageSceneLength: response.data.conteList.reduce((acc, c) => acc + (c.description?.length || 0), 0) / response.data.conteList.length,
+        sampleConte: response.data.conteList[0] ? {
+          id: response.data.conteList[0].id,
+          scene: response.data.conteList[0].scene,
+          title: response.data.conteList[0].title,
+          descriptionLength: response.data.conteList[0].description?.length || 0,
+          hasImage: !!response.data.conteList[0].imageUrl
+        } : null
+      })
+    }
+    
     return response.data
   } catch (error) {
+    console.error('❌ 프로젝트 조회 API 오류:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data,
+      projectId: projectId
+    })
     handleProjectError(error, '프로젝트 조회')
   }
 }
@@ -115,12 +185,46 @@ export const getProject = async (projectId, options = {}) => {
  * @returns {Promise<Array<ProjectResponse>>} 프로젝트 목록
  */
 export const getProjects = async () => {
+  console.log('📁 프로젝트 목록 조회 API 호출 시작')
+  
   try {
+    console.log('📤 프로젝트 목록 조회 API 요청 전송...')
     const response = await api.get('/projects', {
       timeout: 5000
     })
+    
+    console.log('✅ 프로젝트 목록 조회 API 응답 수신:', {
+      status: response.status,
+      totalProjects: Array.isArray(response.data) ? response.data.length : 'N/A',
+      isArray: Array.isArray(response.data)
+    })
+    
+    // 프로젝트 목록 분석
+    if (Array.isArray(response.data)) {
+      console.log('📊 프로젝트 목록 분석:', {
+        totalProjects: response.data.length,
+        projectsWithStories: response.data.filter(p => p.story).length,
+        projectsWithContes: response.data.filter(p => p.conteList && p.conteList.length > 0).length,
+        averageSynopsisLength: response.data.reduce((acc, p) => acc + (p.synopsis?.length || 0), 0) / response.data.length,
+        sampleProject: response.data[0] ? {
+          id: response.data[0]._id,
+          title: response.data[0].projectTitle,
+          synopsisLength: response.data[0].synopsis?.length || 0,
+          storyLength: response.data[0].story?.length || 0,
+          conteCount: response.data[0].conteList?.length || 0,
+          createdAt: response.data[0].createdAt
+        } : null
+      })
+    }
+    
     return response.data
   } catch (error) {
+    console.error('❌ 프로젝트 목록 조회 API 오류:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data
+    })
     handleProjectError(error, '프로젝트 목록 조회')
   }
 }
@@ -176,6 +280,7 @@ export const createConte = async (projectId, conteData) => {
         'Content-Type': 'application/json'
       }
     })
+    console.log('프로젝트 콘티 생성 응답 전체:', JSON.stringify(response, null, 2));
     return response.data
   } catch (error) {
     handleProjectError(error, '콘티 생성')

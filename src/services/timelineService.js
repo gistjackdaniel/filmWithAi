@@ -15,6 +15,17 @@ const timelineAPI = axios.create({
 // 요청 인터셉터 - 토큰 추가
 timelineAPI.interceptors.request.use(
   (config) => {
+    console.log('⏰ 타임라인 API 요청 시작:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers,
+      data: config.data,
+      params: config.params,
+      timeout: config.timeout
+    })
+    
     // 먼저 세션 스토리지에서 토큰 확인
     let token = sessionStorage.getItem('auth-token')
     
@@ -37,18 +48,64 @@ timelineAPI.interceptors.request.use(
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+      console.log('🔐 타임라인 API 인증 토큰 추가됨:', token.substring(0, 20) + '...')
+    } else {
+      console.warn('⚠️ 타임라인 API 인증 토큰이 없습니다.')
     }
     return config
   },
   (error) => {
+    console.error('❌ 타임라인 API 요청 설정 오류:', error)
     return Promise.reject(error)
   }
 )
 
 // 응답 인터셉터 - 에러 처리
 timelineAPI.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ 타임라인 API 응답 성공:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      method: response.config.method?.toUpperCase(),
+      headers: response.headers,
+      data: response.data,
+      responseTime: response.headers['x-response-time'] || 'N/A'
+    })
+    
+    // 응답 데이터 구조 분석
+    if (response.data) {
+      console.log('📊 타임라인 응답 데이터 구조 분석:', {
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        keys: typeof response.data === 'object' ? Object.keys(response.data) : 'N/A',
+        dataLength: Array.isArray(response.data) ? response.data.length : 
+                   typeof response.data === 'string' ? response.data.length : 'N/A'
+      })
+      
+      // 배열인 경우 첫 번째 항목 구조 분석
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        console.log('📋 타임라인 배열 첫 번째 항목 구조:', {
+          itemType: typeof response.data[0],
+          itemKeys: typeof response.data[0] === 'object' ? Object.keys(response.data[0]) : 'N/A',
+          sampleData: response.data[0]
+        })
+      }
+    }
+    
+    return response
+  },
   async (error) => {
+    console.error('❌ 타임라인 API 응답 오류:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase(),
+      responseData: error.response?.data,
+      responseHeaders: error.response?.headers
+    })
+    
     if (error.response?.status === 401) {
       console.log('🔐 401 인증 오류 발생. 인증 상태 갱신 시도...')
       
@@ -89,7 +146,13 @@ class TimelineService {
    * @returns {number} 초 단위 시간
    */
   parseDurationToSeconds(duration) {
+    console.log('⏱️ 시간 파싱 시작:', {
+      inputDuration: duration,
+      inputType: typeof duration
+    })
+    
     if (!duration) {
+      console.log('⚠️ 시간 파싱 - 빈 입력, 기본값 300초(5분) 반환')
       return 300 // 기본 5분
     }
     
@@ -97,16 +160,32 @@ class TimelineService {
     if (match) {
       const minutes = parseInt(match[1]) || 0
       const seconds = parseInt(match[2]) || 0
-      return minutes * 60 + seconds
+      const result = minutes * 60 + seconds
+      console.log('✅ 시간 파싱 성공 (분+초 형식):', {
+        input: duration,
+        minutes: minutes,
+        seconds: seconds,
+        result: result
+      })
+      return result
     }
     
     // 숫자만 있는 경우 분으로 간주
     const numMatch = duration.match(/(\d+)/)
     if (numMatch) {
       const minutes = parseInt(numMatch[1])
-      return minutes * 60
+      const result = minutes * 60
+      console.log('✅ 시간 파싱 성공 (숫자만 형식):', {
+        input: duration,
+        minutes: minutes,
+        result: result
+      })
+      return result
     }
     
+    console.log('⚠️ 시간 파싱 - 매치 실패, 기본값 300초(5분) 반환:', {
+      input: duration
+    })
     return 300 // 기본 5분
   }
 
@@ -116,18 +195,39 @@ class TimelineService {
    * @returns {string} 변환된 이미지 URL
    */
   convertImageUrl(imageUrl) {
-    if (!imageUrl) return null
+    console.log('🖼️ 이미지 URL 변환 시작:', {
+      inputUrl: imageUrl,
+      inputType: typeof imageUrl
+    })
+    
+    if (!imageUrl) {
+      console.log('⚠️ 이미지 URL 변환 - 빈 입력, null 반환')
+      return null
+    }
     
     // 이미 전체 URL인 경우 그대로 반환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      console.log('✅ 이미지 URL 변환 - 전체 URL, 그대로 반환:', {
+        input: imageUrl,
+        result: imageUrl
+      })
       return imageUrl
     }
     
     // 상대 경로인 경우 백엔드 서버 URL로 변환
     if (imageUrl.startsWith('/uploads/')) {
-      return `http://localhost:5001${imageUrl}`
+      const result = `http://localhost:5001${imageUrl}`
+      console.log('✅ 이미지 URL 변환 - 상대 경로를 전체 URL로 변환:', {
+        input: imageUrl,
+        result: result
+      })
+      return result
     }
     
+    console.log('⚠️ 이미지 URL 변환 - 알 수 없는 형식, 그대로 반환:', {
+      input: imageUrl,
+      result: imageUrl
+    })
     return imageUrl
   }
 
@@ -137,15 +237,26 @@ class TimelineService {
    * @returns {Promise<Object>} 콘티 데이터
    */
   async getProjectContes(projectId) {
+    console.log('⏰ 타임라인 서비스 - 프로젝트 콘티 조회 시작:', {
+      projectId: projectId,
+      requestUrl: `/projects/${projectId}?includeContes=true`
+    })
+    
     try {
-      console.log('timelineService getProjectContes started for projectId:', projectId)
+      console.log('📤 타임라인 API 요청 전송...')
       const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
-      console.log('timelineService API response:', response.data)
+      
+      console.log('✅ 타임라인 API 응답 수신:', {
+        status: response.status,
+        responseData: response.data,
+        hasData: !!response.data?.data,
+        dataKeys: response.data?.data ? Object.keys(response.data.data) : 'N/A'
+      })
       
       // 백엔드 응답 구조: { data: { project: {...}, conteList: [...] } }
       const responseData = response.data?.data
       if (!responseData) {
-        console.error('timelineService no data field in response')
+        console.error('❌ 타임라인 서비스 - 응답에 data 필드가 없음')
         return {
           success: false,
           data: null,
@@ -153,13 +264,31 @@ class TimelineService {
         }
       }
       
+      console.log('📊 응답 데이터 구조 분석:', {
+        hasProject: !!responseData.project,
+        hasConteList: !!responseData.conteList,
+        projectKeys: responseData.project ? Object.keys(responseData.project) : 'N/A',
+        conteListType: typeof responseData.conteList,
+        conteListLength: Array.isArray(responseData.conteList) ? responseData.conteList.length : 'N/A'
+      })
+      
       // conteList 추출
       const conteList = responseData.conteList || []
-      console.log('timelineService conteList extracted:', conteList, 'count:', conteList.length)
+      console.log('📋 콘티 리스트 추출 완료:', {
+        conteCount: conteList.length,
+        isArray: Array.isArray(conteList),
+        sampleConte: conteList[0] ? {
+          id: conteList[0].id || conteList[0]._id,
+          scene: conteList[0].scene,
+          title: conteList[0].title,
+          descriptionLength: conteList[0].description?.length || 0,
+          hasImage: !!conteList[0].imageUrl
+        } : null
+      })
       
       // 콘티 데이터가 없는 경우 처리
       if (!conteList || !Array.isArray(conteList) || conteList.length === 0) {
-        console.log('timelineService no valid conteList found, returning empty array')
+        console.log('⚠️ 타임라인 서비스 - 유효한 콘티 리스트가 없음, 빈 배열 반환')
         return {
           success: true,
           data: [],
@@ -168,95 +297,126 @@ class TimelineService {
       }
       
       // 콘티 데이터를 타임라인 형식으로 변환
-// <<<<<<< HEAD
-//       const timelineScenes = conteList.map((conte, index) => {
-//         // ID 생성 로직 개선
-//         const sceneId = conte.id || conte._id || `scene_${conte.scene || index + 1}`
-        
-//         // duration 계산 개선
-//         const duration = this.parseDurationToSeconds(conte.estimatedDuration || '5분')
-        
-//         console.log(`timelineService converting scene ${conte.scene || index + 1}:`, {
-//           id: sceneId,
-//           title: conte.title,
-//           duration: duration,
-//           type: conte.type
-//         })
-        
-//         return {
-//           id: sceneId,
-//           scene: conte.scene || index + 1,
-//           title: conte.title || `씬 ${conte.scene || index + 1}`,
-//           description: conte.description || '',
-//           dialogue: conte.dialogue || '',
-//           cameraAngle: conte.cameraAngle || '',
-//           cameraWork: conte.cameraWork || '',
-//           characterLayout: conte.characterLayout || '',
-//           props: conte.props || '',
-//           weather: conte.weather || '',
-//           lighting: conte.lighting || '',
-//           visualDescription: conte.visualDescription || '',
-//           transition: conte.transition || '',
-//           lensSpecs: conte.lensSpecs || '',
-//           visualEffects: conte.visualEffects || '',
-//           type: conte.type || 'live_action',
-//           estimatedDuration: conte.estimatedDuration || '5분',
-//           duration: duration,
-//           imageUrl: conte.imageUrl || null,
-//           keywords: conte.keywords || {
-//             location: '미정',
-//             equipment: '기본 장비',
-//             cast: [],
-//             props: [],
-//             specialRequirements: [],
-//             timeOfDay: '오후',
-//             weather: conte.weather || '맑음'
-//           },
-//           weights: conte.weights || {},
-//           order: conte.order || conte.scene || index + 1,
-//           status: conte.status || 'active',
-//           canEdit: conte.canEdit !== false,
-//           lastModified: conte.lastModified || new Date().toISOString(),
-//           modifiedBy: conte.modifiedBy || 'AI',
-//           createdAt: conte.createdAt || new Date().toISOString(),
-//           updatedAt: conte.updatedAt || new Date().toISOString()
-//         }
-//       })
-// =======
-      const timelineScenes = conteList.map(conte => ({
-        id: conte.id || conte._id,
-        scene: conte.scene,
-        title: conte.title,
-        description: conte.description,
-        dialogue: conte.dialogue,
-        cameraAngle: conte.cameraAngle,
-        cameraWork: conte.cameraWork,
-        characterLayout: conte.characterLayout,
-        props: conte.props,
-        weather: conte.weather,
-        lighting: conte.lighting,
-        visualDescription: conte.visualDescription,
-        transition: conte.transition,
-        lensSpecs: conte.lensSpecs,
-        visualEffects: conte.visualEffects,
-        type: conte.type || 'live_action',
-        estimatedDuration: conte.estimatedDuration || '5분',
-        duration: this.parseDurationToSeconds(conte.estimatedDuration || '5분'),
-        imageUrl: this.convertImageUrl(conte.imageUrl),
-        keywords: conte.keywords || {},
-        weights: conte.weights || {},
-        order: conte.order || conte.scene,
-        status: conte.status || 'active',
-        canEdit: conte.canEdit !== false,
-        lastModified: conte.lastModified,
-        modifiedBy: conte.modifiedBy,
-        createdAt: conte.createdAt,
-        updatedAt: conte.updatedAt
-      }))
-// >>>>>>> 113e7129b304338650dbe50def2800702d0ff105
+      console.log('🔄 콘티 데이터를 타임라인 형식으로 변환 시작...')
       
-      console.log('timelineService timelineScenes converted:', timelineScenes.length, 'scenes')
-      console.log('timelineService first scene sample:', timelineScenes[0])
+      const timelineScenes = conteList.map((conte, index) => {
+        console.log(`📝 콘티 ${index + 1} 변환 중:`, {
+          originalId: conte.id || conte._id,
+          scene: conte.scene,
+          title: conte.title,
+          descriptionLength: conte.description?.length || 0,
+          hasImage: !!conte.imageUrl,
+          estimatedDuration: conte.estimatedDuration,
+          type: conte.type
+        })
+        
+        // ID 생성 로직
+        const sceneId = conte.id || conte._id || `scene_${conte.scene || index + 1}`
+        
+        // duration 계산
+        const duration = this.parseDurationToSeconds(conte.estimatedDuration || '5분')
+        
+        // 이미지 URL 변환
+        const convertedImageUrl = this.convertImageUrl(conte.imageUrl)
+        
+        console.log(`✅ 콘티 ${index + 1} 변환 완료:`, {
+          sceneId: sceneId,
+          duration: duration,
+          convertedImageUrl: convertedImageUrl,
+          hasKeywords: !!conte.keywords,
+          hasWeights: !!conte.weights
+        })
+        
+        return {
+          id: sceneId,
+          scene: conte.scene || index + 1,
+          title: conte.title || `씬 ${conte.scene || index + 1}`,
+          description: conte.description || '',
+          dialogue: conte.dialogue || '',
+          cameraAngle: conte.cameraAngle || '',
+          cameraWork: conte.cameraWork || '',
+          characterLayout: conte.characterLayout || '',
+          props: conte.props || '',
+          weather: conte.weather || '',
+          lighting: conte.lighting || '',
+          visualDescription: conte.visualDescription || '',
+          transition: conte.transition || '',
+          lensSpecs: conte.lensSpecs || '',
+          visualEffects: conte.visualEffects || '',
+          type: conte.type || 'live_action',
+          estimatedDuration: conte.estimatedDuration || '5분',
+          duration: duration,
+          imageUrl: convertedImageUrl,
+          // 스케줄링 관련 필드들 추가
+          requiredPersonnel: conte.requiredPersonnel || '',
+          requiredEquipment: conte.requiredEquipment || '',
+          camera: conte.camera || '',
+          keywords: conte.keywords || {
+            location: '미정',
+            equipment: '기본 장비',
+            cast: [],
+            props: [],
+            specialRequirements: [],
+            timeOfDay: '오후',
+            weather: conte.weather || '맑음'
+          },
+          scheduling: conte.scheduling || {
+            camera: {
+              model: '기본 카메라',
+              lens: '기본 렌즈',
+              settings: '기본 설정',
+              movement: '고정'
+            },
+            crew: {
+              director: '감독',
+              cinematographer: '촬영감독',
+              cameraOperator: '카메라맨',
+              lightingDirector: '조명감독',
+              makeupArtist: '메이크업',
+              costumeDesigner: '의상',
+              soundEngineer: '음향감독',
+              artDirector: '미술감독',
+              additionalCrew: []
+            },
+            equipment: {
+              cameras: [],
+              lenses: [],
+              lighting: [],
+              audio: [],
+              grip: [],
+              special: []
+            },
+            shooting: {
+              setupTime: 30,
+              breakdownTime: 15,
+              complexity: '보통',
+              specialNeeds: []
+            }
+          },
+          weights: conte.weights || {},
+          order: conte.order || conte.scene || index + 1,
+          status: conte.status || 'active',
+          canEdit: conte.canEdit !== false,
+          lastModified: conte.lastModified || new Date().toISOString(),
+          modifiedBy: conte.modifiedBy || 'AI',
+          createdAt: conte.createdAt || new Date().toISOString(),
+          updatedAt: conte.updatedAt || new Date().toISOString()
+        }
+      })
+      
+      console.log('✅ 타임라인 씬 변환 완료:', {
+        totalScenes: timelineScenes.length,
+        scenesWithImages: timelineScenes.filter(s => s.imageUrl).length,
+        averageDuration: timelineScenes.reduce((acc, s) => acc + s.duration, 0) / timelineScenes.length,
+        sampleScene: timelineScenes[0] ? {
+          id: timelineScenes[0].id,
+          scene: timelineScenes[0].scene,
+          title: timelineScenes[0].title,
+          duration: timelineScenes[0].duration,
+          hasImage: !!timelineScenes[0].imageUrl,
+          type: timelineScenes[0].type
+        } : null
+      })
       
       return {
         success: true,

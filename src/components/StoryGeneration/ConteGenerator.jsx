@@ -52,7 +52,8 @@ const ConteGenerator = ({
   onGenerationStart,
   onGenerationComplete,
   onImageGenerationUpdate,
-  isDirectMode = false
+  isDirectMode = false,
+  projectId = null
 }) => {
   // Zustand 스토어에서 상태 가져오기
   const {
@@ -453,8 +454,13 @@ const ConteGenerator = ({
     // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
     if (generatedConte && generatedConte.length > 0) {
       localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      
+      // 실제 프로젝트 ID가 있으면 해당 프로젝트 페이지로, 없으면 임시 프로젝트로 이동
+      const targetProjectId = projectId || 'temp-project-id'
+      console.log('🎬 타임라인 이동 - 프로젝트 ID:', targetProjectId)
+      
       // 프로젝트 페이지로 이동 (navigate 함수가 필요하므로 window.location 사용)
-      window.location.href = '/project/temp-project-id'
+      window.location.href = `/project/${targetProjectId}`
     } else {
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
     }

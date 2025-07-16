@@ -45,6 +45,48 @@ export const CAPTION_CARD_STRUCTURE = {
     specialRequirements: [] // 특별 요구사항
   },
   
+  // 스케줄링을 위한 상세 정보
+  scheduling: {
+    // 카메라 상세 정보
+    camera: {
+      model: '기본 카메라', // 카메라 모델
+      lens: '기본 렌즈', // 렌즈 사양
+      settings: '기본 설정', // 카메라 설정
+      movement: '고정' // 카메라 워크
+    },
+    
+    // 필요인력 상세 정보
+    crew: {
+      director: '감독',
+      cinematographer: '촬영감독',
+      cameraOperator: '카메라맨',
+      lightingDirector: '조명감독',
+      makeupArtist: '메이크업',
+      costumeDesigner: '의상',
+      soundEngineer: '음향감독',
+      artDirector: '미술감독',
+      additionalCrew: [] // 추가 인력
+    },
+    
+    // 장비 상세 정보
+    equipment: {
+      cameras: [], // 카메라 목록
+      lenses: [], // 렌즈 목록
+      lighting: [], // 조명 장비
+      audio: [], // 음향 장비
+      grip: [], // 그립 장비
+      special: [] // 특수 장비
+    },
+    
+    // 촬영 설정
+    shooting: {
+      setupTime: 30, // 셋업 시간 (분)
+      breakdownTime: 15, // 정리 시간 (분)
+      complexity: '보통', // 복잡도
+      specialNeeds: [] // 특별 요구사항
+    }
+  },
+  
   // 그래프 가중치 (스케줄링용)
   weights: {
     locationPriority: 1, // 장소 우선순위

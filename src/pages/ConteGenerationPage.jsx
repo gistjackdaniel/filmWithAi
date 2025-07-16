@@ -525,6 +525,41 @@ const ConteGenerationPage = () => {
       conteList: conteList
     })
     
+    // API 응답의 실제 필드 값들을 모두 출력
+    if (conteList && conteList.length > 0) {
+      console.log('📋 API 응답의 실제 필드 값들:')
+      conteList.forEach((conte, index) => {
+        console.log(`📋 콘티 ${index + 1} - API 응답 필드:`, {
+          id: conte.id,
+          scene: conte.scene,
+          title: conte.title,
+          description: conte.description,
+          dialogue: conte.dialogue,
+          cameraAngle: conte.cameraAngle,
+          cameraWork: conte.cameraWork,
+          characterLayout: conte.characterLayout,
+          props: conte.props,
+          weather: conte.weather,
+          lighting: conte.lighting,
+          visualDescription: conte.visualDescription,
+          transition: conte.transition,
+          lensSpecs: conte.lensSpecs,
+          visualEffects: conte.visualEffects,
+          type: conte.type,
+          estimatedDuration: conte.estimatedDuration,
+          // 스케줄링 관련 필드들
+          requiredPersonnel: conte.requiredPersonnel,
+          requiredEquipment: conte.requiredEquipment,
+          camera: conte.camera,
+          keywords: conte.keywords,
+          weights: conte.weights,
+          canEdit: conte.canEdit,
+          lastModified: conte.lastModified,
+          modifiedBy: conte.modifiedBy
+        })
+      })
+    }
+    
     // 스토어에서 이미 처리됨
     
     // 생성된 콘티를 프로젝트에 저장
@@ -581,6 +616,10 @@ const ConteGenerationPage = () => {
                   visualEffects: conte.visualEffects || '',
                   type: conte.type || 'live_action',
                   estimatedDuration: conte.estimatedDuration || '5분',
+                  // 스케줄링 관련 필드들 추가
+                  requiredPersonnel: conte.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+                  requiredEquipment: conte.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+                  camera: conte.camera || 'C1',
                   keywords: conte.keywords || {},
                   weights: conte.weights || {},
                   order: conte.order || index + 1,
@@ -593,6 +632,29 @@ const ConteGenerationPage = () => {
                 
                 const response = await conteAPI.createConte(projectId, conteData)
                 console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
+                console.log(`📋 콘티 ${index + 1} - DB 저장된 필드:`, {
+                  scene: conteData.scene,
+                  title: conteData.title,
+                  description: conteData.description,
+                  dialogue: conteData.dialogue,
+                  cameraAngle: conteData.cameraAngle,
+                  cameraWork: conteData.cameraWork,
+                  characterLayout: conteData.characterLayout,
+                  props: conteData.props,
+                  weather: conteData.weather,
+                  lighting: conteData.lighting,
+                  visualDescription: conteData.visualDescription,
+                  transition: conteData.transition,
+                  lensSpecs: conteData.lensSpecs,
+                  visualEffects: conteData.visualEffects,
+                  type: conteData.type,
+                  estimatedDuration: conteData.estimatedDuration,
+                  requiredPersonnel: conteData.requiredPersonnel,
+                  requiredEquipment: conteData.requiredEquipment,
+                  camera: conteData.camera,
+                  keywords: conteData.keywords,
+                  weights: conteData.weights
+                })
                 return response.data
               } catch (error) {
                 console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
@@ -1105,6 +1167,7 @@ const ConteGenerationPage = () => {
                   onGenerationStart={handleConteGenerationStart}
                   onGenerationComplete={handleConteGenerationComplete}
                   onImageGenerationUpdate={handleImageGenerationUpdate}
+                  projectId={projectId}
                 />
                 
                 {/* 생성된 콘티 결과 표시 */}

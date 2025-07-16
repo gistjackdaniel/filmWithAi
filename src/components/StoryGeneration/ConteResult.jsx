@@ -824,6 +824,36 @@ const ConteResult = ({
                     </Typography>
                   </Grid>
 
+                  {/* 필요 장비 */}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
+                      🛠️ 필요 장비
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      {card.requiredEquipment || '설정 없음'}
+                    </Typography>
+                  </Grid>
+
+                  {/* 필요 인력 */}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
+                      👥 필요 인력
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      {card.requiredPersonnel || '설정 없음'}
+                    </Typography>
+                  </Grid>
+
+                  {/* 카메라 */}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
+                      📷 카메라
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      {card.camera || '설정 없음'}
+                    </Typography>
+                  </Grid>
+
                   {/* 날씨와 지형 */}
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>

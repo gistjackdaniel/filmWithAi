@@ -1018,6 +1018,10 @@ JSON 이외의 텍스트는 포함하지 마세요.
           visualEffects: removeMarkdown(card.visualEffects || '설정 없음'),
           type: card.type || 'generated_video', // 기본값: AI 생성 비디오
           estimatedDuration: card.estimatedDuration || '5분',
+          // 스케줄링 정보 - 필요인력, 필요장비, 카메라 정보 추가
+          requiredPersonnel: card.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
+          requiredEquipment: card.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
+          camera: card.camera || 'C1',
           // 키워드 노드 정보 - timeOfDay가 반드시 포함되도록 파싱
           keywords: parseKeywords(card.keywords),
           // 그래프 가중치 - 개별 파싱

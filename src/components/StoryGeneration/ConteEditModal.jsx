@@ -305,18 +305,27 @@ const ConteEditModal = ({
   /**
    * 저장 핸들러
    */
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log('💾 저장 버튼 클릭됨')
-    console.log('onSave 함수:', onSave)
     console.log('editedConte:', editedConte)
     
+    try {
     if (onSave) {
       console.log('✅ onSave 함수 호출')
       onSave(editedConte)
       console.log('✅ onSave 함수 호출 완료')
+      toast.success('콘티가 성공적으로 저장되었습니다!')
     } else {
       console.error('❌ onSave 함수가 없습니다!')
+      toast.error('저장 기능을 사용할 수 없습니다.')
+      return
     }
+  } catch (error) {
+    console.error('❌ 콘티 저장 실패:', error)
+    toast.error('콘티 저장에 실패했습니다.')
+    return
+  }
+  
     onClose()
   }
 
@@ -899,6 +908,24 @@ const ConteEditModal = ({
                         variant="outlined"
                       />
                     </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="필요 장비"
+                        value={editedConte?.requiredEquipment || ''}
+                        onChange={(e) => handleFieldChange('requiredEquipment', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="카메라"
+                        value={editedConte?.camera || ''}
+                        onChange={(e) => handleFieldChange('camera', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
                   </Grid>
                 </AccordionDetails>
               </Accordion>
@@ -945,6 +972,15 @@ const ConteEditModal = ({
                         label="날씨"
                         value={editedConte?.weather || ''}
                         onChange={(e) => handleFieldChange('weather', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="필요 인력"
+                        value={editedConte?.requiredPersonnel || ''}
+                        onChange={(e) => handleFieldChange('requiredPersonnel', e.target.value)}
                         variant="outlined"
                       />
                     </Grid>
