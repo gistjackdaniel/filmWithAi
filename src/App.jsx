@@ -12,7 +12,7 @@ import SchedulerTestPage from './pages/SchedulerTestPage'
 import SimpleSchedulePage from './pages/SimpleSchedulePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
-import DebugPanel from './components/DebugPanel'
+
 
 /**
  * SceneForge 메인 앱 컴포넌트
@@ -159,8 +159,7 @@ function App() {
         
       </Routes>
 
-      {/* 개발자 디버그 패널 */}
-      <DebugPanel />
+
     </ErrorBoundary>
   )
 }

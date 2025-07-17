@@ -389,18 +389,40 @@ const ConteResult = ({
    * @param {Object} keywords - 키워드 노드 정보
    * @returns {JSX.Element} 키워드 노드 표시
    */
-  const renderKeywords = (keywords) => (
+  const renderKeywords = (keywords, card) => (
     <Box sx={{ mt: 2 }}>
       <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
         🔗 키워드 노드
       </Typography>
       <Grid container spacing={1}>
-        <Grid item xs={6} md={3}>
+        <Grid item xs={12} md={6}>
           <Chip 
             icon={<Person />} 
-            label={keywords.userInfo} 
+            label={card?.requiredPersonnel || keywords.userInfo} 
             size="small" 
             variant="outlined"
+            sx={{ 
+              maxWidth: '100%',
+              '& .MuiChip-label': {
+                whiteSpace: 'normal',
+                textAlign: 'left'
+              }
+            }}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Chip 
+            icon={<Build />} 
+            label={card?.requiredEquipment || keywords.equipment} 
+            size="small" 
+            variant="outlined"
+            sx={{ 
+              maxWidth: '100%',
+              '& .MuiChip-label': {
+                whiteSpace: 'normal',
+                textAlign: 'left'
+              }
+            }}
           />
         </Grid>
         <Grid item xs={6} md={3}>
@@ -413,16 +435,8 @@ const ConteResult = ({
         </Grid>
         <Grid item xs={6} md={3}>
           <Chip 
-            icon={<Schedule />} 
-            label={keywords.date} 
-            size="small" 
-            variant="outlined"
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <Chip 
-            icon={<Build />} 
-            label={keywords.equipment} 
+            icon={<Videocam />} 
+            label={card?.camera || '기본 카메라'} 
             size="small" 
             variant="outlined"
           />
@@ -917,7 +931,7 @@ const ConteResult = ({
                   {/* 키워드 노드 정보 */}
                   {card.keywords && (
                     <Grid item xs={12}>
-                      {renderKeywords(card.keywords)}
+                      {renderKeywords(card.keywords, card)}
                     </Grid>
                   )}
 
