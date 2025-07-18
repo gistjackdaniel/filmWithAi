@@ -50,6 +50,13 @@ const SceneImageGenerator = ({
     { value: 'minimalist', label: '미니멀', description: '간결하고 깔끔한 스타일' }
   ]
 
+  // 백엔드 서버 주소를 환경변수 또는 기본값으로 설정
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `${BACKEND_URL}${url}`;
+  };
+
   /**
    * 이미지 생성 핸들러
    */
@@ -229,7 +236,7 @@ const SceneImageGenerator = ({
             {/* 이미지 */}
             <CardMedia
               component="img"
-              image={generatedImage.imageUrl}
+              image={getImageUrl(generatedImage.imageUrl)}
               alt="생성된 씬 이미지"
               sx={{
                 borderRadius: 2,

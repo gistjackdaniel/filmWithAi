@@ -338,6 +338,20 @@ const calculateSceneDuration = (sceneData) => {
  */
 app.post('/api/image/generate', async (req, res) => {
   try {
+    // 개발 환경에서는 임시 이미지 반환
+    if (process.env.NODE_ENV === 'development') {
+      // 서버가 정적 파일을 /uploads/images 경로로 서비스한다고 가정
+      const imageUrl = `/uploads/images/dev_placeholder.png`;
+      console.log('🥝🥝🥝 AI 이미지 안 만듦');
+      return res.json({
+        success: true,
+        imageUrl: imageUrl,
+        prompt: '[개발용 임시 이미지]',
+        generatedAt: new Date().toISOString(),
+        model: 'dev-placeholder',
+        isFreeTier: true
+      });
+    }
     const { sceneDescription, style = 'cinematic', genre = '일반', size = '1024x1024' } = req.body
 
     // 입력 검증

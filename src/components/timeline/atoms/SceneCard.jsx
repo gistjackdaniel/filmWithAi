@@ -200,6 +200,13 @@ const SceneCard = React.memo(({
     )
   }
 
+  // 백엔드 서버 주소를 환경변수 또는 기본값으로 설정
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `${BACKEND_URL}${url}`;
+  };
+
   return (
     <Box
       ref={setNodeRef}
@@ -383,7 +390,7 @@ const SceneCard = React.memo(({
             if (processedUrl) {
               return (
                 <img 
-                  src={processedUrl} 
+                  src={getImageUrl(processedUrl)} 
                   alt={`씬 ${scene.components?.sceneNumber || scene.scene} 이미지`}
                   style={{
                     width: '100%',
