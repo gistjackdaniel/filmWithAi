@@ -278,8 +278,7 @@ const ConteEditModal = ({
         modifiedBy: '사용자',
         description: `${editedConte.description} (재생성됨)`,
         dialogue: editedConte.dialogue ? `${editedConte.dialogue} (재생성됨)` : '새로운 대사가 생성되었습니다.',
-        cameraAngle: editedConte.cameraAngle ? `${editedConte.cameraAngle} (재생성됨)` : '새로운 카메라 앵글',
-        cameraWork: editedConte.cameraWork ? `${editedConte.cameraWork} (재생성됨)` : '새로운 카메라 워크',
+
         visualDescription: editedConte.visualDescription ? `${editedConte.visualDescription} (재생성됨)` : '새로운 시각적 설명'
       }
       
@@ -872,24 +871,7 @@ const ConteEditModal = ({
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="카메라 앵글"
-                        value={editedConte?.cameraAngle || ''}
-                        onChange={(e) => handleFieldChange('cameraAngle', e.target.value)}
-                        variant="outlined"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="카메라 워크"
-                        value={editedConte?.cameraWork || ''}
-                        onChange={(e) => handleFieldChange('cameraWork', e.target.value)}
-                        variant="outlined"
-                      />
-                    </Grid>
+
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
@@ -939,42 +921,25 @@ const ConteEditModal = ({
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="인물 배치"
-                        value={editedConte?.characterLayout || ''}
-                        onChange={(e) => handleFieldChange('characterLayout', e.target.value)}
-                        variant="outlined"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="소품"
-                        value={editedConte?.props || ''}
-                        onChange={(e) => handleFieldChange('props', e.target.value)}
-                        variant="outlined"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="조명"
-                        value={editedConte?.lighting || ''}
-                        onChange={(e) => handleFieldChange('lighting', e.target.value)}
-                        variant="outlined"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="날씨"
-                        value={editedConte?.weather || ''}
-                        onChange={(e) => handleFieldChange('weather', e.target.value)}
-                        variant="outlined"
-                      />
-                    </Grid>
+
+                                          <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="조명"
+                          value={editedConte?.lighting || ''}
+                          onChange={(e) => handleFieldChange('lighting', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="날씨"
+                          value={editedConte?.weather || ''}
+                          onChange={(e) => handleFieldChange('weather', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth

@@ -13,7 +13,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
-import TimelineViewer from '../components/timeline/organisms/TimelineViewer'
+import CutTimelineViewer from '../components/timeline/organisms/CutTimelineViewer'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import StoryResult from '../components/StoryGeneration/StoryResult' // StoryResult 컴포넌트 추가
@@ -36,18 +36,21 @@ const ProjectPage = () => {
   // 타임라인 스토어
   const {
     scenes,
-    selectedSceneId,
+    selectedCutId,
+    selectedSceneId, // 추가
     loading: timelineLoading,
     error: timelineError,
     modalOpen,
     currentScene,
     setCurrentProjectId,
     loadProjectContes,
-    selectScene,
+    selectCut,
     openModal,
     closeModal,
     disconnectRealtimeUpdates,
-    loadSceneDetails
+    loadSceneDetails,
+    generateCutsForScene,
+    generateCutsForAllScenes
   } = useTimelineStore()
   
   // 로컬 상태 관리
@@ -100,8 +103,7 @@ const ProjectPage = () => {
             console.log('  - 키워드:', scene.keywords)
             console.log('  - 시각적 설명:', scene.visualDescription?.substring(0, 50) + '...')
             console.log('  - 대사:', scene.dialogue?.substring(0, 50) + '...')
-            console.log('  - 카메라 앵글:', scene.cameraAngle)
-            console.log('  - 카메라 워크:', scene.cameraWork)
+            
             console.log('  - 캐릭터 배치:', scene.characterLayout)
             console.log('  - 소품:', scene.props)
             console.log('  - 날씨:', scene.weather)
@@ -304,8 +306,7 @@ const ProjectPage = () => {
         console.log('  - 키워드:', conte.keywords)
         console.log('  - 시각적 설명:', conte.visualDescription?.substring(0, 50) + '...')
         console.log('  - 대사:', conte.dialogue?.substring(0, 50) + '...')
-        console.log('  - 카메라 앵글:', conte.cameraAngle)
-        console.log('  - 카메라 워크:', conte.cameraWork)
+        
         console.log('  - 캐릭터 배치:', conte.characterLayout)
         console.log('  - 소품:', conte.props)
         console.log('  - 날씨:', conte.weather)
@@ -524,30 +525,30 @@ const ProjectPage = () => {
   }
 
   /**
-   * 씬 클릭 핸들러
+   * 컷 클릭 핸들러
    */
-  const handleSceneClick = useCallback(async (scene) => {
+  const handleCutClick = useCallback(async (cut) => {
     try {
-      console.log('ProjectPage handleSceneClick called with scene:', scene)
+      console.log('ProjectPage handleCutClick called with cut:', cut)
       
-      // 씬 선택
-      selectScene(scene.id)
+      // 컷 선택
+      selectCut(cut.id)
       
-      // ConteEditModal을 직접 열기 (SceneDetailModal 대신)
-      setEditingScene(scene)
+      // ConteEditModal을 직접 열기
+      setEditingScene(cut)
       setEditModalOpen(true)
       
     } catch (error) {
-      console.error('ProjectPage handleSceneClick error:', error)
-      toast.error('씬 정보를 불러오는데 실패했습니다.')
+      console.error('ProjectPage handleCutClick error:', error)
+      toast.error('컷 정보를 불러오는데 실패했습니다.')
     }
-  }, [selectScene])
+  }, [selectCut])
 
   /**
-   * 씬 편집 핸들러
+   * 컷 편집 핸들러
    */
-  const handleSceneEdit = useCallback((scene) => {
-    setEditingScene(scene)
+  const handleCutEdit = useCallback((cut) => {
+    setEditingScene(cut)
     setEditModalOpen(true)
   }, [])
 
@@ -560,26 +561,26 @@ const ProjectPage = () => {
   }, [])
 
   /**
-   * 편집된 씬 저장 핸들러
+   * 편집된 컷 저장 핸들러
    */
-  const handleSaveScene = useCallback(async (editedScene) => {
+  const handleSaveScene = useCallback(async (editedCut) => {
     try {
-      // 타임라인 스토어에서 씬 업데이트
-      const { updateScene } = useTimelineStore.getState()
-      updateScene(editedScene.id, editedScene)
+      // 타임라인 스토어에서 컷 업데이트
+      const { updateCut } = useTimelineStore.getState()
+      updateCut(editedCut.id, editedCut)
       
       // 서버에 변경사항 저장
       const timelineService = (await import('../services/timelineService')).default
-      const result = await timelineService.updateScene(projectId, editedScene)
+      const result = await timelineService.updateCut(projectId, editedCut)
       
       if (result.success) {
-        toast.success('씬이 저장되었습니다.')
+        toast.success('컷이 저장되었습니다.')
       } else {
-        toast.error(result.error || '씬 저장에 실패했습니다.')
+        toast.error(result.error || '컷 저장에 실패했습니다.')
       }
     } catch (error) {
-      console.error('씬 저장 실패:', error)
-      toast.error('씬 저장에 실패했습니다.')
+      console.error('컷 저장 실패:', error)
+      toast.error('컷 저장에 실패했습니다.')
     }
     handleEditModalClose()
   }, [projectId, handleEditModalClose])
@@ -598,6 +599,20 @@ const ProjectPage = () => {
   }, [])
 
   /**
+   * 씬 편집 핸들러
+   */
+  const handleSceneEdit = useCallback((editedScene) => {
+    try {
+      console.log('✏️ 씬 편집:', editedScene)
+      // 씬 편집 로직 구현
+      toast.success('씬이 수정되었습니다.')
+    } catch (error) {
+      console.error('❌ 씬 편집 실패:', error)
+      toast.error('씬 편집에 실패했습니다.')
+    }
+  }, [])
+
+  /**
    * 씬 재생성 핸들러
    */
   const handleRegenerateScene = useCallback(async (scene) => {
@@ -611,10 +626,10 @@ const ProjectPage = () => {
   }, [])
 
   /**
-   * 씬 정보 핸들러
+   * 컷 정보 핸들러
    */
-  const handleSceneInfo = useCallback((scene) => {
-    openModal(scene)
+  const handleCutInfo = useCallback((cut) => {
+    openModal(cut)
   }, [openModal])
 
   /**
@@ -625,28 +640,73 @@ const ProjectPage = () => {
   }, [])
 
   /**
-   * 씬 순서 변경 핸들러
+   * 컷 순서 변경 핸들러
    */
-  const handleScenesReorder = useCallback(async (newScenes) => {
+  const handleCutsReorder = useCallback(async (newCuts) => {
     try {
       // 타임라인 스토어 업데이트
-      const { updateScenesOrder } = useTimelineStore.getState()
-      updateScenesOrder(newScenes)
+      const { updateCutsOrder } = useTimelineStore.getState()
+      updateCutsOrder(newCuts)
       
       // 서버에 순서 변경 저장
       const timelineService = (await import('../services/timelineService')).default
-      const result = await timelineService.reorderScenes(projectId, newScenes)
+      const result = await timelineService.reorderCuts(projectId, newCuts)
       
       if (result.success) {
-        toast.success('씬 순서가 변경되었습니다.')
+        toast.success('컷 순서가 변경되었습니다.')
       } else {
-        toast.error(result.error || '씬 순서 변경에 실패했습니다.')
+        toast.error(result.error || '컷 순서 변경에 실패했습니다.')
       }
     } catch (error) {
-      console.error('씬 순서 변경 실패:', error)
-      toast.error('씬 순서 변경에 실패했습니다.')
+      console.error('컷 순서 변경 실패:', error)
+      toast.error('컷 순서 변경에 실패했습니다.')
     }
   }, [projectId])
+
+  /**
+   * 특정 씬에 컷 생성
+   */
+  const handleGenerateCutsForScene = useCallback(async (scene) => {
+    try {
+      console.log('🎬 씬 컷 생성 시작:', scene)
+      
+      const result = await generateCutsForScene(scene)
+      
+      if (result.success) {
+        toast.success(`${scene.title} 씬에 ${result.cuts.length}개의 컷이 생성되었습니다.`)
+        console.log('✅ 컷 생성 완료:', result.cuts)
+      } else {
+        toast.error(`컷 생성 실패: ${result.error}`)
+        console.error('❌ 컷 생성 실패:', result.error)
+      }
+    } catch (error) {
+      toast.error('컷 생성 중 오류가 발생했습니다.')
+      console.error('❌ 컷 생성 오류:', error)
+    }
+  }, [generateCutsForScene])
+
+  /**
+   * 모든 씬에 컷 생성
+   */
+  const handleGenerateCutsForAllScenes = useCallback(async () => {
+    try {
+      console.log('🎬 모든 씬 컷 생성 시작')
+      
+      const result = await generateCutsForAllScenes()
+      
+      if (result.success) {
+        const successCount = result.results.filter(r => r.success).length
+        toast.success(`${successCount}개 씬에 컷이 생성되었습니다.`)
+        console.log('✅ 모든 씬 컷 생성 완료:', result.results)
+      } else {
+        toast.error(`컷 생성 실패: ${result.error}`)
+        console.error('❌ 모든 씬 컷 생성 실패:', result.error)
+      }
+    } catch (error) {
+      toast.error('컷 생성 중 오류가 발생했습니다.')
+      console.error('❌ 모든 씬 컷 생성 오류:', error)
+    }
+  }, [generateCutsForAllScenes])
 
   /**
    * 스케줄러 보기 핸들러
@@ -713,8 +773,21 @@ const ProjectPage = () => {
           color="inherit" 
           startIcon={<PlayArrow />}
           onClick={handleGenerateConte}
+          sx={{ mr: 1 }}
         >
           콘티 생성
+        </Button>
+        
+        {/* 컷 생성 버튼 */}
+        <Button 
+          color="inherit" 
+          startIcon={<PlayArrow />}
+          onClick={handleGenerateCutsForAllScenes}
+          disabled={!scenes || scenes.length === 0}
+          title={!scenes || scenes.length === 0 ? '먼저 콘티를 생성해주세요' : '모든 씬에 컷 생성'}
+          sx={{ mr: 1 }}
+        >
+          컷 생성
         </Button>
       </CommonHeader>
 
@@ -788,15 +861,17 @@ const ProjectPage = () => {
             projectId
           })}
           
-          <TimelineViewer
+          <CutTimelineViewer
             scenes={scenes || []}
             loading={timelineLoading || false}
-            selectedSceneId={selectedSceneId || null}
-            onSceneClick={handleSceneClick}
-            onSceneEdit={handleSceneEdit}
-            onSceneInfo={handleSceneInfo}
-            onScenesReorder={handleScenesReorder}
-            emptyMessage="콘티가 없습니다. AI를 사용하여 콘티를 생성해보세요."
+            selectedCutId={selectedCutId || null}
+            onCutClick={handleCutClick}
+            onCutEdit={handleCutEdit}
+            onCutInfo={handleCutInfo}
+            onCutsReorder={handleCutsReorder}
+            onGenerateConte={handleGenerateConte}
+            onGenerateCuts={handleGenerateCutsForAllScenes}
+            emptyMessage="컷이 없습니다. AI를 사용하여 콘티를 생성해보세요."
             timeScale={100} // 1초당 100픽셀로 더 크게 증가
             zoomLevel={1}
             showTimeInfo={true}

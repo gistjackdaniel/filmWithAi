@@ -798,45 +798,9 @@ const ConteResult = ({
                     })()}
                   </Grid>
 
-                  {/* 카메라/그림 앵글과 구도를 설명하는 배치도 */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
-                      📷 카메라/그림 앵글과 구도를 설명하는 배치도
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      {card.cameraAngle || '설정 없음'}
-                    </Typography>
-                  </Grid>
 
-                  {/* 카메라 워크 및 그림의 장면 전환을 설명하는 화살표들 */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
-                      🎥 카메라 워크 및 그림의 장면 전환을 설명하는 화살표들
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      {card.cameraWork || '설정 없음'}
-                    </Typography>
-                  </Grid>
 
-                  {/* 인물 배치도와 인물의 동선을 설명하는 화살표 */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
-                      👥 인물 배치도와 인물의 동선을 설명하는 화살표
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      {card.characterLayout || '설정 없음'}
-                    </Typography>
-                  </Grid>
 
-                  {/* 소품 배치 */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
-                      🎭 소품 배치
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      {card.props || '설정 없음'}
-                    </Typography>
-                  </Grid>
 
                   {/* 필요 장비 */}
                   <Grid item xs={12} md={6}>
@@ -868,6 +832,16 @@ const ConteResult = ({
                     </Typography>
                   </Grid>
 
+                  {/* 조명 */}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
+                      💡 조명
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      {card.lighting || '설정 없음'}
+                    </Typography>
+                  </Grid>
+
                   {/* 날씨와 지형 */}
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
@@ -878,15 +852,7 @@ const ConteResult = ({
                     </Typography>
                   </Grid>
 
-                  {/* 조명 */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="var(--color-accent)" gutterBottom>
-                      💡 조명
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      {card.lighting || '설정 없음'}
-                    </Typography>
-                  </Grid>
+
 
                   {/* 각 장면과 시퀀스를 직관적으로 이해시킬 대표적인 그림 설명 */}
                   <Grid item xs={12}>

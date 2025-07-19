@@ -233,8 +233,7 @@ const DirectStoryPage = () => {
       },
       visualDescription: conte.visualDescription || conte.description || '시각적 설명 없음',
       dialogue: conte.dialogue || '',
-      cameraAngle: conte.cameraAngle || '중간 샷',
-      cameraWork: conte.cameraWork || '고정',
+      
       characterLayout: conte.characterLayout || '중앙 배치',
       props: conte.props || '기본 소품',
       weather: conte.weather || '맑음',
@@ -641,8 +640,7 @@ const DirectStoryPage = () => {
         console.log('  - 키워드:', conte.keywords)
         console.log('  - 시각적 설명:', conte.visualDescription?.substring(0, 50) + '...')
         console.log('  - 대사:', conte.dialogue?.substring(0, 50) + '...')
-        console.log('  - 카메라 앵글:', conte.cameraAngle)
-        console.log('  - 카메라 워크:', conte.cameraWork)
+        
         console.log('  - 캐릭터 배치:', conte.characterLayout)
         console.log('  - 소품:', conte.props)
         console.log('  - 날씨:', conte.weather)
@@ -676,8 +674,7 @@ const DirectStoryPage = () => {
           keywords: conte.keywords || {},
           visualDescription: conte.visualDescription || '',
           dialogue: conte.dialogue || '',
-          cameraAngle: conte.cameraAngle || '',
-          cameraWork: conte.cameraWork || '',
+          
           characterLayout: conte.characterLayout || '',
           props: conte.props || '',
           weather: conte.weather || '',
@@ -704,8 +701,7 @@ const DirectStoryPage = () => {
         console.log('  - 키워드:', scene.keywords)
         console.log('  - 시각적 설명:', scene.visualDescription?.substring(0, 50) + '...')
         console.log('  - 대사:', scene.dialogue?.substring(0, 50) + '...')
-        console.log('  - 카메라 앵글:', scene.cameraAngle)
-        console.log('  - 카메라 워크:', scene.cameraWork)
+        
         console.log('  - 캐릭터 배치:', scene.characterLayout)
         console.log('  - 소품:', scene.props)
         console.log('  - 날씨:', scene.weather)

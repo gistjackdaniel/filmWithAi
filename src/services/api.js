@@ -104,6 +104,35 @@ export const aiAPI = {
   generateConte: (story, options = {}) => api.post('/conte/generate', { story, ...options })
 }
 
+/**
+ * 컷 관리 API
+ */
+export const cutAPI = {
+  // 씬에서 컷 생성
+  generateCuts: (sceneData) => api.post('/cuts/generate', { sceneData }),
+  
+  // 컷 목록 조회
+  getCuts: (projectId, conteId, params = {}) => api.get(`/projects/${projectId}/contes/${conteId}/cuts`, { params }),
+  
+  // 특정 컷 조회
+  getCut: (projectId, conteId, cutId) => api.get(`/projects/${projectId}/contes/${conteId}/cuts/${cutId}`),
+  
+  // 컷 업데이트
+  updateCut: (projectId, conteId, cutId, updateData) => api.put(`/projects/${projectId}/contes/${conteId}/cuts/${cutId}`, updateData),
+  
+  // 컷 삭제
+  deleteCut: (projectId, conteId, cutId) => api.delete(`/projects/${projectId}/contes/${conteId}/cuts/${cutId}`),
+  
+  // 컷 순서 변경
+  reorderCuts: (projectId, conteId, cutOrders) => api.put(`/projects/${projectId}/contes/${conteId}/cuts/reorder`, { cutOrders }),
+  
+  // 컷 타입별 조회
+  getCutsByType: (projectId, conteId, cutType) => api.get(`/projects/${projectId}/contes/${conteId}/cuts/type/${cutType}`),
+  
+  // 같은 시공간의 컷들 조회
+  getCutsBySpacetime: (projectId, conteId, spacetime) => api.get(`/projects/${projectId}/contes/${conteId}/cuts/spacetime/${spacetime}`)
+}
+
 // ===== 요청 인터셉터 =====
 // 모든 API 요청이 전송되기 전에 실행되는 미들웨어
 api.interceptors.request.use(

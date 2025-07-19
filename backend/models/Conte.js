@@ -43,33 +43,7 @@ const conteSchema = new mongoose.Schema({
     maxlength: 500
   },
   
-  cameraAngle: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 300
-  },
-  
-  cameraWork: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 300
-  },
-  
-  characterLayout: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 300
-  },
-  
-  props: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 300
-  },
+
   
   weather: {
     type: String,
@@ -434,6 +408,49 @@ const conteSchema = new mongoose.Schema({
 // 가상 필드: 씬 번호 (순서 기반)
 conteSchema.virtual('sceneNumber').get(function() {
   return this.scene || this.order + 1;
+});
+
+// 가상 필드: 컷 목록 (관계)
+conteSchema.virtual('cuts', {
+  ref: 'Cut',
+  localField: '_id',
+  foreignField: 'conteId',
+  options: { sort: { order: 1 } }
+});
+
+// 가상 필드: 컷 수
+conteSchema.virtual('cutCount', {
+  ref: 'Cut',
+  localField: '_id',
+  foreignField: 'conteId',
+  count: true
+});
+
+// 가상 필드: 실사 촬영 컷 수
+conteSchema.virtual('liveActionCutCount', {
+  ref: 'Cut',
+  localField: '_id',
+  foreignField: 'conteId',
+  count: true,
+  match: { productionMethod: 'live_action' }
+});
+
+// 가상 필드: AI 생성 컷 수
+conteSchema.virtual('aiGeneratedCutCount', {
+  ref: 'Cut',
+  localField: '_id',
+  foreignField: 'conteId',
+  count: true,
+  match: { productionMethod: 'ai_generated' }
+});
+
+// 가상 필드: 총 예상 지속 시간 (컷들의 합계)
+conteSchema.virtual('totalEstimatedDuration').get(function() {
+  // 이 가상 필드는 populate 후에 계산됨
+  if (this.cuts && Array.isArray(this.cuts)) {
+    return this.cuts.reduce((sum, cut) => sum + (cut.estimatedDuration || 0), 0);
+  }
+  return 0;
 });
 
 // 인덱스 설정

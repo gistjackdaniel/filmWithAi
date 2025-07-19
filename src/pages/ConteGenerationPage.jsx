@@ -535,8 +535,7 @@ const ConteGenerationPage = () => {
           title: conte.title,
           description: conte.description,
           dialogue: conte.dialogue,
-          cameraAngle: conte.cameraAngle,
-          cameraWork: conte.cameraWork,
+          
           characterLayout: conte.characterLayout,
           props: conte.props,
           weather: conte.weather,
@@ -604,8 +603,7 @@ const ConteGenerationPage = () => {
                   title: conte.title,
                   description: conte.description,
                   dialogue: conte.dialogue || '',
-                  cameraAngle: conte.cameraAngle || '',
-                  cameraWork: conte.cameraWork || '',
+                  
                   characterLayout: conte.characterLayout || '',
                   props: conte.props || '',
                   weather: conte.weather || '',
@@ -637,8 +635,7 @@ const ConteGenerationPage = () => {
                   title: conteData.title,
                   description: conteData.description,
                   dialogue: conteData.dialogue,
-                  cameraAngle: conteData.cameraAngle,
-                  cameraWork: conteData.cameraWork,
+                  
                   characterLayout: conteData.characterLayout,
                   props: conteData.props,
                   weather: conteData.weather,

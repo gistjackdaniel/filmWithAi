@@ -18,7 +18,7 @@ import {
 import TimelineScroll from '../atoms/TimelineScroll'
 import TimelineNavigation from '../molecules/TimelineNavigation'
 import TimelineFilters from '../molecules/TimelineFilters'
-import SceneCard from '../atoms/SceneCard'
+import CutCard from '../atoms/CutCard'
 import TimeRuler from '../atoms/TimeRuler'
 import { CaptionCardType } from '../../../types/timeline'
 import { 
@@ -41,15 +41,15 @@ import {
 const TimelineViewer = (props) => {
   // props를 안전하게 구조분해
   const {
-    scenes = [],
+    scenes = [], // 씬 배열 (각 씬 안에 컷들이 포함됨)
     loading = false,
-    selectedSceneId = null,
-    onSceneClick,
-    onSceneEdit,
-    onSceneInfo,
-    onScenesReorder,
+    selectedCutId = null,
+    onCutClick, // 컷 클릭 핸들러
+    onCutEdit, // 컷 편집 핸들러
+    onCutInfo, // 컷 정보 핸들러
+    onCutsReorder, // 컷 순서 변경 핸들러
     onGenerateConte, // 콘티 생성 핸들러
-    emptyMessage = "콘티가 없습니다. AI를 사용하여 콘티를 생성해보세요.",
+    emptyMessage = "컷이 없습니다. AI를 사용하여 콘티를 생성해보세요.",
     // 시간 기반 타임라인 관련 props
     timeScale = 1, // 픽셀당 시간 (초)
     zoomLevel = 1, // 줌 레벨
@@ -115,8 +115,7 @@ const TimelineViewer = (props) => {
       console.log('  - 키워드:', scene.keywords)
       console.log('  - 시각적 설명:', scene.visualDescription?.substring(0, 50) + '...')
       console.log('  - 대사:', scene.dialogue?.substring(0, 50) + '...')
-      console.log('  - 카메라 앵글:', scene.cameraAngle)
-      console.log('  - 카메라 워크:', scene.cameraWork)
+
       console.log('  - 캐릭터 배치:', scene.characterLayout)
       console.log('  - 소품:', scene.props)
       console.log('  - 날씨:', scene.weather)

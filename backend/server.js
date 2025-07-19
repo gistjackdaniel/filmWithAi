@@ -99,18 +99,617 @@ if (!OPENAI_API_KEY) {
   process.exit(1)
 }
 
+/**
+ * LLM을 사용하여 씬 정보를 기반으로 컷들을 생성하는 함수
+ * @param {Object} sceneData - 씬 데이터
+ * @returns {Array} 생성된 컷 배열
+ */
+const generateCutsFromScene = async (sceneData) => {
+  try {
+    const cuts = []
+    const sceneDuration = calculateSceneDuration(sceneData)
+    const totalSeconds = Math.floor(sceneDuration * 60) // 분을 초로 변환
+    
+    // 데모 시연을 위한 컷 수 조정 (한 씬당 3-5개 컷)
+    // 기존 코드: const baseCutDuration = 10
+    // 기존 코드: const numCuts = Math.ceil(totalSeconds / baseCutDuration)
+    
+    // 새로운 로직: 씬 지속시간에 따라 3-5개 컷 생성
+    let numCuts = 3 // 기본 3개 컷
+    if (sceneDuration >= 3) numCuts = 4 // 3분 이상이면 4개 컷
+    if (sceneDuration >= 5) numCuts = 5 // 5분 이상이면 5개 컷
+    
+    const baseCutDuration = Math.floor(totalSeconds / numCuts) // 컷당 평균 지속시간
+    
+    // 씬에서 파싱 가능한 정보들
+    const sceneInfo = {
+      title: sceneData.title || '',
+      description: sceneData.description || '',
+      keywords: sceneData.keywords || [],
+      weights: sceneData.weights || [],
+      timeOfDay: sceneData.keywords?.find(k => k.includes('timeOfDay'))?.split(':')[1]?.trim() || '낮',
+      location: sceneData.keywords?.find(k => k.includes('location'))?.split(':')[1]?.trim() || '',
+      characters: sceneData.keywords?.find(k => k.includes('characters'))?.split(':')[1]?.trim() || '',
+      mood: sceneData.keywords?.find(k => k.includes('mood'))?.split(':')[1]?.trim() || '',
+      lighting: sceneData.keywords?.find(k => k.includes('lighting'))?.split(':')[1]?.trim() || '자연광',
+      weather: sceneData.keywords?.find(k => k.includes('weather'))?.split(':')[1]?.trim() || '맑음',
+      equipment: sceneData.keywords?.find(k => k.includes('equipment'))?.split(':')[1]?.trim() || '',
+      dialogue: sceneData.description || '',
+      narration: sceneData.description || ''
+    }
+    
+    // LLM을 사용하여 컷 생성 프롬프트 작성
+    const prompt = `
+다음 씬 정보를 바탕으로 ${numCuts}개의 컷을 생성해주세요.
+
+**씬 정보:**
+- 제목: ${sceneInfo.title}
+- 설명: ${sceneInfo.description}
+- 시간대: ${sceneInfo.timeOfDay}
+- 장소: ${sceneInfo.location}
+- 등장인물: ${sceneInfo.characters}
+- 분위기: ${sceneInfo.mood}
+- 조명: ${sceneInfo.lighting}
+- 날씨: ${sceneInfo.weather}
+- 장비: ${sceneInfo.equipment}
+- 대사: ${sceneInfo.dialogue}
+- 총 지속시간: ${sceneDuration}분 (${totalSeconds}초)
+- 컷 개수: ${numCuts}개 (각 컷 평균 ${baseCutDuration}초)
+
+**중요한 제약사항:**
+1. 모든 컷은 반드시 같은 시간대(${sceneInfo.timeOfDay})를 유지해야 합니다.
+2. 모든 컷은 반드시 같은 장소(${sceneInfo.location})를 유지해야 합니다.
+3. 모든 컷은 반드시 같은 등장인물(${sceneInfo.characters})을 유지해야 합니다.
+4. 모든 컷은 씬 전체의 분위기(${sceneInfo.mood})를 해치지 않아야 하며, 감정의 흐름에 따라 컷마다 다르게 표현될 수 있습니다.
+   예: 긴장된 씬이라면 컷마다 다르게 표현되더라도 전체적으로 긴장감을 유지해야 합니다.
+5. 모든 컷의 조명(${sceneInfo.lighting})은 씬의 기본 조명 스타일을 기반으로 하지만, 샷 구도나 감정 강조에 따라 세부 조명이 컷마다 조절될 수 있습니다.
+   예: 형광등 조명 기반이라면 일부 컷에 역광, 실루엣 등 연출적 조명도 허용됩니다.
+6. 모든 컷은 반드시 같은 날씨(${sceneInfo.weather})를 유지해야 합니다.
+7. 모든 컷은 씬에서 정의된 주요 장비(${sceneInfo.equipment})를 중심으로 구성하되, 필요한 경우 보조적인 카메라 장비(예: 드론, 짐벌 등)를 일부 컷에 한해 추가로 사용할 수 있습니다.
+   단, 장비의 변화는 촬영 스타일의 일관성을 해치지 않아야 합니다.
+8. 각 컷의 샷 사이즈, 앵글 방향, 카메라 움직임은 씬의 분위기와 컷의 순서에 따라 다양하게 생성해야 합니다.
+9. 조명 세팅은 씬의 기본 조명을 기반으로 하되, 각 컷의 분위기와 샷 구도에 맞게 세부 조정해야 합니다.
+   예: 자연광 기반 씬이라면 메인 라이트는 창문, 필 라이트는 반사판, 백 라이트는 역광으로 설정
+
+**영화 제작 표준 컷 생성 규칙:**
+
+**샷 사이즈 (Shot Size):**
+- EWS (Extreme Wide Shot): 전체 환경을 보여주는 극도로 넓은 샷
+- WS (Wide Shot): 전체 장면과 배경을 보여주는 넓은 샷
+- MS (Medium Shot): 인물의 상반신을 보여주는 중간 샷
+- CU (Close Up): 인물의 얼굴이나 특정 부분을 보여주는 클로즈업
+- ECU (Extreme Close Up): 매우 가까운 거리에서 특정 부분을 보여주는 극도 클로즈업
+
+**앵글 방향 (Angle Direction):**
+- Eye-level: 일반적인 시선 높이에서 촬영
+- High: 높은 위치에서 아래를 향해 촬영
+- Low: 낮은 위치에서 위를 향해 촬영
+- Dutch: 기울어진 앵글로 불안감이나 긴장감 표현
+- Bird_eye: 매우 높은 위치에서 수직으로 아래를 향해 촬영
+
+**카메라 움직임 (Camera Movement):**
+- Static: 고정된 카메라
+- Pan: 좌우로 회전하는 카메라
+- Tilt: 상하로 회전하는 카메라
+- Dolly: 카메라가 전후좌우로 이동
+- Zoom: 렌즈를 통해 확대/축소
+- Handheld: 손으로 들고 촬영하는 흔들리는 효과
+
+**컷 생성 패턴:**
+1. 각 컷은 평균 ${baseCutDuration}초 지속시간을 가져야 합니다 (전체 ${totalSeconds}초를 ${numCuts}개 컷으로 분할).
+2. 샷 사이즈는 WS → MS → CU → ECU → WS 순서로 변화하거나, 분위기에 맞게 선택해야 합니다.
+3. 앵글 방향은 씬의 분위기에 맞게 선택해야 합니다 (감정적 장면은 Dutch, 액션 장면은 Low 등).
+4. 카메라 움직임은 씬의 동적인 정도에 맞게 선택해야 합니다.
+5. 대사는 씬의 전체 대사를 컷 수로 나누어 분배해야 합니다.
+6. 인물 동선은 컷별로 자연스럽게 변화해야 합니다.
+7. 조명 세팅은 씬의 기본 조명을 기반으로 하되, 각 컷의 분위기에 맞게 조정해야 합니다.
+   예: 감정적 장면은 부드러운 조명, 긴장감 있는 장면은 대비가 강한 조명
+
+**응답 형식:**
+반드시 다음 JSON 형식으로만 응답해주세요:
+
+{
+  "cuts": [
+    {
+      "cutId": "CUT_001_01",
+      "cutNumber": 1,
+      "duration": "${baseCutDuration}초",
+      "description": "씬 제목 - 1번째 컷",
+      "shotSize": "WS",
+      "angleDirection": "Eye-level",
+      "cameraMovement": "Static",
+      "lensSpecs": "24mm",
+      "cutType": "WS",
+      "lighting": "자연광",
+      "lightingSetup": {
+        "mainLight": "창문",
+        "fillLight": "반사판", 
+        "backLight": "역광",
+        "specialEffects": "",
+        "intensity": "보통",
+        "color": "백색광"
+      },
+      "weather": "맑음",
+      "visualEffects": "",
+      "characters": [
+        {
+          "name": "주인공",
+          "actor": "배우",
+          "action": "연기",
+          "dialogue": "대사 내용",
+          "position": "중앙 정면"
+        }
+      ],
+      "dialogue": "대사 내용",
+      "narration": "내레이션",
+      "characterMovement": "중앙 정면",
+      "equipment": {
+        "camera": "C1",
+        "lens": "24mm",
+        "lighting": ["자연광"],
+        "props": []
+      },
+      "aiGenerated": false,
+      "aiVideoUrl": "",
+      "aiObjects": [],
+      "premiereMetadata": {
+        "clipName": "Scene_1_Cut_1",
+        "binPath": "Scenes/Scene_1",
+        "colorLabel": "blue",
+        "markers": []
+      },
+      "startTime": 0,
+      "endTime": ${baseCutDuration},
+      "totalDuration": ${baseCutDuration}
+    }
+  ]
+}
+
+JSON 이외의 텍스트는 포함하지 마세요.
+한국어로 자연스럽게 작성해주세요.
+`
+
+    // OpenAI API 호출
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: '당신은 영화 촬영 전문가입니다. 씬 정보를 바탕으로 일관성 있는 컷들을 생성해주세요.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 4000,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000 // 60초 타임아웃
+      }
+    )
+
+    const content = response.data.choices[0].message.content.trim()
+    const tokenCount = response.data.usage.total_tokens
+
+    // JSON 파싱
+    let parsedCuts = []
+    try {
+      const parsed = JSON.parse(content)
+      if (parsed.cuts && Array.isArray(parsed.cuts)) {
+        parsedCuts = parsed.cuts
+      } else {
+        throw new Error('Invalid cuts array')
+      }
+    } catch (parseError) {
+      console.error('❌ LLM 응답 파싱 실패:', parseError.message)
+      console.log('원본 응답:', content)
+      
+      // 파싱 실패 시 기본 컷 생성
+      console.log('⚠️ 파싱 실패로 기본 컷 생성')
+      for (let i = 0; i < numCuts; i++) {
+        const cutNumber = i + 1
+        const startTime = i * baseCutDuration
+        const endTime = Math.min((i + 1) * baseCutDuration, totalSeconds)
+        const duration = endTime - startTime
+        
+        // 기본 컷 정보 (영화 제작 표준)
+        let cutType = 'MS'
+        let shotSize = 'MS'
+        let angleDirection = 'Eye-level'
+        let cameraMovement = 'Static'
+        let lensSpecs = '50mm'
+        
+        // 씬 분위기에 따른 앵글과 움직임 선택
+        const getAngleAndMovement = (mood, cutNumber) => {
+          // 감정적 장면
+          if (mood.includes('감정') || mood.includes('슬픔') || mood.includes('기쁨') || mood.includes('사랑')) {
+            return { angle: 'Eye-level', movement: 'Static' }
+          }
+          // 긴장감 있는 장면
+          if (mood.includes('긴장') || mood.includes('두려움') || mood.includes('불안')) {
+            return { angle: 'Dutch', movement: 'Handheld' }
+          }
+          // 액션 장면
+          if (mood.includes('액션') || mood.includes('싸움') || mood.includes('추격')) {
+            return { angle: 'Low', movement: 'Dolly' }
+          }
+          // 웅장한 장면
+          if (mood.includes('웅장') || mood.includes('대규모') || mood.includes('전체')) {
+            return { angle: 'High', movement: 'Pan' }
+          }
+          // 일상적인 장면
+          return { angle: 'Eye-level', movement: 'Static' }
+        }
+        
+        const { angle, movement } = getAngleAndMovement(sceneInfo.mood, cutNumber)
+        angleDirection = angle
+        cameraMovement = movement
+        
+        // 데모 시연을 위한 3-5개 컷 패턴
+        if (cutNumber === 1) {
+          cutType = 'WS'
+          shotSize = 'WS'
+          lensSpecs = '24mm'
+        } else if (cutNumber === 2) {
+          cutType = 'MS'
+          shotSize = 'MS'
+          lensSpecs = '50mm'
+        } else if (cutNumber === 3) {
+          cutType = 'CU'
+          shotSize = 'CU'
+          lensSpecs = '85mm'
+        } else if (cutNumber === 4) {
+          cutType = 'ECU'
+          shotSize = 'ECU'
+          lensSpecs = '100mm'
+        } else if (cutNumber === 5) {
+          // 5번째 컷은 다시 WS로 돌아가서 전체를 보여줌
+          cutType = 'WS'
+          shotSize = 'WS'
+          lensSpecs = '24mm'
+        }
+        
+        const dialogueParts = sceneInfo.dialogue.split('.').filter(part => part.trim())
+        const dialogueIndex = i % dialogueParts.length
+        const cutDialogue = dialogueParts[dialogueIndex] || sceneInfo.dialogue
+        
+        const characterPositions = [
+          '중앙 정면',
+          '좌측 45도',
+          '우측 45도',
+          '후면',
+          '좌측 측면',
+          '우측 측면'
+        ]
+        const positionIndex = i % characterPositions.length
+        
+        // 컷 이미지 생성
+        let cutImageUrl = null
+        try {
+          const cutImagePrompt = `${sceneInfo.title} - ${cutNumber}번째 컷: ${cutDialogue}. ${shotSize} 샷, ${angleDirection} 앵글, ${sceneInfo.lighting} 조명, 시네마틱한 구도`
+          
+          const imageResponse = await axios.post(
+            'https://api.openai.com/v1/images/generations',
+            {
+              model: 'dall-e-3',
+              prompt: cutImagePrompt,
+              n: 1,
+              size: '1024x1024',
+              quality: 'standard',
+              style: 'natural'
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              timeout: 60000
+            }
+          )
+          
+          cutImageUrl = imageResponse.data.data[0].url
+          console.log(`✅ 컷 ${cutNumber} 이미지 생성 완료:`, cutImageUrl.substring(0, 50) + '...')
+        } catch (imageError) {
+          console.error(`❌ 컷 ${cutNumber} 이미지 생성 실패:`, imageError.message)
+          // 이미지 생성 실패는 치명적이지 않으므로 계속 진행
+        }
+
+        parsedCuts.push({
+          cutId: `CUT_${sceneData.scene.toString().padStart(3, '0')}_${cutNumber.toString().padStart(2, '0')}`,
+          cutNumber: cutNumber,
+          duration: `${duration}초`,
+          description: `${sceneInfo.title} - ${cutNumber}번째 컷`,
+          shotSize: shotSize,
+          angleDirection: angleDirection,
+          cameraMovement: cameraMovement,
+          lensSpecs: lensSpecs,
+          cutType: cutType,
+          lighting: sceneInfo.lighting,
+          lightingSetup: {
+            mainLight: sceneInfo.lighting === '자연광' ? '창문' : '메인 라이트',
+            fillLight: sceneInfo.lighting === '자연광' ? '반사판' : '필 라이트',
+            backLight: sceneInfo.lighting === '자연광' ? '역광' : '백 라이트',
+            specialEffects: '',
+            intensity: '보통',
+            color: '백색광'
+          },
+          weather: sceneInfo.weather,
+          visualEffects: '',
+          characters: [{
+            name: sceneInfo.characters || '주인공',
+            actor: '배우',
+            action: '연기',
+            dialogue: cutDialogue,
+            position: characterPositions[positionIndex]
+          }],
+          dialogue: cutDialogue,
+          narration: sceneInfo.narration,
+          characterMovement: characterPositions[positionIndex],
+          equipment: {
+            camera: sceneInfo.equipment || 'C1',
+            lens: lensSpecs,
+            lighting: [sceneInfo.lighting],
+            props: []
+          },
+          aiGenerated: false,
+          aiVideoUrl: '',
+          aiObjects: [],
+          imageUrl: cutImageUrl, // 컷 이미지 URL 추가
+          premiereMetadata: {
+            clipName: `Scene_${sceneData.scene}_Cut_${cutNumber}`,
+            binPath: `Scenes/Scene_${sceneData.scene}`,
+            colorLabel: 'blue',
+            markers: []
+          },
+          startTime: startTime,
+          endTime: endTime,
+          totalDuration: duration
+        })
+      }
+    }
+    
+    console.log(`✅ 씬 ${sceneData.scene}에서 ${parsedCuts.length}개의 컷 생성 완료 (LLM 사용)`)
+    return parsedCuts
+    
+  } catch (error) {
+    console.error('❌ 컷 생성 오류:', error.message)
+    return []
+  }
+}
+
+/**
+ * 씬 데이터에서 컷 정보를 파싱하는 함수
+ * @param {Object} sceneData - 씬 데이터
+ * @returns {Object} 파싱된 컷 정보
+ */
+const parseSceneForCuts = (sceneData) => {
+  const parsed = {
+    title: sceneData.title || '',
+    description: sceneData.description || '',
+    keywords: sceneData.keywords || [],
+    weights: sceneData.weights || [],
+    timeOfDay: '낮',
+    location: '',
+    characters: '',
+    mood: '',
+    lighting: '자연광',
+    weather: '맑음',
+    equipment: 'C1',
+    dialogue: '',
+    narration: ''
+  }
+  
+  // keywords에서 정보 파싱
+  if (sceneData.keywords) {
+    sceneData.keywords.forEach(keyword => {
+      if (keyword.includes('timeOfDay:')) {
+        parsed.timeOfDay = keyword.split(':')[1]?.trim() || '낮'
+      } else if (keyword.includes('location:')) {
+        parsed.location = keyword.split(':')[1]?.trim() || ''
+      } else if (keyword.includes('characters:')) {
+        parsed.characters = keyword.split(':')[1]?.trim() || ''
+      } else if (keyword.includes('mood:')) {
+        parsed.mood = keyword.split(':')[1]?.trim() || ''
+      } else if (keyword.includes('lighting:')) {
+        parsed.lighting = keyword.split(':')[1]?.trim() || '자연광'
+      } else if (keyword.includes('weather:')) {
+        parsed.weather = keyword.split(':')[1]?.trim() || '맑음'
+      } else if (keyword.includes('equipment:')) {
+        parsed.equipment = keyword.split(':')[1]?.trim() || 'C1'
+      }
+    })
+  }
+  
+  // description에서 대사 및 내레이션 추출
+  if (sceneData.description) {
+    parsed.dialogue = sceneData.description
+    parsed.narration = sceneData.description
+  }
+  
+  return parsed
+}
+
 // 라우터 등록
 const authRoutes = require('./routes/auth'); // 기존 인증 라우트
 const userRoutes = require('./routes/users'); // 사용자 관리 라우트
 const projectRoutes = require('./routes/projects'); // 프로젝트 관리 라우트
 const conteRoutes = require('./routes/contes'); // 콘티 관리 라우트
+const cutRoutes = require('./routes/cuts'); // 컷 관리 라우트
 const timelineRoutes = require('./routes/timeline'); // 타임라인 WebSocket 라우트
 
 app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
 app.use('/api/users', userRoutes); // /api/users/* 경로를 user 라우터로 연결
 app.use('/api/projects', projectRoutes); // /api/projects/* 경로를 project 라우터로 연결
 app.use('/api/projects', conteRoutes); // /api/projects/*/contes/* 경로를 conte 라우터로 연결
+app.use('/api/projects', cutRoutes); // /api/projects/*/contes/*/cuts/* 경로를 cut 라우터로 연결
 app.use('/api/timeline', timelineRoutes.router); // /api/timeline/* 경로를 timeline 라우터로 연결
+
+/**
+ * 씬에서 컷 생성 API
+ * POST /api/cuts/generate
+ */
+app.post('/api/cuts/generate', async (req, res) => {
+  try {
+    const { sceneData } = req.body
+
+    // 입력 검증
+    if (!sceneData || !sceneData.scene) {
+      return res.status(400).json({
+        success: false,
+        message: '씬 데이터가 필요합니다.'
+      })
+    }
+
+    console.log('🎬 컷 생성 요청:', { scene: sceneData.scene, title: sceneData.title })
+
+    // 씬 정보를 기반으로 컷들 생성 (LLM 사용)
+    const cuts = await generateCutsFromScene(sceneData)
+
+    if (cuts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '컷 생성에 실패했습니다.'
+      })
+    }
+
+    console.log('✅ 컷 생성 완료:', { scene: sceneData.scene, cutCount: cuts.length })
+
+    res.json({
+      success: true,
+      cuts: cuts,
+      sceneId: sceneData.scene,
+      totalCuts: cuts.length,
+      generatedAt: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('❌ 컷 생성 오류:', error.message)
+    res.status(500).json({
+      success: false,
+      message: '컷 생성 중 오류가 발생했습니다.',
+      error: error.message
+    })
+  }
+})
+
+/**
+ * 컷 이미지 생성 API
+ * POST /api/cut-image/generate
+ */
+app.post('/api/cut-image/generate', async (req, res) => {
+  try {
+    const { cutDescription, shotSize, angleDirection, lightingSetup, style = 'cinematic', size = '1024x1024' } = req.body
+
+    // 입력 검증
+    if (!cutDescription || !cutDescription.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '컷 설명이 필요합니다.'
+      })
+    }
+
+    console.log('🎬 컷 이미지 생성 요청:', { 
+      cutDescription: cutDescription.substring(0, 100) + '...', 
+      shotSize, 
+      angleDirection,
+      lightingSetup 
+    })
+
+    // 컷 이미지 생성 프롬프트 구성
+    const imagePrompt = `${cutDescription}. ${shotSize} 샷, ${angleDirection} 앵글, ${lightingSetup?.mainLight || '조명'} 조명, ${style} 스타일, 시네마틱한 구도, 고품질 이미지`
+
+    // OpenAI DALL-E 3 API 호출
+    const response = await axios.post(
+      'https://api.openai.com/v1/images/generations',
+      {
+        model: 'dall-e-3',
+        prompt: imagePrompt,
+        n: 1,
+        size: size,
+        quality: 'standard',
+        style: 'natural'
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000 // 60초 타임아웃
+      }
+    )
+
+    const imageUrl = response.data.data[0].url
+    const tokenCount = response.data.usage?.total_tokens || 0
+
+    console.log('✅ 컷 이미지 생성 완료:', { 
+      imageUrl: imageUrl.substring(0, 50) + '...', 
+      tokenCount 
+    })
+
+    res.json({
+      success: true,
+      imageUrl: imageUrl,
+      prompt: imagePrompt,
+      generatedAt: new Date().toISOString(),
+      model: 'dall-e-3',
+      isFreeTier: false
+    })
+
+  } catch (error) {
+    console.error('❌ 컷 이미지 생성 오류:', error.message)
+    
+    if (error.response) {
+      const status = error.response.status
+      const message = error.response.data?.error?.message || 'OpenAI API 오류'
+      
+      switch (status) {
+        case 400:
+          res.status(400).json({
+            success: false,
+            message: '잘못된 요청입니다. 컷 설명을 다시 확인해주세요.'
+          })
+          break
+        case 401:
+          res.status(401).json({
+            success: false,
+            message: '인증이 필요합니다. 다시 로그인해주세요.'
+          })
+          break
+        case 429:
+          res.status(429).json({
+            success: false,
+            message: 'OpenAI API 사용 한도에 도달했습니다. 잠시 후 다시 시도해주세요.'
+          })
+          break
+        case 500:
+          res.status(500).json({
+            success: false,
+            message: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+          })
+          break
+        default:
+          res.status(500).json({
+            success: false,
+            message: message
+          })
+      }
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '컷 이미지 생성 중 오류가 발생했습니다.',
+        error: error.message
+      })
+    }
+  }
+})
 
 /**
  * AI 스토리 생성 API

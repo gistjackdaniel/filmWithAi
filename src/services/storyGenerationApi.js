@@ -346,6 +346,75 @@ export const saveStoryHistory = async (request, response) => {
 }
 
 /**
+ * 컷 이미지 생성 API 호출 (OpenAI DALL-E 3)
+ * @param {CutImageGenerationRequest} requestData - 요청 데이터
+ * @returns {Promise<ImageGenerationResponse>} 생성된 컷 이미지 응답
+ */
+export const generateCutImage = async (requestData) => {
+  console.log('🎬 컷 이미지 생성 API 호출 시작:', {
+    cutDescription: requestData.cutDescription?.substring(0, 100) + '...',
+    shotSize: requestData.shotSize,
+    angleDirection: requestData.angleDirection,
+    lightingSetup: requestData.lightingSetup
+  })
+  
+  try {
+    // 요청 데이터 검증
+    if (!requestData.cutDescription || !requestData.cutDescription.trim()) {
+      console.error('❌ 컷 설명 검증 실패: 빈 설명')
+      throw new Error('컷 설명이 필요합니다.')
+    }
+
+    console.log('✅ 컷 설명 검증 통과:', {
+      cutDescriptionLength: requestData.cutDescription.length,
+      cutDescriptionPreview: requestData.cutDescription.substring(0, 100) + '...'
+    })
+
+    console.log('🎨 DALL-E 3 컷 이미지 생성 시작...')
+
+    // 실제 이미지 생성 API 호출
+    console.log('📤 컷 이미지 생성 API 요청 전송:', {
+      url: '/cut-image/generate',
+      timeout: 60000,
+      requestData: {
+        cutDescription: requestData.cutDescription.substring(0, 50) + '...',
+        shotSize: requestData.shotSize,
+        angleDirection: requestData.angleDirection,
+        lightingSetup: requestData.lightingSetup,
+        style: requestData.style,
+        size: requestData.size
+      }
+    })
+    
+    const response = await api.post('/cut-image/generate', requestData, {
+      timeout: 60000, // 1분 타임아웃
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    console.log('✅ 컷 이미지 생성 API 응답 수신:', {
+      status: response.status,
+      responseData: response.data,
+      imageUrl: response.data?.imageUrl,
+      prompt: response.data?.prompt,
+      model: response.data?.model,
+      generatedAt: response.data?.generatedAt
+    })
+
+    return response.data
+
+  } catch (error) {
+    console.error('❌ 컷 이미지 생성 완전 실패:', {
+      errorType: error.constructor.name,
+      message: error.message,
+      stack: error.stack
+    })
+    throw error
+  }
+}
+
+/**
  * AI 콘티 생성 API 호출 (OpenAI GPT-4o)
  * @param {ConteGenerationRequest} requestData - 요청 데이터
  * @returns {Promise<ConteGenerationResponse>} 생성된 콘티 응답

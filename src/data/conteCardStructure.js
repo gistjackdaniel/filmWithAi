@@ -16,10 +16,7 @@ export const CAPTION_CARD_STRUCTURE = {
   // 캡션 카드 구성 요소 (12개)
   description: '', // 인물들이 처한 상황에 대한 대략적인 설명
   dialogue: '', // 해당 장면을 대표하는 대사
-  cameraAngle: '', // 카메라/그림 앵글과 구도를 설명하는 배치도
-  cameraWork: '', // 카메라 워크 및 그림의 장면 전환을 설명하는 화살표들
-  characterLayout: '', // 인물 배치도와 인물의 동선을 설명하는 화살표
-  props: '', // 소품 배치
+
   weather: '', // 날씨와 지형
   lighting: '', // 조명
   visualDescription: '', // 각 장면과 시퀀스를 직관적으로 이해시킬 대표적인 그림 설명

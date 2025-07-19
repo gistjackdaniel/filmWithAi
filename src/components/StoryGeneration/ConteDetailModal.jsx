@@ -221,18 +221,7 @@ const ConteDetailModal = ({
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">카메라 앵글</Typography>
-                      <Typography variant="body1" paragraph>
-                        {conte.cameraAngle || '설정 없음'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">카메라 워크</Typography>
-                      <Typography variant="body1" paragraph>
-                        {conte.cameraWork || '설정 없음'}
-                      </Typography>
-                    </Grid>
+
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="text.secondary">렌즈 스펙</Typography>
                       <Typography variant="body1" paragraph>
@@ -258,30 +247,19 @@ const ConteDetailModal = ({
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">인물 배치</Typography>
-                      <Typography variant="body1" paragraph>
-                        {conte.characterLayout || '설정 없음'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">소품</Typography>
-                      <Typography variant="body1" paragraph>
-                        {conte.props || '설정 없음'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">조명</Typography>
-                      <Typography variant="body1" paragraph>
-                        {conte.lighting || '설정 없음'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">날씨</Typography>
-                      <Typography variant="body1" paragraph>
-                        {conte.weather || '설정 없음'}
-                      </Typography>
-                    </Grid>
+
+                                          <Grid item xs={12} sm={6}>
+                        <Typography variant="subtitle2" color="text.secondary">조명</Typography>
+                        <Typography variant="body1" paragraph>
+                          {conte.lighting || '설정 없음'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="subtitle2" color="text.secondary">날씨</Typography>
+                        <Typography variant="body1" paragraph>
+                          {conte.weather || '설정 없음'}
+                        </Typography>
+                      </Grid>
                     <Grid item xs={12}>
                       <Typography variant="subtitle2" color="text.secondary">시각적 설명</Typography>
                       <Typography variant="body1" paragraph>

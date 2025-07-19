@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { CaptionCardType } from '../types/timeline'
 import timelineService from '../services/timelineService'
+import { cutAPI } from '../services/api'
 import { useAuthStore } from './authStore'
 
 /**
@@ -10,6 +11,7 @@ import { useAuthStore } from './authStore'
 const useTimelineStore = create((set, get) => ({
   // 상태
   scenes: [],                    // 캡션카드 배열
+  selectedCutId: null,           // 선택된 컷 ID
   selectedSceneId: null,         // 선택된 씬 ID
   loading: false,                // 로딩 상태
   error: null,                   // 에러 상태
@@ -24,7 +26,7 @@ const useTimelineStore = create((set, get) => ({
   },
   sortBy: 'scene_number',        // 정렬 기준
   modalOpen: false,              // 모달 열림 상태
-  currentScene: null,            // 현재 선택된 씬
+  currentScene: null,            // 현재 선택된 씬 (컷 정보 포함)
 
   // 액션들
 
@@ -78,6 +80,7 @@ const useTimelineStore = create((set, get) => ({
   clearAllData: () => {
     set({
       scenes: [],
+      selectedCutId: null,
       selectedSceneId: null,
       loading: false,
       error: null,
@@ -169,27 +172,138 @@ const useTimelineStore = create((set, get) => ({
   },
 
   /**
+   * 컷 업데이트
+   */
+  updateCut: (cutId, updates) => {
+    set((state) => ({
+      scenes: state.scenes.map(scene => {
+        if (scene.cuts && Array.isArray(scene.cuts)) {
+          return {
+            ...scene,
+            cuts: scene.cuts.map(cut =>
+              cut.id === cutId ? { ...cut, ...updates } : cut
+            )
+          }
+        }
+        return scene
+      })
+    }))
+  },
+
+  /**
+   * 씬에서 컷 생성
+   */
+  generateCutsForScene: async (sceneData) => {
+    try {
+      set({ loading: true, error: null })
+      
+      console.log('🎬 컷 생성 시작:', sceneData)
+      
+      const response = await cutAPI.generateCuts(sceneData)
+      
+      if (response.data.success) {
+        const generatedCuts = response.data.cuts
+        
+        // 현재 씬에 컷들 추가
+        set((state) => ({
+          scenes: state.scenes.map(scene => {
+            if (scene.scene === sceneData.scene) {
+              return {
+                ...scene,
+                cuts: generatedCuts,
+                cutCount: generatedCuts.length,
+                totalDuration: generatedCuts.reduce((total, cut) => total + cut.totalDuration, 0)
+              }
+            }
+            return scene
+          }),
+          loading: false
+        }))
+        
+        console.log('✅ 컷 생성 완료:', { scene: sceneData.scene, cutCount: generatedCuts.length })
+        return { success: true, cuts: generatedCuts }
+      } else {
+        throw new Error(response.data.message || '컷 생성에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('❌ 컷 생성 오류:', error)
+      set({ loading: false, error: error.message })
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * 모든 씬에 컷 생성
+   */
+  generateCutsForAllScenes: async () => {
+    try {
+      set({ loading: true, error: null })
+      
+      const state = get()
+      const scenes = state.scenes
+      
+      console.log('🎬 모든 씬에 컷 생성 시작:', scenes.length)
+      
+      const results = []
+      
+      for (const scene of scenes) {
+        const result = await get().generateCutsForScene(scene)
+        results.push(result)
+      }
+      
+      set({ loading: false })
+      
+      const successCount = results.filter(r => r.success).length
+      console.log('✅ 모든 씬 컷 생성 완료:', { total: scenes.length, success: successCount })
+      
+      return { success: true, results }
+    } catch (error) {
+      console.error('❌ 모든 씬 컷 생성 오류:', error)
+      set({ loading: false, error: error.message })
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
    * 씬 삭제
    */
   removeScene: (sceneId) => {
     set((state) => ({
       scenes: state.scenes.filter(scene => scene.id !== sceneId),
-      selectedSceneId: state.selectedSceneId === sceneId ? null : state.selectedSceneId
+      selectedCutId: state.selectedCutId === sceneId ? null : state.selectedCutId
     }))
   },
 
   /**
-   * 씬 선택
+   * 컷 삭제
    */
-  selectScene: (sceneId) => {
-    set({ selectedSceneId: sceneId })
+  removeCut: (cutId) => {
+    set((state) => ({
+      scenes: state.scenes.map(scene => {
+        if (scene.cuts && Array.isArray(scene.cuts)) {
+          return {
+            ...scene,
+            cuts: scene.cuts.filter(cut => cut.id !== cutId)
+          }
+        }
+        return scene
+      }),
+      selectedCutId: state.selectedCutId === cutId ? null : state.selectedCutId
+    }))
   },
 
   /**
-   * 씬 선택 해제
+   * 컷 선택
    */
-  deselectScene: () => {
-    set({ selectedSceneId: null })
+  selectCut: (cutId) => {
+    set({ selectedCutId: cutId })
+  },
+
+  /**
+   * 컷 선택 해제
+   */
+  deselectCut: () => {
+    set({ selectedCutId: null })
   },
 
   /**
@@ -614,6 +728,37 @@ const useTimelineStore = create((set, get) => ({
    */
   updateScenesOrder: (newScenes) => {
     set({ scenes: newScenes })
+  },
+
+  /**
+   * 컷 순서 변경
+   */
+  updateCutsOrder: (newCuts) => {
+    // 모든 컷을 평면화하여 순서 변경
+    const allCuts = []
+    const scenes = get().scenes
+    
+    scenes.forEach(scene => {
+      if (scene.cuts && Array.isArray(scene.cuts)) {
+        scene.cuts.forEach(cut => {
+          allCuts.push({
+            ...cut,
+            sceneId: scene.id
+          })
+        })
+      }
+    })
+    
+    // 새로운 순서로 컷들을 다시 씬에 배치
+    const updatedScenes = scenes.map(scene => {
+      const sceneCuts = newCuts.filter(cut => cut.sceneId === scene.id)
+      return {
+        ...scene,
+        cuts: sceneCuts
+      }
+    })
+    
+    set({ scenes: updatedScenes })
   },
 
   /**
