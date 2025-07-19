@@ -39,6 +39,13 @@ const ConteDetailModal = ({
 }) => {
   if (!conte) return null
 
+  // 백엔드 서버 주소를 환경변수 또는 기본값으로 설정
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `${BACKEND_URL}${url}`;
+  };
+
   return (
     <Modal
       open={open}
@@ -108,7 +115,7 @@ const ConteDetailModal = ({
                 }}>
                   {conte.imageUrl ? (
                     <img 
-                      src={conte.imageUrl} 
+                      src={getImageUrl(conte.imageUrl)} 
                       alt={`씬 ${conte.scene} 이미지`}
                       style={{
                         width: '100%',
@@ -116,6 +123,7 @@ const ConteDetailModal = ({
                         objectFit: 'cover'
                       }}
                       onError={(e) => onImageLoadError && onImageLoadError(conte.id, e)}
+                      onLoad={() => onImageLoadError && onImageLoadError(conte.id, null)}
                     />
                   ) : isGeneratingImages ? (
                     <Box sx={{ 

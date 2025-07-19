@@ -223,6 +223,9 @@ export const generateSceneImage = async (requestData) => {
         }
       })
 
+      // imageUrl 로그 추가
+      console.log('받은 imageUrl:', response.data?.imageUrl);
+
       console.log('✅ 이미지 생성 API 응답 수신:', {
         status: response.status,
         responseData: response.data,

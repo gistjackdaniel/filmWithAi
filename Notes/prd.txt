@@ -1,0 +1,618 @@
+# SceneForge ver.2 - AI 영화 제작 협업 플랫폼 PRD
+
+===============================================
+
+문서 정보
+---------
+프로젝트명: SceneForge ver.2
+버전: 2.0 (협업 플랫폼)
+작성일: 2024년 12월
+개발 기간: 3개월 (12주)
+개발 인원: 2명 (협업 개발)
+담당 분담:
+- 개발자A: 프로젝트 관리, 타임라인
+- 개발자B: 콘티 정보, 스케줄표
+
+===============================================
+
+## 1. 제품 개요
+============
+
+### 1.1 제품 정의
+SceneForge ver.2는 AI 기반 영화 제작 협업 플랫폼으로, 팀원들이 실시간으로 협업하여 
+시놉시스부터 최종 편집까지의 전체 제작 과정을 관리할 수 있는 웹 애플리케이션입니다.
+
+### 1.2 핵심 가치 제안
+- **협업 중심**: 팀원별 권한 관리 및 실시간 협업
+- **AI 자동화**: 시놉시스 → 스토리 → 콘티 → 타임라인 자동 생성
+- **컷 단위 세분화**: 10초 단위의 상세한 촬영 계획
+- **실시간 동기화**: 프리미어 프로와의 실시간 연동
+- **스마트 스케줄링**: 그래프 기반 최적화된 촬영 일정
+
+### 1.3 타겟 사용자
+- **주 타겟**: 영화 제작팀 (감독, 촬영감독, 제작진, 배우)
+- **부 타겟**: 독립 영화 제작자, 학생 영화 제작팀
+- **확장 타겟**: 광고 제작팀, 뮤직비디오 제작팀
+
+===============================================
+
+## 2. 기능 요구사항
+================
+
+### 2.1 프로젝트 관리 (개발자A 담당)
+================
+
+#### 2.1.1 팀 협업 시스템
+- **멤버 초대 및 권한 관리**
+  - 이메일 초대 시스템
+  - 역할별 권한 설정 (관리자, 편집자, 뷰어)
+  - 권한 변경 이력 추적
+
+- **실시간 협업**
+  - 실시간 편집 상태 표시
+  - 동시 편집 충돌 해결
+  - 변경사항 실시간 알림
+
+- **프로젝트 공유**
+  - 공개/비공개 프로젝트 설정
+  - 링크 공유 기능
+  - 외부 협업자 초대
+
+#### 2.1.2 프로젝트 버전 관리
+- **버전 히스토리**
+  - 프로젝트 변경 이력 관리
+  - 버전 간 비교 기능
+  - 롤백 기능
+
+- **백업 및 복구**
+  - 자동 백업 시스템
+  - 수동 백업 생성
+  - 백업 복구 기능
+
+### 2.2 타임라인 (개발자A 담당)
+================
+
+#### 2.2.1 이중 타임라인 시스템
+- **V1 타임라인 (촬영 소스)**
+  - 실사 촬영 영상 + AI 생성 비디오
+  - 실제 프리미어 프로 UI 스타일
+  - 드래그 앤 드롭 편집
+
+- **V2 타임라인 (컷 이미지)**
+  - 이미지 형태의 컷들로 구성
+  - 스토리보드 형태의 시각화
+  - 컷별 상세 정보 표시
+
+#### 2.2.2 AI 비디오 생성 통합
+- **실시간 AI 비디오 생성**
+  - RunwayML/Pika Labs API 연동
+  - 콘티 기반 자동 비디오 생성
+  - 생성된 비디오 타임라인 자동 배치
+
+- **비디오 편집 기능**
+  - SceneEditModal 개선
+  - ComfyUI 스타일 인터페이스
+  - 실시간 비디오 수정 및 적용
+
+#### 2.2.3 프리미어 프로 연동
+- **자동 내보내기**
+  - CTRL+C+V 단축키로 프리미어 프로 내보내기
+  - XML 형식으로 프로젝트 내보내기
+  - 메타데이터 및 마커 자동 설정
+
+- **실시간 동기화**
+  - 프리미어 프로와 실시간 연동
+  - 변경사항 양방향 동기화
+  - CEP 플러그인을 통한 직접 연동
+
+#### 2.2.4 컷 추가 시스템
+- **선택적 컷 생성**
+  - 필요한 컷만 선택하여 생성
+  - 기존 컷 기반 추가 컷 생성
+  - 컷 간 연속성 보장
+
+### 2.3 콘티 정보 (개발자B 담당)
+================
+
+#### 2.3.1 전문 장비 정보 시스템
+- **장비 추천 엔진**
+  - 콘티 요구사항 기반 장비 추천
+  - 전문 용어 및 사양 정보 제공
+  - 예산 범위 내 최적 장비 조합
+
+- **장비 상세 정보**
+  - 카메라, 렌즈, 조명 장비 사양
+  - 대여업체 정보 및 가격
+  - 장비 호환성 체크
+
+#### 2.3.2 컷 단위 세분화
+- **10초 단위 컷 분할**
+  - 녹화 시작부터 종료까지의 연속 영상
+  - 각 컷별 상세 정보 관리
+  - 컷 간 전환점 자동 감지
+
+- **컷 정보 양식**
+  ```
+  컷 번호: CUT_001_01
+  지속시간: 10초
+  카메라 앵글: 와이드샷
+  카메라 워크: 고정
+  렌즈: 24mm
+  조명: 자연광
+  배경: 도시 전경
+  등장인물: 주인공
+  대사: "안녕하세요"
+  특수효과: 없음
+  ```
+
+#### 2.3.3 AI 객체 일관성 시스템
+- **시각화 객체 관리**
+  - 배우, 배경, 소품의 일관성 유지
+  - 객체별 레퍼런스 이미지 관리
+  - AI 생성 시 객체 참조
+
+- **동적 객체 수정**
+  - 실사 촬영 노드 수정 시 AI 비디오 자동 업데이트
+  - "배우 교체 시 AI 비디오 재생성" 추천 시스템
+  - 객체 변경 이력 추적
+
+#### 2.3.4 레퍼런스 학습 시스템
+- **영화 레퍼런스 데이터베이스**
+  - 다양한 영화의 미장센 분석
+  - 장르별 카메라 워크 패턴 학습
+  - 디지털 미장센 추천 알고리즘
+
+- **AI 추천 시스템**
+  - 콘티 기반 카메라 워크 추천
+  - 장르별 최적 촬영 기법 제안
+  - 레퍼런스 영화 예시 제공
+
+### 2.4 스케줄표 (개발자B 담당)
+================
+
+#### 2.4.1 스태프 관리 시스템
+- **연락처 정보 관리**
+  - 스태프별 상세 연락처 정보
+  - 부서별 정확한 기재 정보
+  - 긴급 연락망 관리
+
+- **스태프 정보 양식**
+  ```
+  이름: 홍길동
+  부서: 촬영팀
+  직책: 촬영감독
+  연락처: 010-1234-5678
+  이메일: hong@email.com
+  긴급연락처: 010-9876-5432
+  특기사항: 야간 촬영 전문
+  ```
+
+#### 2.4.2 동적 스케줄링 알고리즘
+- **그래프 기반 최적화**
+  - 노드 정보 변경 시 동적 스케줄 재생성
+  - 배우 일정, 로케이션 가용성 고려
+  - 예산 및 시간 제약 조건 적용
+
+- **스케줄 변경 감지**
+  - 주연배우 변경 시 전체 스케줄 재조정
+  - 로케이션 변경 시 영향도 분석
+  - 자동 스케줄 최적화
+
+#### 2.4.3 일일 스케줄 관리
+- **상세 일정 관리**
+  - 시간별 상세 일정
+  - 촬영 순서 최적화
+  - 휴식 시간 및 이동 시간 고려
+
+- **스케줄 표 양식**
+  ```
+  날짜: 2024-12-20
+  시간: 09:00-18:00
+  로케이션: 서울시청 앞
+  촬영팀: 홍길동(감독), 김철수(촬영감독)
+  배우: 이영희(주인공), 박민수(조연)
+  장비: RED 카메라, 24-70mm 렌즈
+  촬영내용: 오프닝 씬 (CUT_001_01~05)
+  특이사항: 야간 촬영 준비 필요
+  ```
+
+===============================================
+
+## 3. 기술 요구사항
+================
+
+### 3.1 프론트엔드
+- **프레임워크**: React.js 18+ (Vite 기반)
+- **상태 관리**: Zustand + React Query
+- **UI 라이브러리**: Material-UI v5
+- **실시간 통신**: Socket.io
+- **타임라인**: Custom Timeline Component
+- **AI 연동**: OpenAI, RunwayML, Pika Labs API
+
+### 3.2 백엔드
+- **런타임**: Node.js 18+
+- **프레임워크**: Express.js
+- **데이터베이스**: MongoDB (Atlas)
+- **실시간**: Socket.io
+- **파일 저장**: AWS S3
+- **배포**: AWS EC2
+
+### 3.3 AI 서비스
+- **텍스트 생성**: OpenAI GPT-4o
+- **이미지 생성**: DALL-E 3, Stable Diffusion
+- **비디오 생성**: RunwayML, Pika Labs
+- **음성 생성**: ElevenLabs, OpenAI TTS
+
+### 3.4 외부 연동
+- **프리미어 프로**: CEP 플러그인, XML 내보내기
+- **이메일**: SendGrid, AWS SES
+- **파일 공유**: AWS S3, CloudFront
+- **도메인**: AWS Route 53
+
+===============================================
+
+## 4. 데이터베이스 스키마
+================
+
+### 4.1 User Schema (확장)
+```javascript
+{
+  _id: ObjectId,
+  googleId: String,
+  email: String,
+  name: String,
+  profile: {
+    avatar: String,
+    bio: String,
+    specialties: [String],
+    contactInfo: {
+      phone: String,
+      address: String,
+      emergencyContact: String
+    }
+  },
+  preferences: {
+    timezone: String,
+    language: String,
+    notifications: Object
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### 4.2 Project Schema (확장)
+```javascript
+{
+  _id: ObjectId,
+  title: String,
+  description: String,
+  genre: String,
+  status: String, // 'draft', 'production', 'post_production', 'completed'
+  
+  // 팀 관리
+  owner: { type: ObjectId, ref: 'User' },
+  members: [{
+    user: { type: ObjectId, ref: 'User' },
+    role: String, // 'admin', 'editor', 'viewer'
+    permissions: [String],
+    joinedAt: Date
+  }],
+  
+  // 프로젝트 설정
+  settings: {
+    timelineVersion: String, // 'v1', 'v2'
+    exportFormat: String,
+    collaborationMode: String
+  },
+  
+  // 버전 관리
+  versions: [{
+    version: String,
+    changes: String,
+    createdBy: { type: ObjectId, ref: 'User' },
+    createdAt: Date
+  }],
+  
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### 4.3 Conte Schema (확장)
+```javascript
+{
+  _id: ObjectId,
+  projectId: { type: ObjectId, ref: 'Project' },
+  sceneNumber: Number,
+  sceneTitle: String,
+  
+  // 컷 정보
+  cuts: [{
+    cutId: String,
+    cutNumber: Number,
+    duration: String,
+    description: String,
+    
+    // 카메라 정보
+    cameraAngle: String,
+    cameraWork: String,
+    lensSpecs: String,
+    
+    // 기술 정보
+    lighting: String,
+    weather: String,
+    visualEffects: String,
+    
+    // 등장인물
+    characters: [{
+      name: String,
+      actor: String,
+      action: String,
+      dialogue: String
+    }],
+    
+    // 장비 정보
+    equipment: {
+      camera: String,
+      lens: String,
+      lighting: [String],
+      props: [String]
+    },
+    
+    // AI 생성 정보
+    aiGenerated: Boolean,
+    aiVideoUrl: String,
+    aiObjects: [{
+      type: String, // 'character', 'background', 'prop'
+      name: String,
+      referenceImage: String,
+      aiGenerated: Boolean
+    }],
+    
+    // 프리미어 프로 메타데이터
+    premiereMetadata: {
+      clipName: String,
+      binPath: String,
+      colorLabel: String,
+      markers: [{
+        time: String,
+        name: String,
+        color: String
+      }]
+    }
+  }],
+  
+  // 스케줄링 정보
+  scheduling: {
+    estimatedDuration: String,
+    priority: Number,
+    dependencies: [String],
+    constraints: [String]
+  },
+  
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### 4.4 Staff Schema (신규)
+```javascript
+{
+  _id: ObjectId,
+  projectId: { type: ObjectId, ref: 'Project' },
+  name: String,
+  department: String,
+  position: String,
+  contactInfo: {
+    phone: String,
+    email: String,
+    emergencyContact: String
+  },
+  availability: [{
+    date: Date,
+    startTime: String,
+    endTime: String,
+    status: String // 'available', 'busy', 'unavailable'
+  }],
+  specialties: [String],
+  hourlyRate: Number,
+  notes: String,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### 4.5 Schedule Schema (신규)
+```javascript
+{
+  _id: ObjectId,
+  projectId: { type: ObjectId, ref: 'Project' },
+  date: Date,
+  location: {
+    name: String,
+    address: String,
+    coordinates: {
+      lat: Number,
+      lng: Number
+    }
+  },
+  schedule: [{
+    timeSlot: {
+      start: String,
+      end: String
+    },
+    activity: String,
+    conteIds: [{ type: ObjectId, ref: 'Conte' }],
+    staff: [{
+      staffId: { type: ObjectId, ref: 'Staff' },
+      role: String
+    }],
+    equipment: [String],
+    notes: String
+  }],
+  weather: {
+    forecast: String,
+    temperature: Number,
+    conditions: String
+  },
+  status: String, // 'planned', 'in_progress', 'completed', 'cancelled'
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+===============================================
+
+## 5. 개발 일정
+================
+
+### 5.1 12주 개발 계획
+
+#### Week 1-2: 프로젝트 설정 및 기본 구조
+- **개발자A**: 프로젝트 관리 기본 구조, 팀 협업 시스템 설계
+- **개발자B**: 콘티 정보 기본 구조, 스케줄표 데이터베이스 설계
+- **공통**: 개발 환경 설정, 기본 인증 시스템
+
+#### Week 3-4: 프로젝트 관리 구현
+- **개발자A**: 
+  - 멤버 초대 및 권한 관리 시스템
+  - 실시간 협업 기능
+  - 프로젝트 버전 관리
+- **개발자B**: 
+  - 스태프 관리 시스템
+  - 연락처 정보 관리
+
+#### Week 5-6: 콘티 정보 시스템
+- **개발자B**:
+  - 전문 장비 정보 시스템
+  - 컷 단위 세분화 (10초 단위)
+  - AI 객체 일관성 시스템
+  - 레퍼런스 학습 시스템
+
+#### Week 7-8: 스케줄표 시스템
+- **개발자B**:
+  - 동적 스케줄링 알고리즘
+  - 그래프 기반 최적화
+  - 일일 스케줄 관리
+  - 스케줄 변경 감지 시스템
+
+#### Week 9-10: 타임라인 시스템
+- **개발자A**:
+  - 이중 타임라인 시스템 (V1, V2)
+  - AI 비디오 생성 통합
+  - SceneEditModal 개선
+  - ComfyUI 스타일 인터페이스
+
+#### Week 11-12: 프리미어 프로 연동 및 최적화
+- **개발자A**:
+  - 프리미어 프로 연동
+  - CEP 플러그인 개발
+  - XML 내보내기 시스템
+  - 실시간 동기화
+
+### 5.2 마일스톤
+- **Week 4**: 기본 협업 시스템 완성
+- **Week 6**: 콘티 정보 시스템 완성
+- **Week 8**: 스케줄표 시스템 완성
+- **Week 10**: 타임라인 시스템 완성
+- **Week 12**: 프리미어 프로 연동 완성
+
+===============================================
+
+## 6. 성공 지표
+================
+
+### 6.1 기술적 지표
+- **성능**: 페이지 로드 2초 이내, 실시간 동기화 지연 100ms 이내
+- **안정성**: 99.9% 이상의 서비스 가용성
+- **확장성**: 100명 동시 협업 지원
+
+### 6.2 사용자 경험 지표
+- **사용성**: 3단계 이내로 프로젝트 생성 및 협업 시작
+- **만족도**: 사용자 테스트 4.5/5.0 이상
+- **완성도**: 모든 핵심 기능 정상 작동
+
+### 6.3 비즈니스 지표
+- **협업 효율성**: 제작 시간 40% 단축
+- **팀 만족도**: 팀원 간 소통 개선 60%
+- **프로젝트 완성률**: 85% 이상
+
+===============================================
+
+## 7. 위험 요소 및 대응 방안
+========================
+
+### 7.1 기술적 위험
+- **AI API 한도**: 다중 AI 서비스 연동 및 사용량 모니터링
+- **실시간 동기화**: 충돌 해결 알고리즘 및 백업 시스템
+- **대용량 데이터**: 청크 단위 처리 및 캐싱 시스템
+
+### 7.2 협업 위험
+- **동시 편집 충돌**: 실시간 충돌 감지 및 해결 시스템
+- **권한 관리**: 세밀한 권한 제어 및 감사 로그
+- **데이터 손실**: 자동 백업 및 복구 시스템
+
+### 7.3 일정 위험
+- **복잡한 기능**: 우선순위 기반 단계적 구현
+- **통합 이슈**: 지속적인 통합 테스트
+- **외부 API 의존성**: 대체 서비스 준비
+
+===============================================
+
+## 8. 향후 확장 계획
+==================
+
+### 8.1 단기 확장 (3-6개월)
+- **다른 NLE 소프트웨어**: Final Cut Pro, DaVinci Resolve 연동
+- **모바일 앱**: iOS/Android 협업 앱
+- **AI 기능 강화**: 더 정교한 AI 생성 및 분석
+
+### 8.2 장기 확장 (6개월-1년)
+- **VR/AR 지원**: 가상 현실에서의 협업
+- **AI 감독**: AI가 제작 과정을 감독하고 조언
+- **글로벌 확장**: 다국어 지원 및 지역별 특화 기능
+
+===============================================
+
+## 9. 개발자별 상세 작업 분담
+============================
+
+### 개발자A (프로젝트 관리 + 타임라인)
+
+#### 프로젝트 관리
+- [ ] 멤버 초대 및 권한 관리 시스템
+- [ ] 실시간 협업 기능 (Socket.io)
+- [ ] 프로젝트 버전 관리 및 히스토리
+- [ ] 프로젝트 공유 및 외부 협업자 초대
+- [ ] 실시간 알림 및 상태 표시
+
+#### 타임라인
+- [ ] 이중 타임라인 시스템 (V1, V2)
+- [ ] AI 비디오 생성 통합 (RunwayML/Pika Labs)
+- [ ] SceneEditModal 개선 (ComfyUI 스타일)
+- [ ] 프리미어 프로 연동 (CEP 플러그인)
+- [ ] XML 내보내기 시스템
+- [ ] 실시간 동기화 기능
+
+### 개발자B (콘티 정보 + 스케줄표)
+
+#### 콘티 정보
+- [ ] 전문 장비 정보 시스템 및 추천 엔진
+- [ ] 컷 단위 세분화 (10초 단위)
+- [ ] AI 객체 일관성 시스템
+- [ ] 레퍼런스 학습 시스템
+- [ ] 장비 호환성 체크 및 예산 관리
+
+#### 스케줄표
+- [ ] 스태프 관리 시스템 및 연락처 정보
+- [ ] 동적 스케줄링 알고리즘
+- [ ] 그래프 기반 최적화
+- [ ] 일일 스케줄 관리
+- [ ] 스케줄 변경 감지 및 자동 재조정
+
+===============================================
+
+**결론**: SceneForge ver.2는 AI 기반 영화 제작 협업 플랫폼으로서, 
+팀원들이 실시간으로 협업하여 시놉시스부터 최종 편집까지의 전체 제작 과정을 
+효율적으로 관리할 수 있는 종합적인 솔루션을 제공합니다. 

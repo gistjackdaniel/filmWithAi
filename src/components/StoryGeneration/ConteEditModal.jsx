@@ -621,8 +621,8 @@ const ConteEditModal = ({
             </Typography>
             <Box
               component="img"
-              src={scene.imageUrl}
-              alt={`씬 ${scene.scene} 이미지`}
+              src={getImageUrl(editedConte.imageUrl)} 
+              alt={`씬 ${editedConte?.scene} 이미지`}
               sx={{
                 width: '100%',
                 maxWidth: 400,
@@ -678,6 +678,13 @@ const ConteEditModal = ({
       </Box>
     )
   }
+
+  // 백엔드 서버 주소를 환경변수 또는 기본값으로 설정
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `${BACKEND_URL}${url}`;
+  };
 
   if (!conte || !editedConte) return null
 
@@ -747,7 +754,7 @@ const ConteEditModal = ({
                   position: 'relative'
                 }}>
                   <img 
-                    src={editedConte.imageUrl} 
+                    src={getImageUrl(editedConte.imageUrl)} 
                     alt={`씬 ${editedConte?.scene} 이미지`}
                     style={{
                       width: '100%',
@@ -755,6 +762,7 @@ const ConteEditModal = ({
                       objectFit: 'cover'
                     }}
                     onError={handleImageLoadError}
+                    onLoad={() => setImageLoadError(false)}
                   />
                   
                   {/* 이미지 재생성 버튼 */}
