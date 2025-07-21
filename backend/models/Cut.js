@@ -97,21 +97,7 @@ const cutSchema = new mongoose.Schema({
         default: '',
         trim: true
       }
-    },
-    
-    composition: {
-      type: String,
-      default: '',
-      trim: true,
-      maxlength: 500
     }
-  },
-  
-  // 컷 타입 (영화 제작 표준 - 샷 사이즈 기반)
-  cutType: {
-    type: String,
-    enum: ['EWS', 'WS', 'MS', 'CU', 'ECU'], // Extreme Wide Shot, Wide Shot, Medium Shot, Close Up, Extreme Close Up
-    default: 'MS'
   },
   
   // VFX/CG 관련 필드들
@@ -127,27 +113,6 @@ const cutSchema = new mongoose.Schema({
     default: '',
     trim: true,
     maxlength: 500
-  },
-  
-  cutPurpose: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 200
-  },
-  
-  composition: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 500
-  },
-  
-  cutDialogue: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 1000
   },
   
   directorNotes: {
@@ -426,34 +391,6 @@ const cutSchema = new mongoose.Schema({
     type: String,
     default: 'AI',
     trim: true
-  },
-  
-  // 메타데이터
-  metadata: {
-    complexity: {
-      type: String,
-      enum: ['간단', '보통', '복잡', '매우 복잡'],
-      default: '보통'
-    },
-    
-    priority: {
-      type: Number,
-      default: 1,
-      min: 1,
-      max: 5
-    },
-    
-    tags: [{
-      type: String,
-      trim: true
-    }],
-    
-    notes: {
-      type: String,
-      default: '',
-      trim: true,
-      maxlength: 1000
-    }
   }
 }, {
   // 자동으로 생성/수정 시간 관리

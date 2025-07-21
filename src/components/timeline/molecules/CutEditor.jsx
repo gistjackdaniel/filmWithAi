@@ -88,18 +88,7 @@ const CutEditor = ({
     }))
   }, [])
 
-  /**
-   * 메타데이터 업데이트
-   */
-  const handleMetadataUpdate = useCallback((field, value) => {
-    setEditedCut(prev => ({
-      ...prev,
-      metadata: {
-        ...prev.metadata,
-        [field]: value
-      }
-    }))
-  }, [])
+
 
   /**
    * 시작 시간 설정
@@ -215,7 +204,7 @@ const CutEditor = ({
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6">
-            컷 편집 - {cut.metadata?.description || `컷 ${cut.id}`}
+            컷 편집 - {`컷 ${cut.shotNumber || cut.id}`}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Tooltip title="저장">
@@ -318,15 +307,6 @@ const CutEditor = ({
             </AccordionSummary>
             <AccordionDetails>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    label="컷 설명"
-                    value={editedCut.metadata?.description || ''}
-                    onChange={(e) => handleMetadataUpdate('description', e.target.value)}
-                    fullWidth
-                    size="small"
-                  />
-                </Grid>
                 <Grid item xs={6}>
                   <TextField
                     label="시작 시간 (초)"
@@ -368,47 +348,22 @@ const CutEditor = ({
             </AccordionSummary>
             <AccordionDetails>
               <Grid container spacing={2}>
-
                 <Grid item xs={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>조명</InputLabel>
-                    <Select
-                      value={editedCut.metadata?.lighting || ''}
-                      onChange={(e) => handleMetadataUpdate('lighting', e.target.value)}
-                      label="조명"
-                    >
-                      <MenuItem value="기본">기본</MenuItem>
-                      <MenuItem value="다이나믹">다이나믹</MenuItem>
-                      <MenuItem value="드라마틱">드라마틱</MenuItem>
-                      <MenuItem value="자연광">자연광</MenuItem>
-                      <MenuItem value="인공광">인공광</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>날씨</InputLabel>
-                    <Select
-                      value={editedCut.metadata?.weather || ''}
-                      onChange={(e) => handleMetadataUpdate('weather', e.target.value)}
-                      label="날씨"
-                    >
-                      <MenuItem value="맑음">맑음</MenuItem>
-                      <MenuItem value="흐림">흐림</MenuItem>
-                      <MenuItem value="비">비</MenuItem>
-                      <MenuItem value="눈">눈</MenuItem>
-                      <MenuItem value="안개">안개</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <TextField
+                    label="컷 타입"
+                    value={editedCut.cutType || ''}
+                    onChange={(e) => handleCutUpdate('cutType', e.target.value)}
+                    fullWidth
+                    size="small"
+                  />
                 </Grid>
                 <Grid item xs={6}>
                   <TextField
-                    label="특수효과"
-                    value={editedCut.metadata?.specialEffects?.join(', ') || ''}
-                    onChange={(e) => handleMetadataUpdate('specialEffects', e.target.value.split(', '))}
+                    label="샷 사이즈"
+                    value={editedCut.shootingPlan?.shotSize || ''}
+                    onChange={(e) => handleCutUpdate('shootingPlan', { ...editedCut.shootingPlan, shotSize: e.target.value })}
                     fullWidth
                     size="small"
-                    placeholder="예: 스모크, 파티클, 합성"
                   />
                 </Grid>
               </Grid>
@@ -428,8 +383,11 @@ const CutEditor = ({
                 <Grid item xs={12}>
                   <TextField
                     label="등장인물"
-                    value={editedCut.metadata?.characters?.join(', ') || ''}
-                    onChange={(e) => handleMetadataUpdate('characters', e.target.value.split(', '))}
+                    value={editedCut.characterMovement?.characters?.map(c => c.name).join(', ') || ''}
+                    onChange={(e) => handleCutUpdate('characterMovement', { 
+                      ...editedCut.characterMovement, 
+                      characters: e.target.value.split(', ').map(name => ({ name: name.trim() }))
+                    })}
                     fullWidth
                     size="small"
                     placeholder="예: 주인공, 조연, 엑스트라"
@@ -437,12 +395,15 @@ const CutEditor = ({
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="소품"
-                    value={editedCut.metadata?.props?.join(', ') || ''}
-                    onChange={(e) => handleMetadataUpdate('props', e.target.value.split(', '))}
+                    label="동선"
+                    value={editedCut.characterMovement?.blocking || ''}
+                    onChange={(e) => handleCutUpdate('characterMovement', { 
+                      ...editedCut.characterMovement, 
+                      blocking: e.target.value 
+                    })}
                     fullWidth
                     size="small"
-                    placeholder="예: 총, 차량, 가구"
+                    placeholder="예: 중앙에서 좌측으로 이동"
                   />
                 </Grid>
               </Grid>

@@ -230,6 +230,14 @@ const useTimelineStore = create((set, get) => ({
   },
 
   /**
+   * 컷 선택
+   */
+  selectCut: (cutId) => {
+    set({ selectedCutId: cutId })
+    console.log('🎬 timelineStore 컷 선택:', cutId)
+  },
+
+  /**
    * 컷 삭제
    */
   deleteCut: (cutId) => {

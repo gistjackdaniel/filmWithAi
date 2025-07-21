@@ -51,6 +51,7 @@ const CutTimelineViewer = (props) => {
     onCutsReorder, // 컷 순서 변경 핸들러
     onGenerateConte,
     onGenerateCuts, // 컷 생성 핸들러 추가
+    onCutSelect, // 컷 선택 핸들러 (Playhead 이동 시)
     emptyMessage = "컷이 없습니다. AI를 사용하여 콘티를 생성해보세요.",
     timeScale = 1,
     zoomLevel = 1,
@@ -237,6 +238,12 @@ const CutTimelineViewer = (props) => {
     setCurrentZoomLevel(newZoomLevel)
   }, [])
 
+  // 시간 클릭 핸들러
+  const handleTimeClick = useCallback((time) => {
+    console.log('🎬 시간 클릭:', time)
+    setCurrentTime(time)
+  }, [])
+
   // 필터 변경 핸들러
   const handleFilterChange = useCallback((newFilters) => {
     setFilters(newFilters)
@@ -256,6 +263,34 @@ const CutTimelineViewer = (props) => {
     window.addEventListener('resize', updateScrollButtons)
     return () => window.removeEventListener('resize', updateScrollButtons)
   }, [allCuts])
+
+  // currentTime 변경 시 해당하는 컷 선택
+  useEffect(() => {
+    if (onCutSelect && allCuts.length > 0) {
+      // 현재 시간에 해당하는 컷 찾기
+      let currentCut = null
+      let accumulatedTime = 0
+      
+      for (const cut of allCuts) {
+        const cutDuration = cut.estimatedDuration || cut.duration || 5
+        if (currentTime >= accumulatedTime && currentTime < accumulatedTime + cutDuration) {
+          currentCut = cut
+          break
+        }
+        accumulatedTime += cutDuration
+      }
+      
+      // 마지막 컷인 경우
+      if (!currentCut && currentTime >= accumulatedTime) {
+        currentCut = allCuts[allCuts.length - 1]
+      }
+      
+      if (currentCut && currentCut.id !== selectedCutId) {
+        console.log('🎬 Playhead 위치에 따른 컷 선택:', currentCut.id, '시간:', currentTime)
+        onCutSelect(currentCut.id)
+      }
+    }
+  }, [currentTime, allCuts, onCutSelect, selectedCutId])
 
   // 로딩 상태 표시
   if (loading) {
@@ -375,9 +410,11 @@ const CutTimelineViewer = (props) => {
       {showTimeInfo && (
         <TimeRuler
           totalDuration={calculatedTotalDuration}
+          currentTime={currentTime}
           timeScale={calculatedTimeScale}
           zoomLevel={currentZoomLevel}
           width={timelineWidth}
+          onTimeClick={handleTimeClick}
         />
       )}
 

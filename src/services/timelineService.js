@@ -78,14 +78,14 @@ class TimelineService {
       shotNumber: cut.shotNumber,
       title: cut.title,
       description: cut.description,
-      shotSize: cut.shotSize,
-      angleDirection: cut.angleDirection,
-      cameraMovement: cut.cameraMovement,
-      lensSpecs: cut.lensSpecs,
-      cutType: cut.cutType,
-      lighting: cut.lighting,
-      lightingSetup: cut.lightingSetup,
-      weather: cut.weather,
+      shotSize: cut.shotSize || cut.shootingPlan?.shotSize || '',
+      angleDirection: cut.angleDirection || cut.shootingPlan?.angleDirection || '',
+      cameraMovement: cut.cameraMovement || cut.shootingPlan?.cameraMovement || '',
+      lensSpecs: cut.lensSpecs || cut.shootingPlan?.lensSpecs || '',
+      lighting: cut.lighting || cut.shootingConditions?.lighting || '',
+      lightingSetup: cut.lightingSetup || cut.shootingConditions?.lightingSetup || {},
+      weather: cut.weather || cut.shootingConditions?.weather || '',
+      timeOfDay: cut.timeOfDay || cut.shootingConditions?.timeOfDay || '',
       visualEffects: cut.visualEffects,
       characters: cut.characters,
       dialogue: cut.dialogue,
@@ -123,11 +123,9 @@ class TimelineService {
       // VFX/CG 관련 필드들
       vfxEffects: cut.vfxEffects,
       soundEffects: cut.soundEffects,
-      cutPurpose: cut.cutPurpose,
       composition: cut.composition,
-      cutDialogue: cut.cutDialogue,
-      directorNotes: cut.directorNotes,
-      timeOfDay: cut.timeOfDay
+      dialogue: cut.dialogue,
+      directorNotes: cut.directorNotes
     }
   }
 
@@ -165,7 +163,7 @@ class TimelineService {
       return transformedCuts
     }
     
-    return {
+        return {
       id: conte._id,
       scene: conte.scene,
       title: conte.title,
@@ -385,12 +383,12 @@ class TimelineService {
       // WebSocket 연결 생성
       const wsUrl = `ws://localhost:5001/ws/projects/${projectId}`
       const ws = new WebSocket(wsUrl)
-      
+
       ws.onopen = () => {
         console.log('✅ WebSocket 연결 성공:', projectId)
         this.wsConnections.set(projectId, ws)
       }
-      
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
@@ -403,7 +401,7 @@ class TimelineService {
           console.error('❌ WebSocket 메시지 파싱 실패:', error)
         }
       }
-      
+
       ws.onerror = (error) => {
         console.error('❌ WebSocket 에러:', error)
       }
@@ -412,7 +410,7 @@ class TimelineService {
         console.log('🔌 WebSocket 연결 종료:', projectId)
         this.wsConnections.delete(projectId)
       }
-      
+
       return ws
     } catch (error) {
       console.error('❌ WebSocket 연결 실패:', error)

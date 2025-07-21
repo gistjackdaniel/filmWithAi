@@ -421,12 +421,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
             conteId: conte._id,
             cutsFound: cuts.length,
             cuts: cuts.map(cut => ({
-              id: cut._id,
               cutId: cut.cutId,
               shotNumber: cut.shotNumber,
               title: cut.title,
               description: cut.description,
-              cutType: cut.cutType,
               estimatedDuration: cut.estimatedDuration,
               imageUrl: cut.output?.imageUrl,
               hasOutput: !!cut.output,
@@ -534,7 +532,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
             angleDirection: cut.angleDirection,
             cameraMovement: cut.cameraMovement,
             lensSpecs: cut.lensSpecs,
-            cutType: cut.cutType,
             lighting: cut.lighting,
             lightingSetup: cut.lightingSetup,
             weather: cut.weather,
@@ -572,9 +569,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
             // VFX/CG 관련 필드들
             vfxEffects: cut.vfxEffects,
             soundEffects: cut.soundEffects,
-            cutPurpose: cut.cutPurpose,
+
             composition: cut.composition,
-            cutDialogue: cut.cutDialogue,
+            dialogue: cut.dialogue,
             directorNotes: cut.directorNotes,
             timeOfDay: cut.timeOfDay
           })) : []
@@ -640,7 +637,6 @@ router.get('/:projectId/cuts', authenticateToken, async (req, res) => {
         angleDirection: cut.angleDirection,
         cameraMovement: cut.cameraMovement,
         lensSpecs: cut.lensSpecs,
-        cutType: cut.cutType,
         lighting: cut.lighting,
         lightingSetup: cut.lightingSetup,
         weather: cut.weather,
@@ -674,16 +670,13 @@ router.get('/:projectId/cuts', authenticateToken, async (req, res) => {
         shootingPlan: cut.shootingPlan,
         productionMethod: cut.productionMethod,
         shootingConditions: cut.shootingConditions,
-        metadata: cut.metadata,
         canEdit: cut.canEdit,
         lastModified: cut.lastModified,
         modifiedBy: cut.modifiedBy,
         // VFX/CG 관련 필드들
         vfxEffects: cut.vfxEffects,
         soundEffects: cut.soundEffects,
-        cutPurpose: cut.cutPurpose,
-        composition: cut.composition,
-        cutDialogue: cut.cutDialogue,
+        dialogue: cut.dialogue,
         directorNotes: cut.directorNotes,
         timeOfDay: cut.timeOfDay
       }))
@@ -999,13 +992,9 @@ router.get('/:projectId/cuts/:cutId', authenticateToken, async (req, res) => {
           cameraMovement: cut.shootingPlan?.cameraMovement || '',
           lensSpecs: cut.shootingPlan?.lensSpecs || '',
           composition: cut.shootingPlan?.composition || '',
-          cutType: cut.cutType,
-          // shootingConditions에서 가져오는 필드들
-          lighting: cut.shootingConditions?.lighting || '',
-          lightingSetup: cut.shootingConditions?.lightingSetup || {},
-          weather: cut.shootingConditions?.weather || '',
-          timeOfDay: cut.shootingConditions?.timeOfDay || '',
-          // 기본 필드들
+          lighting: cut.lighting,
+          lightingSetup: cut.lightingSetup,
+          weather: cut.weather,
           visualEffects: cut.visualEffects,
           characters: cut.characters,
           dialogue: cut.dialogue,
@@ -1037,10 +1026,10 @@ router.get('/:projectId/cuts/:cutId', authenticateToken, async (req, res) => {
           lastModified: cut.lastModified,
           modifiedBy: cut.modifiedBy,
           // VFX/CG 관련 필드들
-          vfxEffects: cut.vfxEffects || '',
-          soundEffects: cut.soundEffects || '',
-          cutPurpose: cut.cutPurpose || '',
-          cutDialogue: cut.cutDialogue || cut.dialogue || '',
+          vfxEffects: cut.vfxEffects,
+          soundEffects: cut.soundEffects,
+
+          dialogue: cut.dialogue || '',
           directorNotes: cut.directorNotes || '',
           // 씬 정보
           scene: cut.conteId?.scene,

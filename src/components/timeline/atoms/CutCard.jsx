@@ -4,7 +4,8 @@ import {
   Typography, 
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  Paper
 } from '@mui/material'
 import { 
   PlayArrow, 
@@ -149,8 +150,31 @@ const CutCard = React.memo(({
 
   const typeInfo = getCutTypeInfo(cut.cutType || 'medium_shot')
 
+  // 호버 시 표시할 요약 정보 생성
+  const getSummaryInfo = () => {
+    const shotSize = cut.shootingPlan?.shotSize || cut.shotSize || 'MS'
+    const angleDirection = cut.shootingPlan?.angleDirection || cut.angleDirection || 'Eye-level'
+    const cameraMovement = cut.shootingPlan?.cameraMovement || cut.cameraMovement || 'Static'
+    const lensSpecs = cut.shootingPlan?.lensSpecs || cut.lensSpecs || ''
+    const lighting = cut.shootingConditions?.lighting || cut.lighting || ''
+    const weather = cut.shootingConditions?.weather || cut.weather || ''
+    const timeOfDay = cut.shootingConditions?.timeOfDay || cut.timeOfDay || ''
+    
+    return {
+      shotSize,
+      angleDirection,
+      cameraMovement,
+      lensSpecs,
+      lighting,
+      weather,
+      timeOfDay
+    }
+  }
+
+  const summaryInfo = getSummaryInfo()
+
   // 카드 너비 계산 - 외부에서 전달된 너비 우선 사용
-  const cutDuration = cut?.estimatedDuration || 5
+  const cutDuration = typeof cut?.estimatedDuration === 'number' ? cut.estimatedDuration : (cut?.duration || 5)
   let cardWidth = width || 200 // 외부에서 전달된 너비가 있으면 사용, 없으면 기본값
   
   // 외부에서 너비가 전달되지 않은 경우에만 내부 계산 수행
@@ -220,67 +244,117 @@ const CutCard = React.memo(({
   }
 
   return (
-    <Box
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={(event) => {
-        if (onClick) {
-          // Shift 키가 눌린 상태에서 클릭하면 씬 편집 모드로 처리
-          if (event.shiftKey) {
-            console.log('🎬 Shift + 클릭: 씬 편집 모드')
-            // 씬 정보로 변환하여 전달
-            const sceneData = {
-              ...cut,
-              scene: cut.sceneNumber || cut.sceneId,
-              title: cut.sceneTitle || cut.title,
-              description: cut.description || '',
-              type: 'live_action',
-              estimatedDuration: cut.estimatedDuration || cut.duration || 5,
-              imageUrl: cut.imageUrl || null,
-              isCut: false, // 씬 편집 모드 표시
-              originalCut: cut // 원본 컷 정보 보존
-            }
-            onClick(sceneData)
-          } else {
-            console.log('🎬 일반 클릭: 컷 편집 모드')
-            // 컷 편집 모드로 처리
-            const cutData = {
-              ...cut,
-              isCut: true // 컷 편집 모드 표시
-            }
-            onClick(cutData)
-          }
-        }
-      }}
-      onMouseEnter={() => onMouseEnter && onMouseEnter()}
-      onMouseLeave={() => onMouseLeave && onMouseLeave()}
-      sx={{
-        width: cardWidth,
-        height: 150,
-        backgroundColor: 'var(--color-card-bg)',
-        borderRadius: '8px',
-        border: `2px solid ${selected ? 'var(--color-accent)' : typeInfo.borderColor}`,
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1,
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-        position: 'relative',
-        overflow: 'hidden',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          borderColor: 'var(--color-accent)'
-        },
-        ...(isMultiSelected && {
-          backgroundColor: 'rgba(212, 175, 55, 0.1)',
-          borderColor: 'var(--color-accent)'
-        })
-      }}
+    <Tooltip
+      title={
+        <Paper sx={{ p: 2, maxWidth: 300 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+            컷 {cut.shotNumber} - {cut.title}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            {cut.description}
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontSize: '0.8rem' }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">샷 사이즈:</Typography>
+              <Typography variant="body2">{summaryInfo.shotSize}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">앵글:</Typography>
+              <Typography variant="body2">{summaryInfo.angleDirection}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">카메라 움직임:</Typography>
+              <Typography variant="body2">{summaryInfo.cameraMovement}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">렌즈:</Typography>
+              <Typography variant="body2">{summaryInfo.lensSpecs || 'N/A'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">조명:</Typography>
+              <Typography variant="body2">{summaryInfo.lighting || 'N/A'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">날씨:</Typography>
+              <Typography variant="body2">{summaryInfo.weather || 'N/A'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">시간대:</Typography>
+              <Typography variant="body2">{summaryInfo.timeOfDay || 'N/A'}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">지속시간:</Typography>
+              <Typography variant="body2">{durationText}</Typography>
+            </Box>
+          </Box>
+        </Paper>
+      }
+      placement="top"
+      arrow
+      enterDelay={500}
+      leaveDelay={0}
     >
+      <Box
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        onClick={(event) => {
+          if (onClick) {
+            // Shift 키가 눌린 상태에서 클릭하면 씬 편집 모드로 처리
+            if (event.shiftKey) {
+              console.log('🎬 Shift + 클릭: 씬 편집 모드')
+              // 씬 정보로 변환하여 전달
+              const sceneData = {
+                ...cut,
+                scene: cut.sceneNumber || cut.sceneId,
+                title: cut.sceneTitle || cut.title,
+                description: cut.description || '',
+                type: 'live_action',
+                estimatedDuration: cut.estimatedDuration || cut.duration || 5,
+                imageUrl: cut.imageUrl || null,
+                isCut: false, // 씬 편집 모드 표시
+                originalCut: cut // 원본 컷 정보 보존
+              }
+              onClick(sceneData)
+            } else {
+              console.log('🎬 일반 클릭: 컷 편집 모드')
+              // 컷 편집 모드로 처리
+              const cutData = {
+                ...cut,
+                isCut: true // 컷 편집 모드 표시
+              }
+              onClick(cutData)
+            }
+          }
+        }}
+        onMouseEnter={() => onMouseEnter && onMouseEnter()}
+        onMouseLeave={() => onMouseLeave && onMouseLeave()}
+        sx={{
+          width: cardWidth,
+          height: 150,
+          backgroundColor: 'var(--color-card-bg)',
+          borderRadius: '8px',
+          border: `2px solid ${selected ? 'var(--color-accent)' : typeInfo.borderColor}`,
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          cursor: 'pointer',
+          transition: 'all 0.2s ease-in-out',
+          position: 'relative',
+          overflow: 'hidden',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            borderColor: 'var(--color-accent)'
+          },
+          ...(isMultiSelected && {
+            backgroundColor: 'rgba(212, 175, 55, 0.1)',
+            borderColor: 'var(--color-accent)'
+          })
+        }}
+      >
       {/* 컷 헤더 */}
       <Box sx={{ 
         display: 'flex', 
@@ -576,6 +650,7 @@ const CutCard = React.memo(({
         }} />
       )}
     </Box>
+    </Tooltip>
   )
 })
 

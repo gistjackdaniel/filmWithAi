@@ -11,7 +11,26 @@ import {
   CardActions,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper
 } from '@mui/material'
 import { 
   Save,
@@ -19,7 +38,10 @@ import {
   Edit,
   Visibility,
   Add,
-  List
+  List,
+  Book,
+  Print,
+  Download
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../services/api'
@@ -66,7 +88,7 @@ const ProjectPage = () => {
     updateCutWithAPI,
     deleteCutWithAPI
   } = useTimelineStore()
-
+  
   // 로컬 상태 관리
   const [project, setProject] = useState(null) // 프로젝트 정보
   const [loading, setLoading] = useState(true) // 로딩 상태
@@ -74,6 +96,15 @@ const ProjectPage = () => {
   const [editingScene, setEditingScene] = useState(null) // 편집 중인 씬
   const [showSceneList, setShowSceneList] = useState(true) // 씬 리스트 표시 여부
   const [showTimeline, setShowTimeline] = useState(false) // 타임라인 표시 여부
+  const [showCutList, setShowCutList] = useState(false)
+  const [showContinuityBook, setShowContinuityBook] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  // 컷 선택 핸들러 (Playhead 이동 시)
+  const handleCutSelect = useCallback((cutId) => {
+    console.log('🎬 컷 선택 (비디오 플레이어용):', cutId)
+    selectCut(cutId)
+  }, [selectCut])
 
   // 컷 생성 관련 함수들 (로컬에서 구현)
   const generateCutsForScene = useCallback(async (scene) => {
@@ -294,8 +325,16 @@ const ProjectPage = () => {
       return 300 // 기본 5분
     }
     
-    console.log(`parseDurationToSeconds: parsing "${duration}"`)
+    console.log(`parseDurationToSeconds: parsing "${duration}" (type: ${typeof duration})`)
     
+    // 숫자인 경우 그대로 반환 (이미 초 단위)
+    if (typeof duration === 'number') {
+      console.log(`parseDurationToSeconds: number "${duration}" -> ${duration}s`)
+      return duration
+    }
+    
+    // 문자열인 경우 파싱
+    if (typeof duration === 'string') {
     const match = duration.match(/(\d+)분\s*(\d+)?초?/)
     if (match) {
       const minutes = parseInt(match[1]) || 0
@@ -312,6 +351,7 @@ const ProjectPage = () => {
       const result = minutes * 60
       console.log(`parseDurationToSeconds: number only "${duration}" -> ${minutes}m = ${result}s`)
       return result
+      }
     }
     
     console.log(`parseDurationToSeconds: no match for "${duration}", returning 300s`)
@@ -323,6 +363,10 @@ const ProjectPage = () => {
    */
   const handleCutClick = useCallback((cut) => {
     console.log('🎬 컷 클릭 (CutEditModal):', cut)
+    
+    // 선택된 컷 ID 업데이트 (비디오 플레이어용)
+    const { selectCut } = useTimelineStore.getState()
+    selectCut(cut.id)
     
     // CutEditModal에서 편집할 수 있도록 컷 데이터 설정
     setEditingScene({
@@ -1047,7 +1091,7 @@ const ProjectPage = () => {
               description: cut.description || '',
               cutType: cut.cutType || 'MS',
               estimatedDuration: cut.estimatedDuration || 5,
-              duration: parseDurationToSeconds(cut.estimatedDuration || 5),
+              duration: typeof cut.estimatedDuration === 'number' ? cut.estimatedDuration : parseDurationToSeconds(cut.estimatedDuration || 5),
               imageUrl: cut.imageUrl || null,
               sceneId: scene?.id || scene?._id || resultItem.sceneId,
               sceneNumber: scene?.scene || 1,
@@ -1139,6 +1183,68 @@ const ProjectPage = () => {
       toast.error('스케줄을 보려면 먼저 콘티를 생성해주세요.')
     }
   }, [project, projectId, navigate])
+
+  /**
+   * 컷리스트 출력 핸들러
+   */
+  const handleShowCutList = () => {
+    setShowCutList(true)
+  }
+
+  /**
+   * 콘티북 출력 핸들러
+   */
+  const handleShowContinuityBook = () => {
+    setShowContinuityBook(true)
+  }
+
+  /**
+   * 컷리스트 데이터 생성
+   */
+  const generateCutListData = () => {
+    if (!cuts || cuts.length === 0) return []
+    
+    return cuts.map(cut => {
+      const shotSize = cut.shootingPlan?.shotSize || cut.shotSize || 'MS'
+      const angleDirection = cut.shootingPlan?.angleDirection || cut.angleDirection || 'Eye-Level'
+      const cameraMovement = cut.shootingPlan?.cameraMovement || cut.cameraMovement || 'Static'
+      const lensSpecs = cut.shootingPlan?.lensSpecs || cut.lensSpecs || ''
+      const equipment = cut.requiredEquipment?.cameras?.join(', ') || ''
+      
+      return {
+        scene: cut.sceneNumber || cut.sceneId,
+        cut: cut.shotNumber,
+        description: cut.description,
+        shotSize,
+        angleDirection,
+        cameraMovement,
+        lensSpecs,
+        equipment
+      }
+    })
+  }
+
+  /**
+   * 콘티북 데이터 생성
+   */
+  const generateContinuityBookData = () => {
+    if (!cuts || cuts.length === 0) return []
+    
+    return cuts.map(cut => {
+      const shotSize = cut.shootingPlan?.shotSize || cut.shotSize || 'MS'
+      const angleDirection = cut.shootingPlan?.angleDirection || cut.angleDirection || 'Eye-Level'
+      const cameraMovement = cut.shootingPlan?.cameraMovement || cut.cameraMovement || 'Static'
+      
+      return {
+        cutNumber: cut.shotNumber,
+        imageUrl: cut.imageUrl,
+        description: cut.description,
+        shotSize,
+        angleDirection,
+        cameraMovement
+      }
+    })
+  }
 
   // 로딩 중일 때 로딩 화면 표시
   if (loading) {
@@ -1233,8 +1339,8 @@ const ProjectPage = () => {
             )}
           </Box>
 
-          {/* 시놉시스 섹션 */}
-          {project.synopsis && (
+          {/* 시놉시스 섹션 (씬 리스트 모드에서만 표시) */}
+          {!showTimeline && project.synopsis && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 시놉시스
@@ -1245,8 +1351,8 @@ const ProjectPage = () => {
             </Box>
           )}
 
-          {/* 스토리 섹션 (있는 경우에만 표시) */}
-          {project.story && (
+          {/* 스토리 섹션 (씬 리스트 모드에서만 표시) */}
+          {!showTimeline && project.story && (
             <Box sx={{ mb: 3 }}>
               <StoryResult 
                 story={project.story}
@@ -1263,6 +1369,108 @@ const ProjectPage = () => {
                 onAutoSave={null}
                 projectId={projectId}
               />
+            </Box>
+          )}
+
+          {/* 비디오 플레이어 영역 (타임라인 모드에서만 표시) */}
+          {showTimeline && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                비디오 플레이어 (v1 - 컷 이미지 미리보기)
+              </Typography>
+              <Box 
+                sx={{ 
+                  width: '100%', 
+                  height: 300, 
+                  bgcolor: 'black', 
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* 현재 Playhead 위치의 컷 이미지 표시 */}
+                {(() => {
+                  // 현재 선택된 컷이나 첫 번째 컷의 이미지 표시
+                  const currentCut = cuts?.find(cut => cut.id === selectedCutId) || cuts?.[0]
+                  
+                  if (currentCut?.imageUrl) {
+                    return (
+                      <img
+                        src={currentCut.imageUrl.startsWith('/') ? `http://localhost:5001${currentCut.imageUrl}` : currentCut.imageUrl}
+                        alt={`컷 ${currentCut.shotNumber} - ${currentCut.title}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    )
+                  } else {
+                    return (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        color: 'white',
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="h6" sx={{ mb: 1 }}>
+                          비디오 플레이어
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 2 }}>
+                          v1: 컷 이미지 미리보기
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          {currentCut ? `컷 ${currentCut.shotNumber}: ${currentCut.title}` : '컷을 선택하거나 생성해주세요'}
+                        </Typography>
+        </Box>
+                    )
+                  }
+                })()}
+                
+                {/* 플레이어 컨트롤 오버레이 */}
+                <Box sx={{
+                  position: 'absolute',
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  bgcolor: 'rgba(0, 0, 0, 0.7)',
+                  borderRadius: 1,
+                  p: 1
+                }}>
+                  <Typography variant="caption" color="white">
+                    {(() => {
+                      const currentCut = cuts?.find(cut => cut.id === selectedCutId) || cuts?.[0]
+                      return currentCut ? `컷 ${currentCut.shotNumber}: ${currentCut.title}` : '컷 없음'
+                    })()}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="contained" 
+                      color="primary"
+                      onClick={() => setIsPlaying(!isPlaying)}
+                    >
+                      {isPlaying ? '일시정지' : '재생'}
+                    </Button>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      color="inherit"
+                      onClick={() => setIsPlaying(false)}
+                    >
+                      정지
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           )}
         </Box>
@@ -1428,11 +1636,11 @@ const ProjectPage = () => {
 
         {/* 타임라인 섹션 */}
         {showTimeline && (
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
                 컷 타임라인
-              </Typography>
+            </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant="outlined"
@@ -1451,14 +1659,71 @@ const ProjectPage = () => {
                 >
                   스케줄러 보기
                 </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<List />}
+                  onClick={handleShowCutList}
+                >
+                  컷리스트
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Book />}
+                  onClick={handleShowContinuityBook}
+                >
+                  콘티북
+                </Button>
               </Box>
-            </Box>
-            
+          </Box>
+          
             {/* 컷이 있는 경우에만 타임라인 표시 */}
             {cuts && cuts.length > 0 ? (
               <CutTimelineViewer
-                scenes={project?.conteList || []}
-                loading={timelineLoading || false}
+                scenes={(() => {
+                  // 타임라인 스토어의 cuts 데이터를 씬별로 그룹화
+                  const scenesWithCuts = project?.conteList?.map(scene => {
+                    // sceneId와 sceneNumber 모두로 매칭 시도
+                    const sceneCuts = cuts.filter(cut => {
+                      const sceneIdMatch = cut.sceneId === scene.id || cut.sceneId === scene._id
+                      const sceneNumberMatch = cut.sceneNumber === scene.scene
+                      const conteIdMatch = cut.sceneId === scene.conteId
+                      
+                      console.log(`🔍 컷 ${cut.id} 매칭 확인:`, {
+                        cutSceneId: cut.sceneId,
+                        cutSceneNumber: cut.sceneNumber,
+                        sceneId: scene.id,
+                        sceneNumber: scene.scene,
+                        sceneIdMatch,
+                        sceneNumberMatch,
+                        conteIdMatch
+                      })
+                      
+                      return sceneIdMatch || sceneNumberMatch || conteIdMatch
+                    })
+                    
+                    console.log(`🔍 씬 ${scene.title} (${scene.id})에 매칭된 컷:`, sceneCuts.length, '개')
+                    
+                    return {
+                      ...scene,
+                      cuts: sceneCuts
+                    }
+                  }) || []
+                  
+                  console.log('🔍 CutTimelineViewer에 전달할 scenes 데이터:', {
+                    totalScenes: scenesWithCuts.length,
+                    totalCuts: cuts.length,
+                    scenesWithCuts: scenesWithCuts.map(scene => ({
+                      id: scene.id,
+                      title: scene.title,
+                      cutsCount: scene.cuts?.length || 0
+                    }))
+                  })
+                  
+                  return scenesWithCuts
+                })()}
+            loading={timelineLoading || false}
                 selectedCutId={selectedCutId || null}
                 onCutClick={handleCutClick}
                 onCutEdit={handleCutEdit}
@@ -1468,10 +1733,11 @@ const ProjectPage = () => {
                 onGenerateCuts={handleGenerateCutsForAllScenes}
                 emptyMessage="컷이 없습니다. 씬 리스트에서 컷을 생성해보세요."
                 timeScale={100}
-                zoomLevel={1}
-                showTimeInfo={true}
-                baseScale={1}
-                onViewSchedule={handleViewSchedule}
+            zoomLevel={1}
+            showTimeInfo={true}
+            baseScale={1}
+            onViewSchedule={handleViewSchedule}
+                onCutSelect={handleCutSelect}
               />
             ) : (
               <Box sx={{ 
@@ -1497,7 +1763,7 @@ const ProjectPage = () => {
                 >
                   씬 리스트로 이동
                 </Button>
-              </Box>
+        </Box>
             )}
           </Box>
         )}
@@ -1547,6 +1813,124 @@ const ProjectPage = () => {
         onEdit={handleSceneEdit}
         onRegenerate={handleSceneRegenerate}
       />
+
+      {/* 컷리스트 모달 */}
+      <Dialog
+        open={showCutList}
+        onClose={() => setShowCutList(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">컷리스트</Typography>
+            <Button
+              startIcon={<Print />}
+              onClick={() => window.print()}
+            >
+              인쇄
+            </Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>씬</TableCell>
+                  <TableCell>컷</TableCell>
+                  <TableCell>설명</TableCell>
+                  <TableCell>사이즈</TableCell>
+                  <TableCell>앵글</TableCell>
+                  <TableCell>무빙</TableCell>
+                  <TableCell>렌즈</TableCell>
+                  <TableCell>장비</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {generateCutListData().map((cut, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{cut.scene}</TableCell>
+                    <TableCell>{cut.cut}</TableCell>
+                    <TableCell>{cut.description}</TableCell>
+                    <TableCell>{cut.shotSize}</TableCell>
+                    <TableCell>{cut.angleDirection}</TableCell>
+                    <TableCell>{cut.cameraMovement}</TableCell>
+                    <TableCell>{cut.lensSpecs}</TableCell>
+                    <TableCell>{cut.equipment}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowCutList(false)}>닫기</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 콘티북 모달 */}
+      <Dialog
+        open={showContinuityBook}
+        onClose={() => setShowContinuityBook(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">콘티북</Typography>
+            <Button
+              startIcon={<Print />}
+              onClick={() => window.print()}
+            >
+              인쇄
+            </Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>컷 번호</TableCell>
+                  <TableCell>콘티 이미지</TableCell>
+                  <TableCell>설명</TableCell>
+                  <TableCell>샷 사이즈</TableCell>
+                  <TableCell>앵글</TableCell>
+                  <TableCell>카메라 움직임</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {generateContinuityBookData().map((cut, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{cut.cutNumber}</TableCell>
+                    <TableCell>
+                      {cut.imageUrl ? (
+                        <img
+                          src={cut.imageUrl.startsWith('/') ? `http://localhost:5001${cut.imageUrl}` : cut.imageUrl}
+                          alt={`컷 ${cut.cutNumber}`}
+                          style={{ width: 100, height: 60, objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Box sx={{ width: 100, height: 60, bgcolor: 'grey.300', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Typography variant="caption">이미지 없음</Typography>
+                        </Box>
+                      )}
+                    </TableCell>
+                    <TableCell>{cut.description}</TableCell>
+                    <TableCell>{cut.shotSize}</TableCell>
+                    <TableCell>{cut.angleDirection}</TableCell>
+                    <TableCell>{cut.cameraMovement}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowContinuityBook(false)}>닫기</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

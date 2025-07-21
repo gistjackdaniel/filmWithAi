@@ -718,13 +718,13 @@ const ConteEditModal = ({
           alignItems: 'center'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="h5" component="h2">
+          <Typography variant="h5" component="h2">
               {editedConte?.isCut ? (
                 `컷 ${editedConte?.cutNumber || editedConte?.shotNumber || 'N/A'}: ${editedConte?.title || '제목 없음'}`
               ) : (
                 `씬 ${conte?.scene || 'N/A'}: ${conte?.title || '제목 없음'}`
               )}
-            </Typography>
+          </Typography>
             {typeInfo && (
               <Chip
                 icon={typeInfo.icon}
@@ -935,31 +935,31 @@ const ConteEditModal = ({
 
             {/* 컷 정보 (컷 편집 시에만 표시) */}
             {editedConte?.isCut && (
-              <Grid item xs={12}>
+            <Grid item xs={12}>
                 <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
+                <AccordionSummary expandIcon={<ExpandMore />}>
                     <Typography variant="h6">컷 정보</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
                           label="컷 번호"
                           value={editedConte?.cutNumber || editedConte?.shotNumber || ''}
                           onChange={(e) => handleFieldChange('cutNumber', e.target.value)}
-                          variant="outlined"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
                           label="샷 사이즈"
                           value={editedConte?.shotSize || ''}
                           onChange={(e) => handleFieldChange('shotSize', e.target.value)}
-                          variant="outlined"
-                        />
-                      </Grid>
+                        variant="outlined"
+                      />
+                    </Grid>
                       <Grid item xs={12} sm={6}>
                         <TextField
                           fullWidth
@@ -1032,18 +1032,6 @@ const ConteEditModal = ({
                         />
                       </Grid>
                       
-                      {/* 컷 목적 */}
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="컷 목적"
-                          placeholder="감정 강조, 정보 전달 등"
-                          value={editedConte?.cutPurpose || ''}
-                          onChange={(e) => handleFieldChange('cutPurpose', e.target.value)}
-                          variant="outlined"
-                        />
-                      </Grid>
-                      
                       {/* 구도/인물 위치 */}
                       <Grid item xs={12} sm={6}>
                         <TextField
@@ -1064,8 +1052,8 @@ const ConteEditModal = ({
                           rows={3}
                           label="대사 및 나레이션"
                           placeholder="컷에서 사용되는 대사나 나레이션 (선택사항)"
-                          value={editedConte?.cutDialogue || ''}
-                          onChange={(e) => handleFieldChange('cutDialogue', e.target.value)}
+                                                value={editedConte?.dialogue || ''}
+                      onChange={(e) => handleFieldChange('dialogue', e.target.value)}
                           variant="outlined"
                         />
                       </Grid>
@@ -1098,24 +1086,24 @@ const ConteEditModal = ({
                 <AccordionDetails>
                   <Grid container spacing={2}>
 
-                                          <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="조명"
-                          value={editedConte?.lighting || ''}
-                          onChange={(e) => handleFieldChange('lighting', e.target.value)}
-                          variant="outlined"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="날씨"
-                          value={editedConte?.weather || ''}
-                          onChange={(e) => handleFieldChange('weather', e.target.value)}
-                          variant="outlined"
-                        />
-                      </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="조명"
+                        value={editedConte?.lighting || ''}
+                        onChange={(e) => handleFieldChange('lighting', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="날씨"
+                        value={editedConte?.weather || ''}
+                        onChange={(e) => handleFieldChange('weather', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth

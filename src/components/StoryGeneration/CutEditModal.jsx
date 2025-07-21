@@ -59,10 +59,9 @@ const CutEditModal = ({
           timeOfDay: result.data.timeOfDay,
           vfxEffects: result.data.vfxEffects,
           soundEffects: result.data.soundEffects,
-          cutPurpose: result.data.cutPurpose,
-          cutDialogue: result.data.cutDialogue,
-          directorNotes: result.data.directorNotes,
+
           dialogue: result.data.dialogue,
+          directorNotes: result.data.directorNotes,
           narration: result.data.narration
         })
         setEditedCut(result.data)
@@ -153,6 +152,24 @@ const CutEditModal = ({
   useEffect(() => {
     if (cut && cut.id) {
       console.log('🔍 CutEditModal 컷 데이터 변경:', cut)
+      console.log('🔍 CutEditModal 컷 데이터 상세:', {
+        id: cut.id,
+        title: cut.title,
+        description: cut.description,
+        shotSize: cut.shotSize,
+        angleDirection: cut.angleDirection,
+        cameraMovement: cut.cameraMovement,
+        lensSpecs: cut.lensSpecs,
+        lighting: cut.lighting,
+        weather: cut.weather,
+        timeOfDay: cut.timeOfDay,
+        vfxEffects: cut.vfxEffects,
+        soundEffects: cut.soundEffects,
+
+        directorNotes: cut.directorNotes,
+        shootingPlan: cut.shootingPlan,
+        shootingConditions: cut.shootingConditions
+      })
       
       // 먼저 전달받은 컷 데이터로 기본 설정
       const baseCutData = {
@@ -160,33 +177,41 @@ const CutEditModal = ({
         // 기본값 설정
         vfxEffects: cut.vfxEffects || '',
         soundEffects: cut.soundEffects || '',
-        cutPurpose: cut.cutPurpose || '',
+
         composition: cut.composition || '',
-        cutDialogue: cut.cutDialogue || cut.dialogue || '',
+        dialogue: cut.dialogue || '',
         directorNotes: cut.directorNotes || '',
-        shotSize: cut.shotSize || '',
-        angleDirection: cut.angleDirection || '',
-        cameraMovement: cut.cameraMovement || '',
+        shotSize: cut.shotSize || cut.shootingPlan?.shotSize || '',
+        angleDirection: cut.angleDirection || cut.shootingPlan?.angleDirection || '',
+        cameraMovement: cut.cameraMovement || cut.shootingPlan?.cameraMovement || '',
         duration: cut.duration || cut.estimatedDuration || 5,
-        lighting: cut.lighting || '',
-        weather: cut.weather || '',
-        timeOfDay: cut.timeOfDay || '',
+        lighting: cut.lighting || cut.shootingConditions?.lighting || '',
+        weather: cut.weather || cut.shootingConditions?.weather || '',
+        timeOfDay: cut.timeOfDay || cut.shootingConditions?.timeOfDay || '',
         // 추가 필드들
-        lensSpecs: cut.lensSpecs || '',
+        lensSpecs: cut.lensSpecs || cut.shootingPlan?.lensSpecs || '',
         cutType: cut.cutType || 'medium_shot',
         narration: cut.narration || '',
         characterMovement: cut.characterMovement || '',
         visualEffects: cut.visualEffects || '',
         characters: cut.characters || [],
         dialogue: cut.dialogue || '',
-        imageUrl: cut.imageUrl || null
+        imageUrl: cut.imageUrl || null,
+        // 중첩된 객체들도 그대로 유지
+        shootingPlan: cut.shootingPlan || {},
+        shootingConditions: cut.shootingConditions || {}
       }
       
       setEditedCut(baseCutData)
       
-      // 프로젝트 ID가 있으면 상세 정보 로드 시도
-      if (projectId) {
+      // 전달받은 컷 데이터에 상세 정보가 부족한 경우에만 API 호출
+      const hasDetailedInfo = cut.shootingPlan || cut.shootingConditions || cut.vfxEffects || cut.soundEffects || cut.directorNotes
+      
+      if (!hasDetailedInfo && projectId) {
+        console.log('🔍 CutEditModal 상세 정보 부족, API 호출:', { cutId: cut.id, hasDetailedInfo })
         loadCutDetails(cut.id)
+      } else {
+        console.log('🔍 CutEditModal 전달받은 데이터 사용:', { cutId: cut.id, hasDetailedInfo })
       }
     }
   }, [cut, projectId])
@@ -275,25 +300,6 @@ const CutEditModal = ({
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>컷 타입</InputLabel>
-                      <Select
-                        value={editedCut.cutType || ''}
-                        onChange={(e) => handleFieldChange('cutType', e.target.value)}
-                        label="컷 타입"
-                      >
-                        <MenuItem value="wide_shot">와이드 샷</MenuItem>
-                        <MenuItem value="medium_shot">미디엄 샷</MenuItem>
-                        <MenuItem value="close_up">클로즈업</MenuItem>
-                        <MenuItem value="extreme_close_up">익스트림 클로즈업</MenuItem>
-                        <MenuItem value="over_the_shoulder">오버 더 숄더</MenuItem>
-                        <MenuItem value="point_of_view">POV</MenuItem>
-                        <MenuItem value="aerial">에어리얼</MenuItem>
-                        <MenuItem value="tracking">트래킹</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
                       label="지속시간 (초)"
@@ -319,47 +325,517 @@ const CutEditModal = ({
             </Accordion>
           </Grid>
 
-          {/* 촬영 기술 정보 */}
+          {/* 컷 이미지 */}
+          {editedCut.imageUrl && (
+            <Grid item xs={12}>
+              <Accordion defaultExpanded>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  <Typography variant="h6">컷 이미지</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ position: 'relative', width: '100%', height: 300 }}>
+                    <img
+                      src={editedCut.imageUrl && editedCut.imageUrl.startsWith('/') ? `http://localhost:5001${editedCut.imageUrl}` : editedCut.imageUrl}
+                      alt={`컷 ${editedCut.cutNumber || editedCut.shotNumber}`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: 8
+                      }}
+                      onError={handleImageLoadError}
+                    />
+                    <Box
+                      className="image-placeholder"
+                      sx={{
+                        display: 'none',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        gap: 2
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        이미지를 불러올 수 없습니다
+                      </Typography>
+                      {onRegenerateImage && (
+                        <Button
+                          variant="outlined"
+                          onClick={handleImageRetry}
+                          disabled={isLoading}
+                        >
+                          이미지 재생성
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Grid>
+          )}
+
+          {/* 대사 및 나레이션 */}
+          <Grid item xs={12}>
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="h6">대사 및 나레이션</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={4}
+                      label="대사 및 나레이션"
+                      placeholder="컷에서 사용되는 대사나 나레이션 (선택사항)"
+                      value={editedCut.dialogue || ''}
+                      onChange={(e) => handleFieldChange('dialogue', e.target.value)}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      label="나레이션"
+                      placeholder="컷에서 사용되는 나레이션 (선택사항)"
+                      value={editedCut.narration || ''}
+                      onChange={(e) => handleFieldChange('narration', e.target.value)}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+
+          {/* 촬영 계획 */}
           <Grid item xs={12}>
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography variant="h6">촬영 기술 정보</Typography>
+                <Typography variant="h6">촬영 계획</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>샷 사이즈</InputLabel>
+                      <Select
+                        value={editedCut.shootingPlan?.shotSize || editedCut.shotSize || ''}
+                        onChange={(e) => handleFieldChange('shootingPlan', { ...editedCut.shootingPlan, shotSize: e.target.value })}
+                        label="샷 사이즈"
+                      >
+                        <MenuItem value="EWS">익스트림 와이드 샷</MenuItem>
+                        <MenuItem value="WS">와이드 샷</MenuItem>
+                        <MenuItem value="MS">미디엄 샷</MenuItem>
+                        <MenuItem value="CU">클로즈업</MenuItem>
+                        <MenuItem value="ECU">익스트림 클로즈업</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>앵글 방향</InputLabel>
+                      <Select
+                        value={editedCut.shootingPlan?.angleDirection || editedCut.angleDirection || ''}
+                        onChange={(e) => handleFieldChange('shootingPlan', { ...editedCut.shootingPlan, angleDirection: e.target.value })}
+                        label="앵글 방향"
+                      >
+                        <MenuItem value="Eye-level">아이 레벨</MenuItem>
+                        <MenuItem value="High">하이 앵글</MenuItem>
+                        <MenuItem value="Low">로우 앵글</MenuItem>
+                        <MenuItem value="Dutch">더치 앵글</MenuItem>
+                        <MenuItem value="Bird_eye">버드스아이</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>카메라 움직임</InputLabel>
+                      <Select
+                        value={editedCut.shootingPlan?.cameraMovement || editedCut.cameraMovement || ''}
+                        onChange={(e) => handleFieldChange('shootingPlan', { ...editedCut.shootingPlan, cameraMovement: e.target.value })}
+                        label="카메라 움직임"
+                      >
+                        <MenuItem value="Static">정적</MenuItem>
+                        <MenuItem value="Pan">팬</MenuItem>
+                        <MenuItem value="Tilt">틸트</MenuItem>
+                        <MenuItem value="Dolly">돌리</MenuItem>
+                        <MenuItem value="Zoom">줌</MenuItem>
+                        <MenuItem value="Handheld">핸드헬드</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="렌즈 스펙"
+                      value={editedCut.shootingPlan?.lensSpecs || editedCut.lensSpecs || ''}
+                      onChange={(e) => handleFieldChange('shootingPlan', { ...editedCut.shootingPlan, lensSpecs: e.target.value })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="조리개"
+                      value={editedCut.shootingPlan?.cameraSettings?.aperture || ''}
+                      onChange={(e) => handleFieldChange('shootingPlan', { 
+                        ...editedCut.shootingPlan, 
+                        cameraSettings: { 
+                          ...editedCut.shootingPlan?.cameraSettings, 
+                          aperture: e.target.value 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="셔터 스피드"
+                      value={editedCut.shootingPlan?.cameraSettings?.shutterSpeed || ''}
+                      onChange={(e) => handleFieldChange('shootingPlan', { 
+                        ...editedCut.shootingPlan, 
+                        cameraSettings: { 
+                          ...editedCut.shootingPlan?.cameraSettings, 
+                          shutterSpeed: e.target.value 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="ISO"
+                      value={editedCut.shootingPlan?.cameraSettings?.iso || ''}
+                      onChange={(e) => handleFieldChange('shootingPlan', { 
+                        ...editedCut.shootingPlan, 
+                        cameraSettings: { 
+                          ...editedCut.shootingPlan?.cameraSettings, 
+                          iso: e.target.value 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+
+          {/* 조명 세팅 */}
+          <Grid item xs={12}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="h6">조명 세팅</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="샷 사이즈"
-                      value={editedCut.shotSize || ''}
-                      onChange={(e) => handleFieldChange('shotSize', e.target.value)}
+                      label="메인 라이트"
+                      value={editedCut.shootingConditions?.lightingSetup?.mainLight || ''}
+                      onChange={(e) => handleFieldChange('shootingConditions', { 
+                        ...editedCut.shootingConditions, 
+                        lightingSetup: { 
+                          ...editedCut.shootingConditions?.lightingSetup, 
+                          mainLight: e.target.value 
+                        } 
+                      })}
                       variant="outlined"
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="앵글 방향"
-                      value={editedCut.angleDirection || ''}
-                      onChange={(e) => handleFieldChange('angleDirection', e.target.value)}
+                      label="필 라이트"
+                      value={editedCut.shootingConditions?.lightingSetup?.fillLight || ''}
+                      onChange={(e) => handleFieldChange('shootingConditions', { 
+                        ...editedCut.shootingConditions, 
+                        lightingSetup: { 
+                          ...editedCut.shootingConditions?.lightingSetup, 
+                          fillLight: e.target.value 
+                        } 
+                      })}
                       variant="outlined"
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="카메라 움직임"
-                      value={editedCut.cameraMovement || ''}
-                      onChange={(e) => handleFieldChange('cameraMovement', e.target.value)}
+                      label="백 라이트"
+                      value={editedCut.shootingConditions?.lightingSetup?.backLight || ''}
+                      onChange={(e) => handleFieldChange('shootingConditions', { 
+                        ...editedCut.shootingConditions, 
+                        lightingSetup: { 
+                          ...editedCut.shootingConditions?.lightingSetup, 
+                          backLight: e.target.value 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>강도</InputLabel>
+                      <Select
+                        value={editedCut.shootingConditions?.lightingSetup?.intensity || '보통'}
+                        onChange={(e) => handleFieldChange('shootingConditions', { 
+                          ...editedCut.shootingConditions, 
+                          lightingSetup: { 
+                            ...editedCut.shootingConditions?.lightingSetup, 
+                            intensity: e.target.value 
+                          } 
+                        })}
+                        label="강도"
+                      >
+                        <MenuItem value="낮음">낮음</MenuItem>
+                        <MenuItem value="보통">보통</MenuItem>
+                        <MenuItem value="높음">높음</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="색온도"
+                      value={editedCut.shootingConditions?.lightingSetup?.color || ''}
+                      onChange={(e) => handleFieldChange('shootingConditions', { 
+                        ...editedCut.shootingConditions, 
+                        lightingSetup: { 
+                          ...editedCut.shootingConditions?.lightingSetup, 
+                          color: e.target.value 
+                        } 
+                      })}
                       variant="outlined"
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="렌즈 스펙"
-                      value={editedCut.lensSpecs || ''}
-                      onChange={(e) => handleFieldChange('lensSpecs', e.target.value)}
+                      label="특수 효과"
+                      value={editedCut.shootingConditions?.lightingSetup?.specialEffects || ''}
+                      onChange={(e) => handleFieldChange('shootingConditions', { 
+                        ...editedCut.shootingConditions, 
+                        lightingSetup: { 
+                          ...editedCut.shootingConditions?.lightingSetup, 
+                          specialEffects: e.target.value 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+
+          {/* 등장인물 및 동선 */}
+          <Grid item xs={12}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="h6">등장인물 및 동선</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      label="등장인물 동선"
+                      placeholder="등장인물들의 위치와 움직임"
+                      value={editedCut.characterMovement?.blocking || ''}
+                      onChange={(e) => handleFieldChange('characterMovement', { 
+                        ...editedCut.characterMovement, 
+                        blocking: e.target.value 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="카메라 X 위치"
+                      type="number"
+                      value={editedCut.characterMovement?.cameraPosition?.x || 50}
+                      onChange={(e) => handleFieldChange('characterMovement', { 
+                        ...editedCut.characterMovement, 
+                        cameraPosition: { 
+                          ...editedCut.characterMovement?.cameraPosition, 
+                          x: parseFloat(e.target.value) 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="카메라 Y 위치"
+                      type="number"
+                      value={editedCut.characterMovement?.cameraPosition?.y || 50}
+                      onChange={(e) => handleFieldChange('characterMovement', { 
+                        ...editedCut.characterMovement, 
+                        cameraPosition: { 
+                          ...editedCut.characterMovement?.cameraPosition, 
+                          y: parseFloat(e.target.value) 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="카메라 Z 위치"
+                      type="number"
+                      value={editedCut.characterMovement?.cameraPosition?.z || 0}
+                      onChange={(e) => handleFieldChange('characterMovement', { 
+                        ...editedCut.characterMovement, 
+                        cameraPosition: { 
+                          ...editedCut.characterMovement?.cameraPosition, 
+                          z: parseFloat(e.target.value) 
+                        } 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+
+          {/* 필요 인력 */}
+          <Grid item xs={12}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="h6">필요 인력</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="감독"
+                      value={editedCut.requiredPersonnel?.director || ''}
+                      onChange={(e) => handleFieldChange('requiredPersonnel', { 
+                        ...editedCut.requiredPersonnel, 
+                        director: e.target.value 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="촬영감독"
+                      value={editedCut.requiredPersonnel?.cinematographer || ''}
+                      onChange={(e) => handleFieldChange('requiredPersonnel', { 
+                        ...editedCut.requiredPersonnel, 
+                        cinematographer: e.target.value 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="카메라맨"
+                      value={editedCut.requiredPersonnel?.cameraOperator || ''}
+                      onChange={(e) => handleFieldChange('requiredPersonnel', { 
+                        ...editedCut.requiredPersonnel, 
+                        cameraOperator: e.target.value 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="조명감독"
+                      value={editedCut.requiredPersonnel?.lightingDirector || ''}
+                      onChange={(e) => handleFieldChange('requiredPersonnel', { 
+                        ...editedCut.requiredPersonnel, 
+                        lightingDirector: e.target.value 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+
+          {/* 필요 장비 */}
+          <Grid item xs={12}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="h6">필요 장비</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="카메라"
+                      placeholder="카메라 종류 (쉼표로 구분)"
+                      value={editedCut.requiredEquipment?.cameras?.join(', ') || ''}
+                      onChange={(e) => handleFieldChange('requiredEquipment', { 
+                        ...editedCut.requiredEquipment, 
+                        cameras: e.target.value.split(',').map(item => item.trim()).filter(item => item) 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="렌즈"
+                      placeholder="렌즈 종류 (쉼표로 구분)"
+                      value={editedCut.requiredEquipment?.lenses?.join(', ') || ''}
+                      onChange={(e) => handleFieldChange('requiredEquipment', { 
+                        ...editedCut.requiredEquipment, 
+                        lenses: e.target.value.split(',').map(item => item.trim()).filter(item => item) 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="조명"
+                      placeholder="조명 장비 (쉼표로 구분)"
+                      value={editedCut.requiredEquipment?.lighting?.join(', ') || ''}
+                      onChange={(e) => handleFieldChange('requiredEquipment', { 
+                        ...editedCut.requiredEquipment, 
+                        lighting: e.target.value.split(',').map(item => item.trim()).filter(item => item) 
+                      })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="오디오"
+                      placeholder="오디오 장비 (쉼표로 구분)"
+                      value={editedCut.requiredEquipment?.audio?.join(', ') || ''}
+                      onChange={(e) => handleFieldChange('requiredEquipment', { 
+                        ...editedCut.requiredEquipment, 
+                        audio: e.target.value.split(',').map(item => item.trim()).filter(item => item) 
+                      })}
                       variant="outlined"
                     />
                   </Grid>
@@ -429,16 +905,6 @@ const CutEditModal = ({
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="컷 목적"
-                      placeholder="감정 강조, 정보 전달 등"
-                      value={editedCut.cutPurpose || ''}
-                      onChange={(e) => handleFieldChange('cutPurpose', e.target.value)}
-                      variant="outlined"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
                       label="구도/인물 위치"
                       placeholder="인물 배치, 시선 방향 등"
                       value={editedCut.composition || ''}
@@ -455,31 +921,6 @@ const CutEditModal = ({
                       placeholder="감독의 연출 지시사항이나 특별한 요구사항"
                       value={editedCut.directorNotes || ''}
                       onChange={(e) => handleFieldChange('directorNotes', e.target.value)}
-                      variant="outlined"
-                    />
-                  </Grid>
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          </Grid>
-
-          {/* 대사 및 나레이션 */}
-          <Grid item xs={12}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography variant="h6">대사 및 나레이션</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={4}
-                      label="대사 및 나레이션"
-                      placeholder="컷에서 사용되는 대사나 나레이션 (선택사항)"
-                      value={editedCut.cutDialogue || ''}
-                      onChange={(e) => handleFieldChange('cutDialogue', e.target.value)}
                       variant="outlined"
                     />
                   </Grid>
@@ -527,62 +968,6 @@ const CutEditModal = ({
               </AccordionDetails>
             </Accordion>
           </Grid>
-
-          {/* 컷 이미지 */}
-          {editedCut.imageUrl && (
-            <Grid item xs={12}>
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6">컷 이미지</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box sx={{ position: 'relative', width: '100%', height: 300 }}>
-                    <img
-                      src={editedCut.imageUrl && editedCut.imageUrl.startsWith('/') ? `http://localhost:5001${editedCut.imageUrl}` : editedCut.imageUrl}
-                      alt={`컷 ${editedCut.cutNumber || editedCut.shotNumber}`}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: 8
-                      }}
-                      onError={handleImageLoadError}
-                    />
-                    <Box
-                      className="image-placeholder"
-                      sx={{
-                        display: 'none',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: '#f5f5f5',
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'column',
-                        gap: 2
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        이미지를 불러올 수 없습니다
-                      </Typography>
-                      {onRegenerateImage && (
-                        <Button
-                          variant="outlined"
-                          onClick={handleImageRetry}
-                          disabled={isLoading}
-                        >
-                          이미지 재생성
-                        </Button>
-                      )}
-                    </Box>
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-            </Grid>
-          )}
         </Grid>
       </DialogContent>
 
