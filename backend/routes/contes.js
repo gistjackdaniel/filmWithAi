@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const Project = require('../models/Project');
 const Conte = require('../models/Conte');
+const RealLocation = require('../models/VirtualLocation'); // 파일명은 그대로, 모델명만 변경
 
 const router = express.Router();
 
@@ -250,12 +251,116 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
     await conte.save();
     console.log('✅ 콘티 저장 완료:', { id: conte._id, scene: conte.scene, title: conte.title });
 
-    // 새로운 콘티 생성 시에만 프로젝트 상태를 conte_ready로 업데이트 (기존 상태 유지)
+    // 실제장소 자동 생성 및 연결
+    let realLocationId = null;
+    if (validatedKeywords.location && validatedKeywords.location.trim() !== '') {
+      try {
+        const locationName = validatedKeywords.location.trim();
+        console.log('🏗️ 실제장소 자동 생성 시작:', { locationName, projectId });
+        
+        // 같은 이름의 실제장소가 이미 존재하는지 확인
+        let existingRealLocation = await RealLocation.findOne({
+          projectId: projectId,
+          name: locationName,
+          status: 'active'
+        });
+        
+        if (existingRealLocation) {
+          console.log('✅ 기존 실제장소 사용:', { 
+            locationId: existingRealLocation._id, 
+            locationName: existingRealLocation.name,
+            conteScene: scene,
+            conteTitle: conte.title
+          });
+          realLocationId = existingRealLocation._id;
+        } else {
+          // 새로운 실제장소 생성
+          const newRealLocation = new RealLocation({
+            projectId: projectId,
+            name: locationName,
+            description: `${locationName} - 콘티 자동 생성`,
+            characteristics: {
+              environment: '실내',
+              lighting: '자연광',
+              noise: '보통',
+              accessibility: '보통'
+            },
+            shootingInfo: {
+              timeOfDay: validatedKeywords.timeOfDay || '오후',
+              weather: validatedKeywords.weather || '맑음',
+              restrictions: [],
+              notes: `콘티 씬 ${scene}에서 자동 생성된 실제장소`
+            },
+            status: 'active',
+            isAIGenerated: true,
+            createdBy: req.user.name || 'User'
+          });
+          
+          await newRealLocation.save();
+          realLocationId = newRealLocation._id;
+          
+          console.log('✅ 새로운 실제장소 생성 완료:', { 
+            locationId: realLocationId, 
+            locationName: locationName,
+            conteScene: scene,
+            conteTitle: conte.title,
+            projectId: projectId
+          });
+        }
+        
+        // 콘티에 실제장소 연결
+        conte.realLocationId = realLocationId;
+        await conte.save();
+        
+        console.log('✅ 콘티-실제장소 연결 완료:', { 
+          conteId: conte._id,
+          conteScene: conte.scene,
+          conteTitle: conte.title,
+          location: locationName,
+          realLocationId: realLocationId,
+          realLocationName: locationName,
+          projectId: projectId
+        });
+        
+        // 실제장소 생성 확인 로그
+        console.log('🎯 실제장소 생성 확인:', {
+          locationName: locationName,
+          realLocationId: realLocationId,
+          isCreated: !!realLocationId,
+          conteScene: scene
+        });
+        
+      } catch (error) {
+        console.error('❌ 실제장소 자동 생성 실패:', error);
+        // 실제장소 생성 실패 시에도 콘티는 저장됨
+      }
+    }
+    
+    // 실제장소 생성 여부 확인 로그
+    if (!realLocationId) {
+      console.log('⚠️ 실제장소 생성 안됨:', {
+        location: validatedKeywords.location,
+        hasLocation: !!(validatedKeywords.location && validatedKeywords.location.trim() !== ''),
+        conteScene: scene
+      });
+    }
     const project = await ProjectModel.findById(projectId);
     if (project) {
       await project.updateStatusOnConteCreation();
       console.log('✅ 콘티 생성으로 인한 프로젝트 상태 업데이트 완료');
     }
+
+    // 콘티 생성 완료 로그 - 장소와 실제장소 정보 포함
+    console.log('🎬 콘티 생성 완료:', {
+      conteId: conte._id,
+      scene: conte.scene,
+      title: conte.title,
+      location: validatedKeywords.location || '미정',
+      realLocationId: realLocationId,
+      realLocationName: validatedKeywords.location || '미정',
+      projectId: projectId,
+      createdAt: conte.createdAt
+    });
 
     res.status(201).json({
       success: true,
@@ -269,6 +374,7 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
           type: conte.type,
           order: conte.order,
           status: conte.status,
+          realLocationId: realLocationId,
           createdAt: conte.createdAt
         }
       }
@@ -326,6 +432,8 @@ router.get('/:projectId/contes', authenticateToken, checkProjectAccess, async (r
               imageGeneratedAt: conte.imageGeneratedAt,
               imageModel: conte.imageModel,
               isFreeTier: conte.isFreeTier,
+              // 실제장소 연결 정보 추가
+              realLocationId: conte.realLocationId,
               // 스케줄링 관련 필드들 추가
               requiredPersonnel: conte.requiredPersonnel,
               requiredEquipment: conte.requiredEquipment,
@@ -396,6 +504,8 @@ router.get('/:projectId/contes/:conteId', authenticateToken, checkProjectAccess,
           imageGeneratedAt: conte.imageGeneratedAt,
           imageModel: conte.imageModel,
           isFreeTier: conte.isFreeTier,
+          // 가상장소 연결 정보 추가
+          virtualLocationId: conte.virtualLocationId,
           // 스케줄링 관련 필드들 추가
           requiredPersonnel: conte.requiredPersonnel,
           requiredEquipment: conte.requiredEquipment,

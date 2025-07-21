@@ -40,7 +40,6 @@ const useTimelineStore = create((set, get) => ({
       if (savedData) {
         const data = JSON.parse(savedData)
         set(data)
-        console.log('User timeline data loaded for:', userId)
       }
     } catch (error) {
       console.warn('Failed to load user timeline data:', error)
@@ -66,7 +65,6 @@ const useTimelineStore = create((set, get) => ({
       }
       
       localStorage.setItem(`timeline-data-${userId}`, JSON.stringify(dataToSave))
-      console.log('User timeline data saved for:', userId)
     } catch (error) {
       console.warn('Failed to save user timeline data:', error)
     }
@@ -94,57 +92,40 @@ const useTimelineStore = create((set, get) => ({
       modalOpen: false,
       currentScene: null
     })
-    console.log('All timeline data cleared')
   },
 
   /**
    * 씬들 설정
    */
   setScenes: (scenes) => {
-    console.log('🔧 timelineStore setScenes 호출됨')
-    console.log('  - 전달받은 scenes 타입:', typeof scenes)
-    console.log('  - 전달받은 scenes가 배열인가:', Array.isArray(scenes))
-    console.log('  - 전달받은 scenes 길이:', scenes?.length || 0)
-    
     if (scenes && Array.isArray(scenes)) {
-      console.log('✅ timelineStore 유효한 scenes 데이터 수신')
       
       // 이미지 URL 상세 분석 로그 추가
-      console.log('🖼️ timelineStore 이미지 URL 상세 분석:')
       scenes.forEach((scene, index) => {
-        console.log(`📸 timelineStore 씬 ${index + 1} 이미지 정보:`)
-        console.log('  - ID:', scene.id)
-        console.log('  - 씬 번호:', scene.scene)
-        console.log('  - 제목:', scene.title)
-        console.log('  - 타입:', scene.type)
-        console.log('  - 예상 시간:', scene.estimatedDuration)
-        console.log('  - 실제 시간(초):', scene.duration)
-        console.log('  - 이미지 URL 존재:', !!scene.imageUrl)
-        console.log('  - 이미지 URL 값:', scene.imageUrl)
-        console.log('  - 이미지 URL 타입:', typeof scene.imageUrl)
-        console.log('  - 이미지 URL 길이:', scene.imageUrl ? scene.imageUrl.length : 0)
         if (scene.imageUrl) {
-          console.log('  - 이미지 URL이 http로 시작:', scene.imageUrl.startsWith('http'))
-          console.log('  - 이미지 URL이 /로 시작:', scene.imageUrl.startsWith('/'))
-          console.log('  - 이미지 URL이 빈 문자열:', scene.imageUrl === '')
-          console.log('  - 이미지 URL이 null:', scene.imageUrl === null)
-          console.log('  - 이미지 URL이 undefined:', scene.imageUrl === undefined)
+          if (scene.imageUrl.startsWith('http')) {
+            if (scene.imageUrl.startsWith('/')) {
+              if (scene.imageUrl === '') {
+                if (scene.imageUrl === null) {
+                  if (scene.imageUrl === undefined) {
+                  }
+                }
+              }
+            }
+          }
         }
-        console.log('  - 키워드 존재:', !!scene.keywords)
-        console.log('  ---')
+        if (scene.keywords) {
+        }
       })
     } else {
-      console.log('❌ timelineStore 유효하지 않은 scenes 데이터:', scenes)
     }
     
     set({ scenes, loading: false, error: null })
-    console.log('✅ timelineStore scenes 설정 완료')
     
     // 사용자별 데이터 저장
     const { user } = useAuthStore.getState()
     if (user && user.id) {
       get().saveUserData(user.id)
-      console.log('💾 timelineStore 사용자별 데이터 저장 완료')
     }
   },
 
@@ -210,23 +191,16 @@ const useTimelineStore = create((set, get) => ({
    * 프로젝트 ID 설정
    */
   setCurrentProjectId: (projectId) => {
-    console.log('🔧 timelineStore setCurrentProjectId 호출됨')
-    console.log('  - 설정할 프로젝트 ID:', projectId)
-    console.log('  - 이전 프로젝트 ID:', get().currentProjectId)
-    
     set({ currentProjectId: projectId })
-    console.log('✅ timelineStore currentProjectId 설정 완료:', projectId)
   },
 
   /**
    * 프로젝트 콘티 데이터 로드
    */
   loadProjectContes: async (projectId) => {
-    console.log('timelineStore loadProjectContes started for projectId:', projectId)
     
     // projectId 유효성 검사
     if (!projectId || projectId === 'undefined' || projectId === '') {
-      console.error('timelineStore invalid projectId:', projectId)
       return { success: false, error: '유효하지 않은 프로젝트 ID입니다.' }
     }
     
@@ -236,7 +210,6 @@ const useTimelineStore = create((set, get) => ({
       // 캐시된 데이터 확인 (5분 이내)
       const cachedData = timelineService.getCachedData(`project_${projectId}`)
       if (cachedData && cachedData.length > 0) {
-        console.log('timelineStore using cached data, count:', cachedData.length)
         set({ 
           scenes: cachedData, 
           loading: false, 
@@ -247,16 +220,12 @@ const useTimelineStore = create((set, get) => ({
       }
 
       // API에서 데이터 가져오기
-      console.log('timelineStore fetching data from API for projectId:', projectId)
       const result = await timelineService.getProjectContes(projectId)
-      console.log('timelineStore API result:', result)
       
       if (result.success && result.data) {
-        console.log('timelineStore API success, data count:', result.data.length)
         
         // 데이터 유효성 검사
         if (!Array.isArray(result.data)) {
-          console.error('timelineStore API returned non-array data:', result.data)
           set({ 
             loading: false, 
             error: '서버에서 잘못된 데이터 형식을 받았습니다.' 
@@ -276,7 +245,6 @@ const useTimelineStore = create((set, get) => ({
         
         // 실시간 업데이트 연결 (선택적)
         try {
-          console.log('timelineStore connecting realtime updates')
           get().connectRealtimeUpdates(projectId)
         } catch (wsError) {
           console.warn('timelineStore WebSocket connection failed:', wsError)
@@ -285,7 +253,6 @@ const useTimelineStore = create((set, get) => ({
         
         return { success: true, data: result.data }
       } else {
-        console.error('timelineStore API failed:', result.error)
         set({ 
           loading: false, 
           error: result.error || '데이터를 불러올 수 없습니다.' 
@@ -293,7 +260,6 @@ const useTimelineStore = create((set, get) => ({
         return { success: false, error: result.error || '데이터를 불러올 수 없습니다.' }
       }
     } catch (error) {
-      console.error('timelineStore loadProjectContes error:', error)
       const errorMessage = '콘티 데이터를 불러오는데 실패했습니다.'
       set({ loading: false, error: errorMessage })
       return { success: false, error: errorMessage }
@@ -310,23 +276,19 @@ const useTimelineStore = create((set, get) => ({
     }
 
     try {
-      console.log('timelineStore loadSceneDetails started for sceneId:', sceneId)
       const result = await timelineService.getSceneDetails(currentProjectId, sceneId)
       
       if (result.success) {
         // 현재 씬 업데이트 및 모달 열기
         set({ currentScene: result.data, modalOpen: true })
-        console.log('timelineStore scene details loaded and modal opened:', result.data)
         return { success: true, data: result.data }
       } else {
         set({ error: result.error })
-        console.error('timelineStore loadSceneDetails failed:', result.error)
         return { success: false, error: result.error }
       }
     } catch (error) {
       const errorMessage = '씬 상세 정보를 불러오는데 실패했습니다.'
       set({ error: errorMessage })
-      console.error('timelineStore loadSceneDetails error:', error)
       return { success: false, error: errorMessage }
     }
   },
@@ -621,7 +583,6 @@ const useTimelineStore = create((set, get) => ({
    */
   optimizeSchedule: () => {
     // TODO: 그래프 알고리즘을 사용한 스케줄링 최적화
-    console.log('스케줄링 최적화 기능은 향후 구현 예정입니다.')
   }
 }))
 

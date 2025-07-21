@@ -10,6 +10,7 @@ import DirectStoryPage from './pages/DirectStoryPage'
 import SchedulerPage from './pages/SchedulerPage'
 import SchedulerTestPage from './pages/SchedulerTestPage'
 import SimpleSchedulePage from './pages/SimpleSchedulePage'
+import LocationsPage from './pages/LocationsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -153,6 +154,16 @@ function App() {
           element={
             <ProtectedRoute>
               <SimpleSchedulePage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* 프로젝트별 위치 관리 페이지 라우트 */}
+        <Route 
+          path="/project/:projectId/locations" 
+          element={
+            <ProtectedRoute>
+              <LocationsPage />
             </ProtectedRoute>
           } 
         />

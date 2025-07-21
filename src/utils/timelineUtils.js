@@ -363,23 +363,12 @@ export const isValidSceneTime = (scene) => {
  * @returns {string} 처리된 이미지 URL
  */
 export const processImageUrl = (imageUrl) => {
-  console.log('🔧 processImageUrl 호출됨:', {
-    input: imageUrl,
-    type: typeof imageUrl,
-    isNull: imageUrl === null,
-    isUndefined: imageUrl === undefined,
-    isEmpty: imageUrl === '',
-    length: imageUrl ? imageUrl.length : 0
-  })
-  
   if (!imageUrl) {
-    console.log('❌ processImageUrl: URL이 없음, null 반환')
     return null
   }
   
   // 이미 완전한 URL인 경우 그대로 반환
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    console.log('✅ processImageUrl: 완전한 URL, 그대로 반환:', imageUrl)
     return imageUrl
   }
   
@@ -391,15 +380,6 @@ export const processImageUrl = (imageUrl) => {
   const normalizedPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`
   const finalUrl = `${baseUrl}${normalizedPath}`
   
-  console.log('🔧 processImageUrl 처리 과정:', {
-    originalUrl: imageUrl,
-    apiBaseUrl: apiBaseUrl,
-    baseUrl: baseUrl,
-    normalizedPath: normalizedPath,
-    finalUrl: finalUrl
-  })
-  
-  console.log('✅ processImageUrl: 최종 URL 반환:', finalUrl)
   return finalUrl
 }
 

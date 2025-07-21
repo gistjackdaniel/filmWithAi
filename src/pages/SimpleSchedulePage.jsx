@@ -18,7 +18,15 @@ import {
   Divider,
   Tabs,
   Tab,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Schedule,
@@ -28,7 +36,10 @@ import {
   AccessTime,
   CameraAlt, // 아이콘 추가
   Build, // 아이콘 추가
-  Star // 즐겨찾기 아이콘 추가
+  Star, // 즐겨찾기 아이콘 추가
+  Link, // 연결 아이콘 추가
+  Description, // 일일촬영계획표 아이콘 추가
+  Refresh // 재생성 아이콘 추가
 } from '@mui/icons-material';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { generateOptimalSchedule } from '../services/schedulerService';
@@ -40,6 +51,9 @@ import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal';
 import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토리 생성 스토어 추가
 import { getProject } from '../services/projectApi';
 import CommonHeader from '../components/CommonHeader';
+import { locationAPI } from '../services/api';
+import DailyShootingPlanModal from '../components/Scheduler/DailyShootingPlanModal';
+import scheduleApi from '../services/scheduleApi';
 
 /**
  * 간단한 스케줄표 페이지
@@ -59,6 +73,10 @@ const SimpleSchedulePage = () => {
   // 콘티 상세 모달 상태 추가
   const [selectedConte, setSelectedConte] = useState(null); // 선택된 콘티 정보
   const [conteModalOpen, setConteModalOpen] = useState(false); // 모달 열림 여부
+
+  // 일일촬영계획표 모달 상태 추가
+  const [dailyPlanModalOpen, setDailyPlanModalOpen] = useState(false);
+  const [selectedDayForPlan, setSelectedDayForPlan] = useState(null);
 
   // URL 파라미터 확인하여 즐겨찾기 모드인지 확인
   const isFavoriteView = new URLSearchParams(location.search).get('view') === 'favorite';
@@ -97,8 +115,6 @@ const SimpleSchedulePage = () => {
   // 프로젝트별 콘티 데이터 가져오기 함수
   const getProjectConteData = async (projectId) => {
     try {
-      console.log(`📋 프로젝트 ${projectId}의 콘티 데이터 가져오는 중...`);
-      
       const response = await getProject(projectId, { includeContes: true });
       
       if (response.success && response.data?.conteList) {
@@ -107,10 +123,20 @@ const SimpleSchedulePage = () => {
           projectTitle: response.data.project.projectTitle,
           projectId: projectId
         }));
-        console.log(`✅ 프로젝트 ${projectId}에서 ${contes.length}개 콘티 가져옴`);
+        
+        // 새로고침 후 실제장소 연결 상태 확인
+        const contesWithRealLocation = contes.filter(c => c.realLocationId);
+        console.log('🔄 새로고침 후 데이터 로드:', {
+          totalContes: contes.length,
+          contesWithRealLocation: contesWithRealLocation.length,
+          realLocationDetails: contesWithRealLocation.map(c => ({
+            id: c._id,
+            title: c.title,
+            realLocationId: c.realLocationId
+          }))
+        });
+        
         return contes;
-      } else {
-        console.warn(`⚠️ 프로젝트 ${projectId} 콘티 데이터 가져오기 실패`);
       }
       return [];
     } catch (error) {
@@ -162,31 +188,28 @@ const SimpleSchedulePage = () => {
   const [projectInfo, setProjectInfo] = useState(null); // 프로젝트 정보 추가
   const [isLoadingConteData, setIsLoadingConteData] = useState(true); // 콘티 데이터 로딩 상태 추가
   
-  useEffect(() => {
+  // 콘티 데이터 로드 함수를 컴포넌트 레벨로 이동
     const loadConteData = async () => {
-      setIsLoadingConteData(true); // 로딩 시작
-      console.log('🔍 SimpleSchedulePage 콘티 데이터 로드 시작');
-      console.log('  - isFavoriteView:', isFavoriteView);
-      console.log('  - finalProjectId:', finalProjectId);
-      console.log('  - passedConteData:', passedConteData?.length || 0, '개');
-      console.log('  - actualConteData:', actualConteData?.length || 0, '개');
-      console.log('  - location.state:', location.state);
-      console.log('  - location.search:', location.search);
+    setIsLoadingConteData(true);
+    
+    console.log('🔄 콘티 데이터 로드 시작:', {
+      passedConteData: !!passedConteData,
+      isFavoriteView,
+      finalProjectId,
+      actualConteData: !!actualConteData
+    });
       
       let dataToUse = [];
       
-      if (passedConteData && passedConteData.length > 0) {
-        // Dashboard나 ProjectPage에서 전달받은 콘티 데이터 사용 (최우선)
-        console.log('📋 전달받은 콘티 데이터 사용:', passedConteData.length, '개');
-        console.log('📋 첫 번째 콘티 샘플:', passedConteData[0]);
+    // 새로고침 시에는 passedConteData를 무시하고 DB에서 데이터 가져오기
+    if (passedConteData && passedConteData.length > 0 && !window.performance.navigation.type) {
+      console.log('📥 passedConteData 사용 (페이지 이동)');
         dataToUse = passedConteData;
       } else if (isFavoriteView) {
-        // 즐겨찾기 모드: 프로젝트 ID로 데이터 가져오기
+      console.log('⭐ 즐겨찾기 뷰 - getFavoriteProjectsData 호출');
         const favoriteData = await getFavoriteProjectsData();
-        console.log('📋 즐겨찾기 콘티 데이터 로드:', favoriteData.length, '개');
         dataToUse = favoriteData;
         
-        // 선택된 프로젝트 정보 설정
         if (finalProjectId) {
           const storedProject = localStorage.getItem('selectedFavoriteProject');
           if (storedProject) {
@@ -194,24 +217,24 @@ const SimpleSchedulePage = () => {
           }
         }
       } else if (finalProjectId) {
-        // URL 파라미터로 프로젝트 ID가 있는 경우 해당 프로젝트 데이터 가져오기
-        console.log('📋 URL 파라미터 프로젝트 ID로 데이터 가져오기:', finalProjectId);
+      console.log('📋 프로젝트 뷰 - getProjectConteData 호출 (DB에서 최신 데이터)');
         const projectData = await getProjectConteData(finalProjectId);
-        console.log('📋 프로젝트 데이터 로드:', projectData.length, '개');
         dataToUse = projectData;
         
-        // 프로젝트 정보도 함께 가져오기
         const projectInfoData = await getProjectInfo(finalProjectId);
         if (projectInfoData) {
           setProjectInfo(projectInfoData);
         }
       } else {
-        // 기본값: 스토리 생성 스토어의 데이터 사용
-        console.log('📋 기본 콘티 데이터 로드:', actualConteData?.length || 0, '개');
+      console.log('🎭 기본 데이터 사용');
         dataToUse = actualConteData || testConteData;
       }
       
-      // keywords 필드가 없는 경우 기본값 추가
+    console.log('📊 최종 로드된 데이터:', {
+      dataCount: dataToUse.length,
+      hasRealLocation: dataToUse.some(c => c.realLocationId)
+    });
+    
       const processedData = dataToUse.map(conte => ({
         ...conte,
         keywords: conte.keywords || {
@@ -225,12 +248,17 @@ const SimpleSchedulePage = () => {
         }
       }));
       
-      console.log('✅ 최종 처리된 콘티 데이터:', processedData.length, '개');
       setConteData(processedData);
-      setIsLoadingConteData(false); // 로딩 완료
+    setIsLoadingConteData(false);
     };
     
+  useEffect(() => {
     loadConteData();
+    
+    // 실제장소 데이터도 함께 로드
+    if (finalProjectId) {
+      loadRealLocations();
+    }
   }, [isFavoriteView, actualConteData, finalProjectId, passedConteData]);
 
   const getConteData = () => {
@@ -999,26 +1027,62 @@ const SimpleSchedulePage = () => {
     }));
   }
 
+  // 스케줄 로드 함수
+  const loadSchedule = async () => {
+    if (!finalProjectId) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('📋 스케줄 로드 시작:', finalProjectId);
+      
+      // 1. 기존 스케줄 확인
+      const existingSchedule = await scheduleApi.getSchedule(finalProjectId);
+      
+      if (existingSchedule.success) {
+        console.log('✅ 기존 스케줄 로드 완료');
+        setScheduleData(existingSchedule.data);
+        return existingSchedule.data;
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log('📝 기존 스케줄이 없습니다. 새로 생성합니다.');
+      } else {
+        console.error('❌ 스케줄 로드 오류:', error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+    
+    return null;
+  };
+
+  // 스케줄 저장 함수
+  const saveSchedule = async (scheduleData) => {
+    if (!finalProjectId || !scheduleData || !conteData) return;
+    
+    try {
+      console.log('💾 스케줄 저장 시작:', finalProjectId);
+      
+      const response = await scheduleApi.saveSchedule(finalProjectId, scheduleData, conteData);
+      
+      if (response.success) {
+        console.log('✅ 스케줄 저장 완료:', response.message);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('❌ 스케줄 저장 오류:', error);
+      throw error;
+    }
+  };
+
   // 스케줄 생성 함수
-  const generateSchedule = async () => {
+  const generateSchedule = async (forceRegenerate = false) => {
     try {
       setIsLoading(true)
       setError(null)
       
-      console.log('🎬 스케줄 생성 시작');
-      console.log('📋 사용할 콘티 데이터:', {
-        totalCount: conteData.length,
-        isArray: Array.isArray(conteData),
-        firstItem: conteData[0] ? {
-          id: conteData[0].id,
-          title: conteData[0].title,
-          type: conteData[0].type,
-          hasKeywords: !!conteData[0].keywords,
-          keywords: conteData[0].keywords
-        } : '없음'
-      });
-      
-      // 콘티 데이터가 없는 경우 처리
       if (!conteData || conteData.length === 0) {
         if (isFavoriteView) {
           setError('즐겨찾기된 프로젝트에 콘티 데이터가 없습니다.');
@@ -1028,29 +1092,36 @@ const SimpleSchedulePage = () => {
         return;
       }
       
-      // 각 콘티의 keywords 정보 상세 로깅
-      conteData.forEach((conte, index) => {
-        console.log(`📋 콘티 ${index + 1} 상세 정보:`, {
-          id: conte.id,
-          title: conte.title,
-          type: conte.type,
-          keywords: conte.keywords,
-          location: conte.keywords?.location,
-          equipment: conte.keywords?.equipment,
-          cast: conte.keywords?.cast,
-          timeOfDay: conte.keywords?.timeOfDay
-        });
-      });
+      // 1. 콘티 데이터 변경 감지 (강제 재생성이 아닌 경우에만)
+      if (!forceRegenerate) {
+        try {
+          const updateCheck = await scheduleApi.checkScheduleUpdate(finalProjectId, conteData);
+          console.log('🔄 콘티 데이터 변경 확인:', updateCheck);
+          
+          if (updateCheck.success && !updateCheck.needsUpdate) {
+            console.log('✅ 기존 스케줄 사용 가능');
+            const existingSchedule = await loadSchedule();
+            if (existingSchedule) {
+              setScheduleData(existingSchedule);
+              return;
+            }
+          }
+        } catch (error) {
+          console.log('📝 스케줄 변경 감지 실패, 새로 생성합니다.');
+        }
+      } else {
+        console.log('🔄 강제 재생성 모드: 기존 스케줄 무시하고 새로 생성');
+      }
       
+      // 2. 새 스케줄 생성
+      console.log('🔄 새 스케줄 생성 시작');
       const schedule = await generateOptimalSchedule(conteData)
       
-      console.log('✅ 스케줄 생성 완료:', {
-        totalDays: schedule.totalDays,
-        totalScenes: schedule.totalScenes,
-        estimatedDuration: schedule.estimatedTotalDuration
-      });
+      // 3. 스케줄 저장
+      await saveSchedule(schedule);
       
       setScheduleData(schedule)
+      console.log('✅ 스케줄 생성 및 저장 완료:', schedule)
     } catch (error) {
       console.error('❌ 스케줄 생성 실패:', error)
       setError(error.message || '스케줄 생성에 실패했습니다.')
@@ -1059,13 +1130,22 @@ const SimpleSchedulePage = () => {
     }
   }
 
-  // 페이지 로드 시 자동으로 스케줄 생성
-  // 1. 컴포넌트 마운트 시 콘티 데이터 전체 로그
+  // 페이지 로드 시 자동으로 스케줄 로드/생성
   useEffect(() => {
     console.log('📦 [SimpleSchedulePage] 즐겨찾기 모드:', isFavoriteView);
     console.log('📦 [SimpleSchedulePage] 사용할 콘티 데이터:', getConteData());
-    generateSchedule();
-  }, [isFavoriteView, conteData]); // 즐겨찾기 모드와 콘티 데이터가 변경될 때마다 스케줄 재생성
+    
+    // conteData가 로드된 후에만 스케줄 처리
+    if (conteData && conteData.length > 0) {
+      // 즐겨찾기 모드가 아닌 경우에만 백엔드 스케줄 로드 시도
+      if (!isFavoriteView && finalProjectId) {
+        generateSchedule(false); // 페이지 로드 시에는 기존 로직 사용 (forceRegenerate = false)
+      } else {
+        // 즐겨찾기 모드 또는 프로젝트 ID가 없는 경우 기존 로직 사용
+        generateSchedule(false);
+      }
+    }
+  }, [isFavoriteView, conteData, finalProjectId]); // finalProjectId 의존성 추가
 
   // 촬영 시간 포맷팅 함수
   const formatDuration = (minutes) => {
@@ -1116,6 +1196,12 @@ const SimpleSchedulePage = () => {
     setConteModalOpen(true);
   };
 
+  // 일일촬영계획표 모달 열기
+  const handleOpenDailyPlanModal = (day) => {
+    setSelectedDayForPlan(day);
+    setDailyPlanModalOpen(true);
+  };
+
   /**
    * 시간대별로 씬을 그룹핑하는 함수
    * 스케줄러 서비스에서 계산된 정확한 시간 정보를 사용
@@ -1139,23 +1225,19 @@ const SimpleSchedulePage = () => {
       // 1. timeSlotDisplay가 있는 경우 (가장 정확한 시간 정보)
       if (scene.timeSlotDisplay && scene.timeSlotDisplay.includes('~')) {
         timeLabel = scene.timeSlotDisplay;
-        console.log(`✅ timeSlotDisplay 사용: ${timeLabel}`);
       } 
       // 2. sceneStartTime과 sceneEndTime이 있는 경우
       else if (scene.sceneStartTime && scene.sceneEndTime) {
         timeLabel = `${scene.sceneStartTime} ~ ${scene.sceneEndTime}`;
-        console.log(`✅ sceneStartTime/EndTime 사용: ${timeLabel}`);
       } 
       // 3. timeRange가 있는 경우
       else if (scene.timeRange && scene.timeRange.start && scene.timeRange.end) {
         timeLabel = `${scene.timeRange.start} ~ ${scene.timeRange.end}`;
-        console.log(`✅ timeRange 사용: ${timeLabel}`);
       } 
       // 4. 기본 시간대만 표시 (fallback)
       else {
         const timeSlot = scene.keywords?.timeOfDay || scene.timeSlot || '미정';
         timeLabel = `${timeSlot} (시간 미정)`;
-        console.log(`⚠️ 기본 시간대 사용: ${timeLabel}`);
       }
       
       // 상세 정보 추출 (schedulerService에서 추가된 정보 우선 사용)
@@ -1163,10 +1245,18 @@ const SimpleSchedulePage = () => {
       const crewInfo = scene.crewDetails || [];
       const equipmentInfo = scene.equipmentDetails || [];
       
+      // 원본 콘티 데이터의 모든 필드를 보존
+      const preservedScene = {
+        ...scene,
+        _id: scene._id || scene.id, // _id가 없으면 id를 사용
+        id: scene.id,   // id 필드도 보존
+        realLocationId: scene.realLocationId // 실제장소 ID 보존
+      };
+      
       // 그룹에 추가
       result.push({
         time: timeLabel,
-        scenes: [scene],
+        scenes: [preservedScene], // 보존된 씬 데이터 사용
         location: scene.keywords?.location || scene.location || '',
         cast: scene.keywords?.cast || [],
         note: scene.title || '',
@@ -1180,16 +1270,6 @@ const SimpleSchedulePage = () => {
         equipmentDetails: equipmentInfo
       });
     }
-    
-    console.log('🕐 시간대별 그룹핑 결과:', result.map(item => ({
-      time: item.time,
-      scene: item.scenes[0]?.scene,
-      title: item.scenes[0]?.title,
-      duration: item.actualShootingDuration,
-      camera: item.cameraDetails?.model,
-      crew: item.crewDetails?.length,
-      equipment: item.equipmentDetails?.length
-    })));
     
     return result;
   }
@@ -1250,12 +1330,6 @@ const SimpleSchedulePage = () => {
     if (dateRange[0] && dateRange[1]) {
       const dates = calculateDateRange(dateRange[0], dateRange[1])
       setActualDateRange(dates)
-      console.log('📅 날짜 범위 설정:', {
-        start: dateRange[0].format('YYYY-MM-DD'),
-        end: dateRange[1].format('YYYY-MM-DD'),
-        totalDays: dates.length,
-        dates: dates.map(d => formatKoreanDate(d))
-      })
     }
   }, [dateRange])
 
@@ -1265,6 +1339,136 @@ const SimpleSchedulePage = () => {
   const daysWithDates = scheduleData && scheduleData.days
     ? assignDatesToDays(scheduleData.days, dateRange)
     : [];
+
+  // 가상장소 연결 관련 상태
+  const [realLocations, setRealLocations] = useState([]);
+  const [locationConnectionModal, setLocationConnectionModal] = useState(false);
+  const [selectedConteForLocation, setSelectedConteForLocation] = useState(null);
+  const [selectedRealLocation, setSelectedRealLocation] = useState('');
+
+  // 가상장소 데이터 로드
+  const loadRealLocations = async () => {
+    if (!finalProjectId) return;
+    
+    try {
+      const response = await locationAPI.getRealLocations(finalProjectId);
+      if (response.data.success) {
+        setRealLocations(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('실제장소 로드 오류:', error);
+    }
+  };
+
+  // 실제장소 연결 모달 열기
+  const handleOpenLocationConnection = (conte) => {
+    if (!conte._id) {
+      console.error('콘티 ID가 없습니다!');
+      return;
+    }
+    
+    setSelectedConteForLocation(conte);
+    // 현재 연결된 실제장소가 있으면 선택 상태로 설정
+    setSelectedRealLocation(conte.realLocationId || '');
+    setLocationConnectionModal(true);
+  };
+
+  // 실제장소 연결 모달 닫기
+  const handleCloseLocationConnection = () => {
+    setLocationConnectionModal(false);
+    setSelectedConteForLocation(null);
+    setSelectedRealLocation('');
+  };
+
+  // 실제장소 연결 저장
+  const handleSaveLocationConnection = async () => {
+    if (!selectedConteForLocation) return;
+
+    try {
+      const requestBody = {
+        realLocationId: selectedRealLocation || null 
+      };
+
+      console.log('🔗 실제장소 연결 시작:', {
+        projectId: finalProjectId,
+        conteId: selectedConteForLocation._id,
+        realLocationId: selectedRealLocation,
+        requestBody
+      });
+
+      const response = await fetch(`/api/projects/${finalProjectId}/contes/${selectedConteForLocation._id}/assign-location`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('auth-token') || localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('📡 API 응답:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ DB 저장 성공:', {
+          success: result.success,
+          message: result.message,
+          data: result.data
+        });
+        
+        setConteData(prevData => {
+          const updatedData = prevData.map(conte => 
+            (conte._id === selectedConteForLocation._id || 
+             conte.id === selectedConteForLocation._id ||
+             conte._id === selectedConteForLocation.id ||
+             conte.id === selectedConteForLocation.id)
+              ? { ...conte, realLocationId: selectedRealLocation || null }
+              : conte
+          );
+          
+          const updatedConteData = updatedData;
+          
+          setTimeout(async () => {
+            try {
+              await generateSchedule();
+            } catch (error) {
+              console.error('❌ 스케줄 재생성 실패:', error);
+            }
+          }, 0);
+          
+          return updatedData;
+        });
+        
+        setLocationConnectionModal(false);
+        setSelectedConteForLocation(null);
+        setSelectedRealLocation('');
+        
+        await generateSchedule();
+        
+        console.log('🎉 실제장소 연결 완료! 새로고침 후에도 유지되는지 확인해보세요.');
+      } else {
+        const errorData = await response.json();
+        console.error('❌ DB 저장 실패:', {
+          status: response.status,
+          error: errorData
+        });
+        alert(`실제장소 연결 실패: ${errorData.message || '알 수 없는 오류'}`);
+      }
+    } catch (error) {
+      console.error('❌ 실제장소 연결 오류:', error);
+      alert(`실제장소 연결 중 오류가 발생했습니다: ${error.message}`);
+    }
+  };
+
+  // 실제장소 이름 가져오기
+  const getRealLocationName = (realLocationId) => {
+    if (!realLocationId) return '미연결';
+    const location = realLocations.find(loc => loc._id === realLocationId);
+    return location ? location.name : '미연결';
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
@@ -1279,6 +1483,8 @@ const SimpleSchedulePage = () => {
         {/* 헤더 */}
         <Box sx={{ mb: 4 }}>
         
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
         <Typography variant="h4" component="h1" gutterBottom>
           {finalProjectId 
             ? (projectInfo 
@@ -1306,6 +1512,46 @@ const SimpleSchedulePage = () => {
               )
           }
         </Typography>
+          </Box>
+          
+          {/* 위치 관리 버튼 - 프로젝트가 있을 때만 표시 */}
+          {finalProjectId && (
+            <Button
+              variant="outlined"
+              startIcon={<LocationOn />}
+              onClick={() => navigate(`/project/${finalProjectId}/locations`)}
+              sx={{ 
+                minWidth: '120px',
+                borderColor: 'success.main',
+                color: 'success.main',
+                '&:hover': {
+                  borderColor: 'success.dark',
+                  backgroundColor: 'success.light',
+                  color: 'success.dark'
+                }
+              }}
+            >
+              위치 관리
+            </Button>
+          )}
+          
+          {/* 스케줄 재생성 버튼 */}
+          <Button
+            variant="contained"
+            startIcon={<Refresh />}
+            onClick={() => generateSchedule(true)} // 강제 재생성 모드
+            disabled={isLoading}
+            sx={{ 
+              minWidth: '140px',
+              backgroundColor: 'primary.main',
+              '&:hover': {
+                backgroundColor: 'primary.dark'
+              }
+            }}
+          >
+            {isLoading ? '재생성 중...' : (finalProjectId ? '스케줄 재생성 & 저장' : '스케줄 재생성')}
+          </Button>
+        </Box>
       </Box>
 
       {/* 콘티 데이터 로딩 상태 */}
@@ -1495,61 +1741,257 @@ const SimpleSchedulePage = () => {
               <Card key={selectedDay} sx={{ mb: 4, mx: 'auto' }}> {/* 카드 중앙 정렬 */}
                 <CardContent>
                   {/* 일차 및 날짜/장소 정보 */}
-                  <Typography variant="h6" gutterBottom>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6">
                     {daysWithDates[selectedDay].day}일차 {daysWithDates[selectedDay].date ? `(${daysWithDates[selectedDay].date})` : ''} - {daysWithDates[selectedDay].location}
                   </Typography>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Description />}
+                      onClick={() => handleOpenDailyPlanModal(daysWithDates[selectedDay])}
+                      sx={{ 
+                        minWidth: '140px',
+                        borderColor: 'info.main',
+                        color: 'info.main',
+                        '&:hover': {
+                          borderColor: 'info.dark',
+                          backgroundColor: 'info.light',
+                          color: 'info.dark'
+                        }
+                      }}
+                    >
+                      일일촬영계획표
+                    </Button>
+                  </Box>
+
                   <TableContainer component={Paper}>
                     <Table>
                       <TableHead>
                         <TableRow sx={{ backgroundColor: '#2F2F37' }}>
                           <TableCell><strong>시간</strong></TableCell>
+                          <TableCell><strong>활동</strong></TableCell>
                           <TableCell><strong>씬</strong></TableCell>
                           <TableCell><strong>장소</strong></TableCell>
                           <TableCell><strong>카메라</strong></TableCell>
                           <TableCell><strong>주요 인물</strong></TableCell>
-                          <TableCell><strong>필요 인력</strong></TableCell> {/* crew만 */}
-                          <TableCell><strong>필요 장비</strong></TableCell> {/* equipment만 */}
+                          <TableCell><strong>필요 인력</strong></TableCell>
+                          <TableCell><strong>필요 장비</strong></TableCell>
                           <TableCell><strong>비고</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {/* 씬별로 시간대 그룹핑 후, 각 씬 뒤에 쉬는시간 행을 추가 */}
-                        {groupScenesByTimeBlock([daysWithDates[selectedDay]]).map((block, idx, arr) => {
-                          // block/scenes 정보 로그
-                          console.log(`🟨 [렌더링] Day${selectedDay+1} block${idx+1}:`, block);
-                          // 현재 씬의 종료시간을 쉬는시간 시작으로 사용
+                        {/* dailySchedule 정보를 기반으로 통합된 스케줄 표시 */}
+                        {daysWithDates[selectedDay].dailySchedule ? (
+                          daysWithDates[selectedDay].dailySchedule.map((schedule, idx) => {
+                            // 활동별 색상 매핑
+                            const getActivityColor = (activity) => {
+                              switch (activity) {
+                                case '집합': return 'primary';
+                                case '이동': return 'secondary';
+                                case '리허설': return 'warning';
+                                case '세팅': return 'info';
+                                case '촬영': return 'success';
+                                case '점심':
+                                case '저녁': return 'error';
+                                case '정리 및 해산': return 'default';
+                                default: return 'default';
+                              }
+                            };
+
+                            // 촬영 활동인 경우 해당 씬 정보 찾기
+                            let sceneInfo = null;
+                            if (schedule.activity === '촬영') {
+                              const sceneMatch = schedule.description.match(/씬 (\d+): (.+?) \((\d+)분\)/);
+                              if (sceneMatch) {
+                                const sceneNumber = parseInt(sceneMatch[1]);
+                                const sceneTitle = sceneMatch[2];
+                                const sceneDuration = parseInt(sceneMatch[3]);
+                                sceneInfo = {
+                                  scene: sceneNumber,
+                                  title: sceneTitle,
+                                  duration: sceneDuration
+                                };
+                              }
+                            }
+
+                            // 씬 정보에서 상세 데이터 가져오기
+                            const sceneData = sceneInfo ? 
+                              daysWithDates[selectedDay].scenes.find(s => s.scene === sceneInfo.scene) : null;
+
+                            return (
+                              <TableRow key={idx}>
+                                {/* 시간 */}
+                                <TableCell>
+                                  <Typography variant="body2" fontWeight="bold">
+                                    {schedule.time}
+                                  </Typography>
+                                </TableCell>
+                                
+                                {/* 활동 */}
+                                <TableCell>
+                                  <Chip
+                                    label={schedule.activity}
+                                    size="small"
+                                    color={getActivityColor(schedule.activity)}
+                                    variant="filled"
+                                  />
+                                </TableCell>
+                                
+                                {/* 씬 */}
+                                <TableCell>
+                                  {sceneInfo ? (
+                                    <Chip
+                                      label={`씬 ${sceneInfo.scene}`}
+                                      color="primary"
+                                      variant="outlined"
+                                      size="small"
+                                      sx={{ cursor: 'pointer' }}
+                                      onClick={() => sceneData && handleSceneClick(sceneData)}
+                                    />
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                
+                                {/* 장소 */}
+                                <TableCell>
+                                  {sceneData ? (
+                                    sceneData.realLocationId ? (
+                                      <Typography 
+                                        variant="body2" 
+                                        color="primary" 
+                                        sx={{ 
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          '&:hover': { opacity: 0.8 }
+                                        }}
+                                        onClick={() => handleOpenLocationConnection(sceneData)}
+                                      >
+                                        📍 {sceneData.realLocationName || getRealLocationName(sceneData.realLocationId)}
+                                      </Typography>
+                                    ) : (
+                                      <Box display="flex" alignItems="center" gap={1}>
+                                        <Typography variant="body2">
+                                          {sceneData.location || '미정'}
+                                        </Typography>
+                                        <Button
+                                          size="small"
+                                          startIcon={<Link />}
+                                          onClick={() => handleOpenLocationConnection(sceneData)}
+                                          sx={{ minWidth: 'auto', p: 0.5 }}
+                                        >
+                                          연결
+                                        </Button>
+                                      </Box>
+                                    )
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                
+                                {/* 카메라 */}
+                                <TableCell>
+                                  {sceneData ? (
+                                    <Typography variant="body2">
+                                      {sceneData.camera || '기본 카메라'}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                
+                                {/* 주요 인물 */}
+                                <TableCell>
+                                  {sceneData && sceneData.actors && Array.isArray(sceneData.actors) && sceneData.actors.length > 0 ? (
+                                    sceneData.actors.map((actor, i) => (
+                                      <Chip
+                                        key={i}
+                                        label={actor}
+                                        color="secondary"
+                                        size="small"
+                                        sx={{ mr: 0.5, mb: 0.5 }}
+                                      />
+                                    ))
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                
+                                {/* 필요 인력 */}
+                                <TableCell>
+                                  {sceneData && sceneData.crew && Array.isArray(sceneData.crew) && sceneData.crew.length > 0 ? (
+                                    <Typography variant="body2">
+                                      {sceneData.crew.join(', ')}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                
+                                {/* 필요 장비 */}
+                                <TableCell>
+                                  {sceneData && sceneData.equipment && Array.isArray(sceneData.equipment) && sceneData.equipment.length > 0 ? (
+                                    <Typography variant="body2">
+                                      {sceneData.equipment.join(', ')}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                
+                                {/* 비고 */}
+                                <TableCell>
+                                  {sceneInfo ? (
+                                    <Typography variant="body2">
+                                      {sceneInfo.title}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      {schedule.description}
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        ) : (
+                          // dailySchedule이 없는 경우 기존 로직 사용
+                          groupScenesByTimeBlock([daysWithDates[selectedDay]]).map((block, idx, arr) => {
                           const sceneEndTime = block.scenes[0]?.sceneEndTime || '미정';
                           const breakStart = sceneEndTime;
                           const breakEnd = sceneEndTime !== '미정' ? addMinutesToTime(sceneEndTime, BREAK_TIME_MINUTES) : '미정';
                           
-                          // 상세 정보 추출 (API 응답의 실제 필드에서 가져오기)
                           const rawCameraInfo = block.scenes[0]?.camera || '기본 카메라';
                           const requiredPersonnel = block.scenes[0]?.requiredPersonnel || '정보 없음';
                           const requiredEquipment = block.scenes[0]?.requiredEquipment || '정보 없음';
                           
-                          // 카메라 정보 파싱 함수: "C1C3" -> "C1, C3"
                           const parseCameraInfo = (cameraStr) => {
-                            if (!cameraStr || typeof cameraStr !== 'string') return cameraStr;
-                            
-                            // "C1C3" 형태를 "C1, C3"로 변환
+                              if (!cameraStr || typeof cameraStr !== 'string') return '기본 카메라';
                             const cameraMatch = cameraStr.match(/(C\d+)/g);
                             if (cameraMatch && cameraMatch.length > 1) {
                               return cameraMatch.join(', ');
                             }
-                            
                             return cameraStr;
                           };
                           
                           const cameraInfo = parseCameraInfo(rawCameraInfo);
-                          
-                          // 주요 인물: cast만
                           const cast = block.scenes[0]?.keywords?.cast || [];
                           
                           return (
                             <React.Fragment key={idx}>
-                              {/* 씬 정보 행 */}
                               <TableRow>
-                                {/* 시간 정보 및 촬영시간 */}
                                 <TableCell>
                                   <Box>
                                     <Typography variant="body2" fontWeight="bold">{block.time}</Typography>
@@ -1560,7 +2002,9 @@ const SimpleSchedulePage = () => {
                                     )}
                                   </Box>
                                 </TableCell>
-                                {/* 씬 번호(Chip) */}
+                                  <TableCell>
+                                    <Chip label="촬영" size="small" color="success" variant="filled" />
+                                  </TableCell>
                                 <TableCell>
                                   {block.scenes.map((scene, i) => (
                                     <Chip
@@ -1573,15 +2017,41 @@ const SimpleSchedulePage = () => {
                                     />
                                   ))}
                                 </TableCell>
-                                {/* 장소 정보 */}
-                                <TableCell>{block.location}</TableCell>
-                                {/* 카메라 정보: API 응답의 camera 필드 사용 */}
+                                <TableCell>
+                                                                      {block.scenes[0]?.realLocationId ? (
+                                      <Typography 
+                                        variant="body2" 
+                                        color="primary" 
+                                        sx={{ 
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          '&:hover': { opacity: 0.8 }
+                                        }}
+                                        onClick={() => handleOpenLocationConnection(block.scenes[0])}
+                                      >
+                                        📍 {block.scenes[0].realLocationName || getRealLocationName(block.scenes[0].realLocationId)}
+                                      </Typography>
+                                    ) : (
+                                    <Box display="flex" alignItems="center" gap={1}>
+                                      <Typography variant="body2">
+                                        {block.location}
+                                      </Typography>
+                                      <Button
+                                        size="small"
+                                        startIcon={<Link />}
+                                        onClick={() => handleOpenLocationConnection(block.scenes[0])}
+                                        sx={{ minWidth: 'auto', p: 0.5 }}
+                                      >
+                                        연결
+                                      </Button>
+                                    </Box>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   <Typography variant="body2">
                                     {cameraInfo}
                                   </Typography>
                                 </TableCell>
-                                {/* 주요 인물(Chip, cast만) */}
                                 <TableCell>
                                   {Array.isArray(cast) && cast.length > 0
                                     ? cast.map((actor, i) => (
@@ -1595,29 +2065,27 @@ const SimpleSchedulePage = () => {
                                       ))
                                     : (typeof cast === 'string' ? cast : '-')}
                                 </TableCell>
-                                {/* 필요 인력: API 응답의 requiredPersonnel 필드 사용 */}
                                 <TableCell>
                                   <Typography variant="body2">
                                     {requiredPersonnel}
                                   </Typography>
                                 </TableCell>
-                                {/* 필요 장비: API 응답의 requiredEquipment 필드 사용 */}
                                 <TableCell>
                                   <Typography variant="body2">
                                     {requiredEquipment}
                                   </Typography>
                                 </TableCell>
-                                {/* 비고(노트) */}
                                 <TableCell>{block.note}</TableCell>
                               </TableRow>
-                              {/* 쉬는시간 행: 마지막 씬이 아니면 추가 */}
                               {idx < arr.length - 1 && (
                                 <TableRow>
-                                  {/* 쉬는시간도 00:00~00:00 형식으로 표기 */}
                                   <TableCell>
                                     <Typography color="warning.main">
                                       {breakStart}~{breakEnd}
                                     </Typography>
+                                  </TableCell>
+                                    <TableCell>
+                                      <Chip label="쉬는시간" size="small" color="warning" variant="filled" />
                                   </TableCell>
                                   <TableCell colSpan={7} align="center">
                                     <Typography color="warning.main">쉬는시간</Typography>
@@ -1626,7 +2094,8 @@ const SimpleSchedulePage = () => {
                               )}
                             </React.Fragment>
                           );
-                        })}
+                          })
+                        )}
                       </TableBody>
                     </Table>
                   </TableContainer>
@@ -1642,10 +2111,100 @@ const SimpleSchedulePage = () => {
         open={conteModalOpen}
         onClose={() => setConteModalOpen(false)}
         conte={selectedConte}
-        onEdit={null} // SimpleSchedulePage에서는 편집 기능 비활성화
-        onImageRetry={null} // SimpleSchedulePage에서는 이미지 재시도 기능 비활성화
-        imageLoadErrors={{}}
-        onImageLoadError={null}
+      />
+
+      {/* 실제장소 연결 모달 */}
+      <Dialog open={locationConnectionModal} onClose={handleCloseLocationConnection} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          실제장소 연결
+        </DialogTitle>
+        <DialogContent>
+          {selectedConteForLocation && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                씬 {selectedConteForLocation.scene}: {selectedConteForLocation.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                현재 장소: {selectedConteForLocation.keywords?.location || '미정'}
+              </Typography>
+              
+              {selectedConteForLocation.realLocationId && (
+                <Box sx={{ mt: 1, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" color="primary.contrastText" gutterBottom>
+                    현재 연결된 실제장소:
+                  </Typography>
+                  <Typography variant="body2" color="primary.contrastText">
+                    📍 {getRealLocationName(selectedConteForLocation.realLocationId)}
+                  </Typography>
+                </Box>
+              )}
+              
+              <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel>실제장소 선택</InputLabel>
+                <Select
+                  value={selectedRealLocation}
+                  onChange={(e) => setSelectedRealLocation(e.target.value)}
+                  displayEmpty
+                >
+                  <MenuItem value="">
+                    <em>실제장소 연결 해제</em>
+                  </MenuItem>
+                  {realLocations.map((location) => (
+                    <MenuItem key={location._id} value={location._id}>
+                      {location.name} - {location.description}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              {selectedRealLocation && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    선택된 실제장소 정보:
+                  </Typography>
+                  {(() => {
+                    const location = realLocations.find(loc => loc._id === selectedRealLocation);
+                    return location ? (
+                      <Box>
+                        <Typography variant="body2">
+                          <strong>이름:</strong> {location.name}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>설명:</strong> {location.description}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>환경:</strong> {location.characteristics?.environment}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>시간대:</strong> {location.shootingInfo?.timeOfDay}
+                        </Typography>
+                      </Box>
+                    ) : null;
+                  })()}
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLocationConnection}>취소</Button>
+          <Button onClick={handleSaveLocationConnection} variant="contained">
+            {selectedRealLocation ? '연결' : '연결 해제'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 일일촬영계획표 모달 */}
+      <DailyShootingPlanModal
+        open={dailyPlanModalOpen}
+        onClose={() => setDailyPlanModalOpen(false)}
+        projectTitle={projectInfo?.projectTitle || '프로젝트'}
+        shootingDate={selectedDayForPlan ? formatKoreanDate(selectedDayForPlan.date) : ''}
+        scenes={selectedDayForPlan?.scenes || []}
+        dailySchedule={selectedDayForPlan?.dailySchedule || []}
+        weather="맑음"
+        sunrise="05:30"
+        sunset="19:30"
       />
     </Container>
     </Box>

@@ -40,6 +40,7 @@ import toast from 'react-hot-toast'
 import UserProfile from '../components/UserProfile'
 import OnboardingModal from '../components/OnboardingModal'
 import ProjectSelectionModal from '../components/ProjectSelectionModal'
+import ProjectListModal from '../components/ProjectListModal'
 import { toggleProjectFavorite, getFavoriteProjects, getProject } from '../services/projectApi'
 import CommonHeader from '../components/CommonHeader'
 
@@ -61,6 +62,8 @@ const Dashboard = () => {
   const [showOnboarding, setShowOnboarding] = useState(false) // 온보딩 모달 표시 여부
   const [showProjectSelection, setShowProjectSelection] = useState(false) // 프로젝트 선택 모달 표시 여부
   const [showFavoriteSelection, setShowFavoriteSelection] = useState(false) // 즐겨찾기 프로젝트 선택 모달 표시 여부
+  const [showProjectList, setShowProjectList] = useState(false) // 프로젝트 목록 모달 표시 여부
+  const [projectListAction, setProjectListAction] = useState('location') // 프로젝트 목록 모달 액션 타입
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false) // 삭제 확인 다이얼로그
   const [projectToDelete, setProjectToDelete] = useState(null) // 삭제할 프로젝트
   const [deletingProject, setDeletingProject] = useState(false) // 삭제 중 상태
@@ -506,34 +509,43 @@ const Dashboard = () => {
    */
   const handleScheduleView = () => {
     console.log('📅 스케줄 보기 버튼 클릭')
-    console.log('📅 현재 즐겨찾기 프로젝트 목록:', favoriteProjects)
-    console.log('📅 즐겨찾기 프로젝트 개수:', favoriteProjects.length)
-    console.log('📅 즐겨찾기 프로젝트 상세 정보:')
-    favoriteProjects.forEach((project, index) => {
-      console.log(`📅 프로젝트 ${index + 1}:`, {
-        id: project._id || project.id,
-        title: project.projectTitle,
-        isFavorite: project.isFavorite,
-        synopsis: project.synopsis?.substring(0, 50) + '...'
-      })
-    })
+    console.log('📅 현재 프로젝트 목록:', projects)
+    console.log('📅 프로젝트 개수:', projects.length)
     
-    if (favoriteProjects.length === 0) {
-      console.log('📅 즐겨찾기된 프로젝트가 없음 - 에러 메시지 표시')
-      toast.error('즐겨찾기된 프로젝트가 없습니다. 먼저 프로젝트를 즐겨찾기에 추가해주세요.')
+    if (projects.length === 0) {
+      console.log('📅 프로젝트가 없음 - 에러 메시지 표시')
+      toast.error('프로젝트가 없습니다. 먼저 프로젝트를 생성해주세요.')
       return
     }
     
-    if (favoriteProjects.length === 1) {
-      // 즐겨찾기된 프로젝트가 1개인 경우 바로 스케줄 페이지로 이동
-      const projectId = favoriteProjects[0]._id || favoriteProjects[0].id
-      console.log('📅 단일 즐겨찾기 프로젝트로 스케줄 페이지 이동:', projectId)
+    if (projects.length === 1) {
+      // 프로젝트가 1개인 경우 바로 스케줄 페이지로 이동
+      const projectId = projects[0]._id || projects[0].id
+      console.log('📅 단일 프로젝트로 스케줄 페이지 이동:', projectId)
       navigate(`/schedule/${projectId}`)
     } else {
-      // 즐겨찾기된 프로젝트가 여러 개인 경우 선택 모달 표시
-      console.log('📅 여러 즐겨찾기 프로젝트 - 선택 모달 표시')
-      setShowFavoriteSelection(true)
+      // 프로젝트가 여러 개인 경우 선택 모달 표시
+      console.log('📅 여러 프로젝트 - 선택 모달 표시')
+      setProjectListAction('schedule')
+      setShowProjectList(true)
     }
+  }
+
+  /**
+   * 프로젝트 목록 모달에서 스케줄 선택 핸들러
+   */
+  const handleSelectProjectForSchedule = (project) => {
+    const projectId = project._id || project.id
+    console.log('📅 선택된 프로젝트로 스케줄 페이지 이동:', projectId)
+    navigate(`/schedule/${projectId}`)
+    setShowProjectList(false)
+  }
+
+  /**
+   * 프로젝트 목록 모달에서 프로젝트 선택 핸들러
+   */
+  const handleProjectListSelect = (project) => {
+    handleSelectProjectForSchedule(project)
   }
 
   return (
@@ -577,7 +589,7 @@ const Dashboard = () => {
             </Card>
           </Grid>
 
-          {/* 프로젝트 목록 보기 카드 */}
+          {/* 스케줄 보기 카드 */}
           <Grid item xs={12} sm={6} md={6}>
             <Card 
               sx={{ 
@@ -597,8 +609,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-
-
         </Grid>
 
         {/* 최근 프로젝트 섹션 */}
@@ -830,6 +840,15 @@ const Dashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 프로젝트 목록 모달 */}
+      <ProjectListModal
+        open={showProjectList}
+        onClose={() => setShowProjectList(false)}
+        projects={projects}
+        actionType={projectListAction}
+        onSelectProject={handleProjectListSelect}
+      />
     </Box>
   )
 }

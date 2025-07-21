@@ -42,13 +42,15 @@ import {
   Build,
   ExpandMore,
   Print,
-  Download
+  Download,
+  Refresh
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { generateOptimalSchedule, generateBreakdown, generateScheduleCSV, generateBreakdownCSV } from '../services/schedulerService'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import CommonHeader from '../components/CommonHeader'
+import DailyScheduleDetail from '../components/Scheduler/DailyScheduleDetail'
 
 /**
  * 스케줄러 페이지 컴포넌트
@@ -195,7 +197,7 @@ const SchedulerPage = (props) => {
 
     try {
       // 스케줄러 서비스를 사용하여 스케줄 생성
-      const schedule = generateOptimalSchedule(conteData)
+      const schedule = await generateOptimalSchedule(conteData)
       const breakdown = generateBreakdown(conteData)
 
       setScheduleData(schedule)
@@ -328,22 +330,26 @@ const SchedulerPage = (props) => {
 
   // 컴포넌트 마운트 시 자동으로 스케줄 생성 (토스트 메시지 없이)
   useEffect(() => {
-    if (conteData.length > 0) {
-      // 자동 생성 시에는 토스트 메시지 없이 조용히 생성
-      setIsGenerating(true)
+    const generateScheduleAsync = async () => {
+      if (conteData.length > 0) {
+        // 자동 생성 시에는 토스트 메시지 없이 조용히 생성
+        setIsGenerating(true)
 
-      try {
-        const schedule = generateOptimalSchedule(conteData)
-        const breakdown = generateBreakdown(conteData)
+        try {
+          const schedule = await generateOptimalSchedule(conteData)
+          const breakdown = generateBreakdown(conteData)
 
-        setScheduleData(schedule)
-        setBreakdownData(breakdown)
-      } catch (error) {
-        console.error('스케줄 생성 실패:', error)
-      } finally {
-        setIsGenerating(false)
+          setScheduleData(schedule)
+          setBreakdownData(breakdown)
+        } catch (error) {
+          console.error('스케줄 생성 실패:', error)
+        } finally {
+          setIsGenerating(false)
+        }
       }
     }
+
+    generateScheduleAsync()
   }, [conteData])
 
   // 컴포넌트 마운트 시 전달받은 콘티 데이터 로그 출력 (디버깅용)
@@ -403,6 +409,14 @@ const SchedulerPage = (props) => {
         onBack={handleBack}
       >
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            color="inherit"
+            startIcon={<Refresh />}
+            onClick={handleGenerateSchedule}
+            disabled={isGenerating}
+          >
+            {isGenerating ? '재생성 중...' : '스케줄 재생성'}
+          </Button>
           <Button
             color="inherit"
             startIcon={<Print />}
@@ -559,6 +573,18 @@ const SchedulerPage = (props) => {
                       일일 촬영 스케줄표
                     </Typography>
 
+                    {/* 일차별 상세 스케줄 표시 */}
+                    {scheduleData.days.map((day, index) => (
+                      <Box key={index} sx={{ mb: 3 }}>
+                        <DailyScheduleDetail
+                          dailySchedule={day.dailySchedule}
+                          dayNumber={day.day}
+                          location={day.location}
+                          totalScenes={day.scenes?.length || 0}
+                        />
+                      </Box>
+                    ))}
+
                     <TableContainer component={Paper} sx={{ mt: 2 }}>
                       <Table>
                         <TableHead>
@@ -674,17 +700,14 @@ const SchedulerPage = (props) => {
                                       // 1. timeSlotDisplay가 있는 경우 최우선 사용 (가장 정확한 시간)
                                       if (timeSlotDisplay && timeSlotDisplay.includes('~')) {
                                         timeDisplay = `씬 ${scene.scene}: ${timeSlotDisplay}`
-                                        console.log(`  ✅ timeSlotDisplay 사용: ${timeDisplay}`);
                                       } 
                                       // 2. sceneStartTime과 sceneEndTime이 있는 경우 사용
                                       else if (scene.sceneStartTime && scene.sceneEndTime) {
                                         timeDisplay = `씬 ${scene.scene}: ${timeSlot} (${scene.sceneStartTime} ~ ${scene.sceneEndTime})`
-                                        console.log(`  ✅ sceneStartTime/EndTime 사용: ${timeDisplay}`);
                                       } 
                                       // 3. timeRange가 있는 경우 사용
                                       else if (timeRange && timeRange.start && timeRange.end) {
                                         timeDisplay = `씬 ${scene.scene}: ${timeSlot} (${timeRange.start} ~ ${timeRange.end})`
-                                        console.log(`  ✅ timeRange 사용: ${timeDisplay}`);
                                       } 
                                       // 4. 기본 시간대만 표시
                                       else {

@@ -40,10 +40,9 @@ const useStoryHistoryStore = create(
           if (savedData) {
             const data = JSON.parse(savedData)
             set(data)
-            console.log('User history data loaded for:', userId)
           }
         } catch (error) {
-          console.warn('Failed to load user history data:', error)
+          console.error('Failed to load user history data:', error)
         }
       },
 
@@ -62,9 +61,8 @@ const useStoryHistoryStore = create(
           }
           
           localStorage.setItem(`history-data-${userId}`, JSON.stringify(dataToSave))
-          console.log('User history data saved for:', userId)
         } catch (error) {
-          console.warn('Failed to save user history data:', error)
+          console.error('Failed to save user history data:', error)
         }
       },
 
@@ -76,7 +74,6 @@ const useStoryHistoryStore = create(
           history: [],
           currentHistoryId: null
         })
-        console.log('All history data cleared')
       },
 
       /**

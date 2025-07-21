@@ -47,9 +47,7 @@ const useProjectStore = create((set, get) => ({
         projects: response.data || [],
         isLoading: false 
       })
-      console.log('✅ 프로젝트 목록 로드 완료:', response.data?.length || 0, '개')
     } catch (error) {
-      console.error('❌ 프로젝트 목록 로드 실패:', error)
       set({ 
         error: error.message || '프로젝트 목록을 불러오는데 실패했습니다.',
         isLoading: false 
@@ -66,14 +64,6 @@ const useProjectStore = create((set, get) => ({
     set({ isCreating: true, createError: null })
     
     try {
-      console.log('💾 프로젝트 생성 시작:', {
-        title: projectData.projectTitle,
-        hasSynopsis: !!projectData.synopsis,
-        synopsis: projectData.synopsis?.substring(0, 100) + '...',
-        conteCount: conteList?.length || 0,
-        status: projectData.status || 'draft'
-      })
-
       // 시놉시스 선택적 처리
       const finalProjectData = {
         ...projectData,
@@ -85,31 +75,19 @@ const useProjectStore = create((set, get) => ({
       const projectResponse = await createProjectApi(finalProjectData)
       const newProject = projectResponse.data || projectResponse
       
-      console.log('✅ 프로젝트 생성 성공:', newProject._id || newProject.id)
-      
       // 콘티가 있으면 함께 저장
       if (conteList && conteList.length > 0) {
-        console.log('💾 콘티 저장 시작:', conteList.length, '개')
         
         // 프로젝트 ID 안전하게 추출
         const projectId = newProject._id || newProject.id || projectResponse._id || projectResponse.id || newProject.id
-        console.log('🔍 프로젝트 ID 확인:', { 
-          newProject: newProject,
-          projectResponse: projectResponse,
-          newProjectId: newProject._id || newProject.id,
-          responseId: projectResponse._id || projectResponse.id,
-          finalId: projectId
-        })
         
         if (!projectId) {
-          console.error('❌ 프로젝트 ID 추출 실패:', { newProject, projectResponse })
           throw new Error('프로젝트 ID를 찾을 수 없습니다.')
         }
         
         for (const conte of conteList) {
           try {
             await createConteApi(projectId, conte)
-            console.log('✅ 콘티 저장 완료:', conte.title)
           } catch (conteError) {
             console.error('❌ 콘티 저장 실패:', conte.title, conteError)
           }
@@ -123,7 +101,6 @@ const useProjectStore = create((set, get) => ({
       const finalProjectId = newProject._id || newProject.id
       if (finalProjectId) {
         localStorage.setItem('currentProjectId', finalProjectId)
-        console.log('💾 현재 프로젝트 ID 저장:', finalProjectId)
       }
       
       set({ 
@@ -134,7 +111,6 @@ const useProjectStore = create((set, get) => ({
       return newProject
       
     } catch (error) {
-      console.error('❌ 프로젝트 생성 실패:', error)
       set({ 
         createError: error.message || '프로젝트 생성에 실패했습니다.',
         isCreating: false 
@@ -158,24 +134,12 @@ const useProjectStore = create((set, get) => ({
         throw new Error('유효한 프로젝트 ID가 필요합니다. 먼저 프로젝트를 생성해주세요.')
       }
 
-      console.log('💾 콘티 저장 시작:', { 
-        projectId, 
-        conteData: {
-          scene: conteData.scene,
-          title: conteData.title?.substring(0, 50) + '...',
-          hasDescription: !!conteData.description,
-          type: conteData.type
-        }
-      })
-
       // 필수 필드 검증
       if (!conteData.scene || !conteData.title || !conteData.description) {
         throw new Error('씬 번호, 제목, 설명은 필수입니다.')
       }
 
       const response = await createConteApi(projectId, conteData)
-      
-      console.log('✅ 콘티 저장 완료:', response.data)
       
       // 현재 프로젝트의 콘티 목록에 새 콘티 추가
       set(state => ({
@@ -190,7 +154,6 @@ const useProjectStore = create((set, get) => ({
       
       // 중복 저장 오류 처리
       if (error.response?.status === 409) {
-        console.log('⚠️ 중복 콘티 감지, 건너뛰기:', error.response.data)
         set({ isSavingConte: false })
         return {
           success: true,
@@ -228,21 +191,8 @@ const useProjectStore = create((set, get) => ({
         throw new Error('유효한 콘티 ID가 필요합니다.')
       }
 
-      console.log('💾 콘티 업데이트 시작:', { 
-        projectId, 
-        conteId,
-        conteData: {
-          scene: conteData.scene,
-          title: conteData.title?.substring(0, 50) + '...',
-          hasImageUrl: !!conteData.imageUrl,
-          type: conteData.type
-        }
-      })
-
       // 콘티 업데이트 API 호출
       const response = await updateConteApi(projectId, conteId, conteData)
-      
-      console.log('✅ 콘티 업데이트 완료:', response.data)
       
       // 현재 프로젝트의 콘티 목록에서 해당 콘티 업데이트
       set(state => ({
@@ -257,7 +207,6 @@ const useProjectStore = create((set, get) => ({
       return response.data
       
     } catch (error) {
-      console.error('❌ 콘티 업데이트 실패:', error)
       set({ 
         saveConteError: error.message || '콘티 업데이트에 실패했습니다.',
         isSavingConte: false 
@@ -274,24 +223,12 @@ const useProjectStore = create((set, get) => ({
    */
   updateProject: async (projectId, updateData) => {
     try {
-      console.log('💾 프로젝트 업데이트 시작:', { 
-        projectId, 
-        updateData: {
-          status: updateData.status,
-          projectTitle: updateData.projectTitle?.substring(0, 50) + '...',
-          hasStory: !!updateData.story,
-          hasSynopsis: !!updateData.synopsis
-        }
-      })
-
       // 프로젝트 ID 검증
       if (!projectId || projectId === 'temp-project-id') {
         throw new Error('유효한 프로젝트 ID가 필요합니다.')
       }
 
       const response = await updateProjectApi(projectId, updateData)
-      
-      console.log('✅ 프로젝트 업데이트 완료:', response.data)
       
       // 현재 프로젝트 업데이트
       set(state => ({
@@ -303,7 +240,6 @@ const useProjectStore = create((set, get) => ({
       return response.data
       
     } catch (error) {
-      console.error('❌ 프로젝트 업데이트 실패:', error)
       throw error
     }
   },
@@ -326,13 +262,7 @@ const useProjectStore = create((set, get) => ({
         currentProjectContes: response.data.conteList || [],
         isLoading: false 
       })
-      
-      console.log('✅ 프로젝트 로드 완료:', { 
-        projectTitle: response.data.project.projectTitle,
-        conteCount: response.data.conteList?.length || 0
-      })
     } catch (error) {
-      console.error('❌ 프로젝트 로드 실패:', error)
       set({ 
         error: error.message || '프로젝트를 불러오는데 실패했습니다.',
         isLoading: false 
@@ -345,7 +275,6 @@ const useProjectStore = create((set, get) => ({
    */
   enableRealtimeUpdates: () => {
     set({ isRealtimeEnabled: true })
-    console.log('🔄 실시간 업데이트 활성화')
   },
 
   /**
@@ -353,7 +282,6 @@ const useProjectStore = create((set, get) => ({
    */
   disableRealtimeUpdates: () => {
     set({ isRealtimeEnabled: false })
-    console.log('🔄 실시간 업데이트 비활성화')
   },
 
   /**
@@ -378,7 +306,6 @@ const useProjectStore = create((set, get) => ({
         lastUpdateTime: new Date().toISOString()
       }))
       
-      console.log('✅ 프로젝트 상태 실시간 업데이트 완료:', projectId)
     } catch (error) {
       console.error('❌ 프로젝트 상태 업데이트 실패:', error)
     }
@@ -391,7 +318,6 @@ const useProjectStore = create((set, get) => ({
    */
   autoSaveProject: async (projectId, data) => {
     try {
-      console.log('💾 자동 저장 시작:', projectId)
       
       // 프로젝트 업데이트
       const response = await fetch(`/api/projects/${projectId}`, {
@@ -404,7 +330,6 @@ const useProjectStore = create((set, get) => ({
       })
       
       if (response.ok) {
-        console.log('✅ 자동 저장 완료')
         set({ lastUpdateTime: new Date().toISOString() })
       } else {
         throw new Error('자동 저장에 실패했습니다.')
@@ -440,17 +365,8 @@ const useProjectStore = create((set, get) => ({
         }
       }
 
-      console.log('🎬 스토리와 콘티를 프로젝트로 저장 시작:', {
-        title: projectData.projectTitle,
-        synopsisLength: synopsis.length,
-        storyLength: story.length,
-        conteCount: conteList.length
-      })
-
       // 프로젝트 생성 (콘티 포함)
       const newProject = await get().createProject(projectData, conteList)
-      
-      console.log('✅ 프로젝트 저장 완료:', newProject._id)
       
       return {
         success: true,

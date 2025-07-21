@@ -51,12 +51,9 @@ class TimelineService {
    */
   async getProjectContes(projectId) {
     try {
-      console.log('timelineService getProjectContes started for projectId:', projectId)
       const response = await timelineAPI.get(`/projects/${projectId}`)
-      console.log('timelineService API response:', response.data)
       
       const conteList = response.data.data?.conteList || []
-      console.log('timelineService conteList extracted:', conteList, 'count:', conteList.length)
       
       return {
         success: true,
@@ -219,8 +216,6 @@ class TimelineService {
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      console.log('🔌 타임라인 실시간 연결 성공 - 프로젝트:', projectId)
-      
       // 연결 후 구독 메시지 전송
       ws.send(JSON.stringify({
         type: 'subscribe_updates',
@@ -231,7 +226,6 @@ class TimelineService {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        console.log('📨 실시간 업데이트 수신:', data)
         onUpdate(data)
       } catch (error) {
         console.error('❌ 실시간 데이터 파싱 실패:', error)

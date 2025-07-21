@@ -72,10 +72,9 @@ const useStoryGenerationStore = create((set, get) => ({
       if (savedData) {
         const data = JSON.parse(savedData)
         set(data)
-        console.log('User story data loaded for:', userId)
       }
     } catch (error) {
-      console.warn('Failed to load user story data:', error)
+      console.error('Failed to load user story data:', error)
     }
   },
 
@@ -99,9 +98,8 @@ const useStoryGenerationStore = create((set, get) => ({
       }
       
       localStorage.setItem(`story-data-${userId}`, JSON.stringify(dataToSave))
-      console.log('User story data saved for:', userId)
     } catch (error) {
-      console.warn('Failed to save user story data:', error)
+      console.error('Failed to save user story data:', error)
     }
   },
 
@@ -146,7 +144,6 @@ const useStoryGenerationStore = create((set, get) => ({
         }
       }
     })
-    console.log('All story data cleared')
   },
 
   /**

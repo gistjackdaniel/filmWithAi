@@ -402,6 +402,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
           keywords: conte.keywords,
           weights: conte.weights,
           canEdit: conte.canEdit,
+          // 가상장소 연결 정보 추가
+          virtualLocationId: conte.virtualLocationId,
           // 스케줄링 관련 필드들 추가
           requiredPersonnel: conte.requiredPersonnel,
           requiredEquipment: conte.requiredEquipment,

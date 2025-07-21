@@ -105,12 +105,16 @@ const userRoutes = require('./routes/users'); // 사용자 관리 라우트
 const projectRoutes = require('./routes/projects'); // 프로젝트 관리 라우트
 const conteRoutes = require('./routes/contes'); // 콘티 관리 라우트
 const timelineRoutes = require('./routes/timeline'); // 타임라인 WebSocket 라우트
+const locationsRoutes = require('./routes/locations'); // locations 라우트
+const scheduleRoutes = require('./routes/schedules'); // 스케줄 관리 라우트
 
 app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
 app.use('/api/users', userRoutes); // /api/users/* 경로를 user 라우터로 연결
 app.use('/api/projects', projectRoutes); // /api/projects/* 경로를 project 라우터로 연결
 app.use('/api/projects', conteRoutes); // /api/projects/*/contes/* 경로를 conte 라우터로 연결
+app.use('/api/projects', locationsRoutes); // /api/projects/* 경로를 locations 라우터로 연결
 app.use('/api/timeline', timelineRoutes.router); // /api/timeline/* 경로를 timeline 라우터로 연결
+app.use('/api/schedules', scheduleRoutes); // /api/schedules/* 경로를 schedule 라우터로 연결
 
 /**
  * AI 스토리 생성 API
@@ -577,13 +581,7 @@ app.post('/api/conte/generate', async (req, res) => {
         "timeOfDay": "낮", // 반드시 "낮" 또는 "밤"으로 포함!
         "specialRequirements": []
       },
-      "weights": {
-        "locationPriority": 1,
-        "equipmentPriority": 1,
-        "castPriority": 1,
-        "timePriority": 1,
-        "complexity": 1
-      },
+      
       "canEdit": true,
       "lastModified": "",
       "modifiedBy": ""
@@ -703,13 +701,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
                   timeOfDay: '주간',
                   specialRequirements: []
                 },
-                weights: {
-                  locationPriority: 1,
-                  equipmentPriority: 1,
-                  castPriority: 1,
-                  timePriority: 1,
-                  complexity: 1
-                },
+                
                 canEdit: true,
                 lastModified: new Date().toISOString(),
                 modifiedBy: 'AI'
@@ -790,13 +782,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
                 timeOfDay: item.timeOfDay || '낮',
                 specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
               },
-              weights: item.weights || {
-                locationPriority: item.locationPriority || 1,
-                equipmentPriority: item.equipmentPriority || 1,
-                castPriority: item.castPriority || 1,
-                timePriority: item.timePriority || 1,
-                complexity: item.complexity || 1
-              },
+
               canEdit: item.canEdit !== undefined ? item.canEdit : true,
               lastModified: item.lastModified || new Date().toISOString(),
               modifiedBy: item.modifiedBy || 'AI'
@@ -852,13 +838,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
                   timeOfDay: item.timeOfDay || '낮',
                   specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
                 },
-                weights: item.weights || {
-                  locationPriority: item.locationPriority || 1,
-                  equipmentPriority: item.equipmentPriority || 1,
-                  castPriority: item.castPriority || 1,
-                  timePriority: item.timePriority || 1,
-                  complexity: item.complexity || 1
-                },
+
                 canEdit: item.canEdit !== undefined ? item.canEdit : true,
                 lastModified: item.lastModified || new Date().toISOString(),
                 modifiedBy: item.modifiedBy || 'AI'
@@ -907,13 +887,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
               timeOfDay: item.timeOfDay || '낮',
               specialRequirements: Array.isArray(item.specialRequirements) ? item.specialRequirements : []
             },
-            weights: item.weights || {
-              locationPriority: item.locationPriority || 1,
-              equipmentPriority: item.equipmentPriority || 1,
-              castPriority: item.castPriority || 1,
-              timePriority: item.timePriority || 1,
-              complexity: item.complexity || 1
-            },
+
             canEdit: item.canEdit !== undefined ? item.canEdit : true,
             lastModified: item.lastModified || new Date().toISOString(),
             modifiedBy: item.modifiedBy || 'AI'
@@ -988,30 +962,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
           }
         }
 
-        // 가중치 개별 파싱 함수
-        const parseWeights = (cardWeights) => {
-          const defaultWeights = {
-            locationPriority: 1,
-            equipmentPriority: 1,
-            castPriority: 1,
-            timePriority: 1,
-            complexity: 1
-          }
-
-          // cardWeights가 없거나 객체가 아닌 경우 기본값 반환
-          if (!cardWeights || typeof cardWeights !== 'object') {
-            return defaultWeights
-          }
-
-          // 각 가중치 개별적으로 파싱
-          return {
-            locationPriority: typeof cardWeights.locationPriority === 'number' ? cardWeights.locationPriority : defaultWeights.locationPriority,
-            equipmentPriority: typeof cardWeights.equipmentPriority === 'number' ? cardWeights.equipmentPriority : defaultWeights.equipmentPriority,
-            castPriority: typeof cardWeights.castPriority === 'number' ? cardWeights.castPriority : defaultWeights.castPriority,
-            timePriority: typeof cardWeights.timePriority === 'number' ? cardWeights.timePriority : defaultWeights.timePriority,
-            complexity: typeof cardWeights.complexity === 'number' ? cardWeights.complexity : defaultWeights.complexity
-          }
-        }
+        
 
         // 기본 필드 검증 및 기본값 설정
         const processedCard = {
@@ -1038,8 +989,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
           camera: card.camera || 'C1',
           // 키워드 노드 정보 - timeOfDay가 반드시 포함되도록 파싱
           keywords: parseKeywords(card.keywords),
-          // 그래프 가중치 - 개별 파싱
-          weights: parseWeights(card.weights),
+          
           // 편집 권한
           canEdit: card.canEdit !== false,
           lastModified: card.lastModified || new Date().toISOString(),
@@ -1050,7 +1000,7 @@ JSON 이외의 텍스트는 포함하지 마세요.
           id: processedCard.id,
           title: processedCard.title,
           keywordsCount: Object.keys(processedCard.keywords).length,
-          weightsCount: Object.keys(processedCard.weights).length
+  
         })
         
         return processedCard
@@ -1181,6 +1131,433 @@ const cleanStoryText = (story) => {
     // .replace(/\n\s*\n\s*\n+/g, '\n\n')
     // // 앞뒤 공백 제거
     // .trim()
+}
+
+/**
+ * 일일촬영계획표 생성 API
+ * POST /api/scheduler/generate-daily-plan
+ */
+app.post('/api/scheduler/generate-daily-plan', async (req, res) => {
+  try {
+    const { 
+      projectTitle, 
+      shootingDate, 
+      scenes, 
+      weather, 
+      sunrise, 
+      sunset,
+      staffInfo,
+      locationInfo 
+    } = req.body
+
+    // 입력 검증
+    if (!projectTitle || !shootingDate || !scenes || !Array.isArray(scenes)) {
+      return res.status(400).json({
+        success: false,
+        message: '프로젝트 제목, 촬영 날짜, 씬 정보는 필수입니다.'
+      })
+    }
+
+    console.log('🎬 일일촬영계획표 생성 요청:', { 
+      projectTitle, 
+      shootingDate, 
+      scenesCount: scenes.length 
+    })
+
+    // 일일촬영계획표 생성 프롬프트 구성
+    const prompt = generateDailyShootingPlanPrompt({
+      projectTitle,
+      shootingDate,
+      scenes,
+      weather,
+      sunrise,
+      sunset,
+      staffInfo,
+      locationInfo
+    })
+
+    // OpenAI GPT-4o API 호출
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: '당신은 영화 제작의 일일촬영계획표를 작성하는 전문가입니다. 제공된 정보를 바탕으로 상세하고 실용적인 일일촬영계획표를 작성해주세요.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 4000,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 120000 // 2분 타임아웃
+      }
+    )
+
+    const dailyPlan = response.data.choices[0].message.content.trim()
+    const tokenCount = response.data.usage.total_tokens
+
+    console.log('✅ 일일촬영계획표 생성 완료:', { tokenCount, planLength: dailyPlan.length })
+
+    res.json({
+      success: true,
+      data: {
+        dailyPlan,
+        projectTitle,
+        shootingDate,
+        scenesCount: scenes.length,
+        generatedAt: new Date().toISOString(),
+        tokenCount,
+        model: 'gpt-4o'
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ 일일촬영계획표 생성 오류:', error.message)
+    
+    if (error.response) {
+      const status = error.response.status
+      const message = error.response.data?.error?.message || 'OpenAI API 오류'
+      
+      res.status(status).json({
+        success: false,
+        message: `일일촬영계획표 생성 실패: ${message}`
+      })
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '일일촬영계획표 생성 중 오류가 발생했습니다.'
+      })
+    }
+  }
+})
+
+/**
+ * 일일촬영계획표 생성 프롬프트 생성 함수
+ */
+function generateDailyShootingPlanPrompt(data) {
+  const { projectTitle, shootingDate, scenes, weather, sunrise, sunset, staffInfo, locationInfo } = data
+  
+  // 새로운 알고리즘 헬퍼 함수들
+  const parseContentDuration = (durationStr) => {
+    if (typeof durationStr === 'string') {
+      const match = durationStr.match(/(\d+(?:\.\d+)?)분/)
+      return match ? parseFloat(match[1]) : 1
+    }
+    return 1
+  }
+  
+  const groupScenesByLocationGroup = (scenes) => {
+    const groups = {}
+    scenes.forEach(scene => {
+      const groupId = scene.locationGroupId || 'unknown'
+      if (!groups[groupId]) {
+        groups[groupId] = []
+      }
+      groups[groupId].push(scene)
+    })
+    return groups
+  }
+  
+  const optimizeGroupsByVirtualLocation = (groupScenes) => {
+    const optimized = {}
+    Object.keys(groupScenes).forEach(groupId => {
+      const scenes = groupScenes[groupId]
+      const virtualLocationGroups = {}
+      scenes.forEach(scene => {
+        const virtualLocationId = scene.virtualLocationId || 'unknown'
+        if (!virtualLocationGroups[virtualLocationId]) {
+          virtualLocationGroups[virtualLocationId] = []
+        }
+        virtualLocationGroups[virtualLocationId].push(scene)
+      })
+      Object.keys(virtualLocationGroups).forEach(virtualLocationId => {
+        virtualLocationGroups[virtualLocationId].sort((a, b) => a.scene - b.scene)
+      })
+      const sortedScenes = []
+      Object.keys(virtualLocationGroups).forEach(virtualLocationId => {
+        sortedScenes.push(...virtualLocationGroups[virtualLocationId])
+      })
+      optimized[groupId] = sortedScenes
+    })
+    return optimized
+  }
+  
+  const createDailySchedules = (optimizedGroups) => {
+    const dailySchedules = []
+    let dayCounter = 1
+    Object.keys(optimizedGroups).forEach(groupId => {
+      const scenes = optimizedGroups[groupId]
+      const MAX_DAILY_SHOOTING_TIME = 6 * 60 // 6시간 = 360분
+      let currentDayScenes = []
+      let currentDayShootingTime = 0
+      
+      scenes.forEach(scene => {
+        const rehearsalTime = Math.ceil(scene.shootingDuration * 0.2)
+        const totalSceneTime = scene.shootingDuration + rehearsalTime
+        
+        if (currentDayShootingTime + totalSceneTime > MAX_DAILY_SHOOTING_TIME) {
+          if (currentDayScenes.length > 0) {
+            dailySchedules.push({
+              day: dayCounter,
+              scenes: currentDayScenes,
+              groupId: groupId
+            })
+            dayCounter++
+            currentDayScenes = []
+            currentDayShootingTime = 0
+          }
+        }
+        currentDayScenes.push(scene)
+        currentDayShootingTime += totalSceneTime
+      })
+      
+      if (currentDayScenes.length > 0) {
+        dailySchedules.push({
+          day: dayCounter,
+          scenes: currentDayScenes,
+          groupId: groupId
+        })
+        dayCounter++
+      }
+    })
+    return dailySchedules
+  }
+  
+  // 기존 함수 (호환성 유지)
+  const calculateShootingDuration = (durationStr) => {
+    if (typeof durationStr === 'string') {
+      const match = durationStr.match(/(\d+)분/)
+      return match ? parseInt(match[1]) : 5
+    }
+    return 5
+  }
+  
+  // 실제 스케줄 시간대 분석 (촬영 시간 포함)
+  const scheduleTimes = scenes.map(scene => {
+    const timeOfDay = scene.keywords?.timeOfDay || '낮'
+    const estimatedDuration = scene.estimatedDuration || '5분'
+    const shootingDuration = calculateShootingDuration(estimatedDuration)
+    return {
+      scene: scene.scene,
+      timeOfDay,
+      estimatedDuration,
+      shootingDuration, // 실제 촬영 시간 (분)
+      title: scene.title,
+      location: scene.keywords?.location || '미정',
+      virtualLocationId: scene.virtualLocationId || null,
+      locationGroupId: scene.locationGroupId || null
+    }
+  })
+
+  // 시간대별로 씬 그룹화
+  const morningScenes = scheduleTimes.filter(s => s.timeOfDay === '아침' || s.timeOfDay === '이른 아침')
+  const dayScenes = scheduleTimes.filter(s => s.timeOfDay === '낮' || s.timeOfDay === '오후')
+  const eveningScenes = scheduleTimes.filter(s => s.timeOfDay === '저녁' || s.timeOfDay === '밤')
+  const nightScenes = scheduleTimes.filter(s => s.timeOfDay === '밤' || s.timeOfDay === '늦은 밤')
+
+  // 새로운 스케줄링 알고리즘 (완전히 새로운 로직)
+  const formatTimeRange = (startHour, startMinute, durationMinutes) => {
+    const endMinutes = startMinute + durationMinutes
+    const endHour = startHour + Math.floor(endMinutes / 60)
+    const endMinute = endMinutes % 60
+    return `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}-${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
+  }
+  
+  const updateTime = (currentTime, durationMinutes) => {
+    currentTime.minute += durationMinutes
+    if (currentTime.minute >= 60) {
+      currentTime.hour += Math.floor(currentTime.minute / 60)
+      currentTime.minute = currentTime.minute % 60
+    }
+    return currentTime
+  }
+  
+  // 촬영시간 계산 (실제 상영시간의 60배)
+  const scenesWithDuration = scenes.map(scene => {
+    const contentDuration = parseContentDuration(scene.estimatedDuration)
+    const shootingDuration = contentDuration * 60 // 60배
+    return {
+      ...scene,
+      contentDuration, // 실제 상영시간 (분)
+      shootingDuration, // 실제 촬영시간 (분)
+      locationGroupId: scene.locationGroupId || null,
+      virtualLocationId: scene.virtualLocationId || null
+    }
+  })
+  
+  // 그룹별로 씬들을 분류
+  const groupScenes = groupScenesByLocationGroup(scenesWithDuration)
+  
+  // 각 그룹 내에서 가상장소별로 씬들을 정렬
+  const optimizedGroups = optimizeGroupsByVirtualLocation(groupScenes)
+  
+  // 일일 스케줄 생성 (6시간 제한)
+  const dailySchedules = createDailySchedules(optimizedGroups)
+  
+  // 첫 번째 날의 스케줄만 사용 (일일촬영계획표는 하루치만)
+  const firstDay = dailySchedules[0] || { scenes: scenesWithDuration, dailySchedule: [] }
+  
+  let scheduleTable = ''
+  
+  // 일일 상세 스케줄 생성
+  if (firstDay.dailySchedule && firstDay.dailySchedule.length > 0) {
+    firstDay.dailySchedule.forEach(item => {
+      scheduleTable += `| ${item.time} | ${item.activity} | ${item.description} |\n`
+    })
+    } else {
+    // 기본 스케줄 (dailySchedule이 없는 경우)
+    let currentTime = { hour: 6, minute: 0 }
+    
+    // 6:00 - 집합
+    scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, 60)} | 집합 | 전체 스태프 집합 |\n`
+    currentTime = updateTime(currentTime, 60)
+    
+    // 7:00-8:00 - 이동
+    scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, 60)} | 이동 | 촬영 현장으로 이동 |\n`
+    currentTime = updateTime(currentTime, 60)
+    
+    // 8:00 - 현장 도착 및 리허설
+    currentTime = { hour: 8, minute: 0 } // 8시로 설정
+    const totalShootingTime = firstDay.scenes.reduce((total, scene) => total + scene.shootingDuration, 0)
+    const totalRehearsalTime = Math.ceil(totalShootingTime * 0.2)
+    
+    scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, totalRehearsalTime)} | 리허설 | 전체 씬 리허설 (씬 ${firstDay.scenes.map(s => s.scene).join(', ')}) |\n`
+    currentTime = updateTime(currentTime, totalRehearsalTime)
+    
+    // 씬별 촬영
+    firstDay.scenes.forEach((scene, index) => {
+      const prevScene = index > 0 ? firstDay.scenes[index - 1] : null
+      
+      // 점심시간 체크 (12:00-13:00)
+      if (currentTime.hour === 12 && currentTime.minute === 0) {
+        scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, 60)} | 점심식사 | 1시간 휴식 |\n`
+        currentTime = updateTime(currentTime, 60)
+      }
+      
+      // 저녁시간 체크 (18:00-19:00)
+      if (currentTime.hour === 18 && currentTime.minute === 0) {
+        scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, 60)} | 저녁식사 | 1시간 휴식 |\n`
+        currentTime = updateTime(currentTime, 60)
+      }
+      
+      // 가상장소 변경 시 세팅 시간 (30분)
+      if (prevScene && prevScene.virtualLocationId !== scene.virtualLocationId) {
+        scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, 30)} | 세팅 | ${scene.location} 세팅 |\n`
+        currentTime = updateTime(currentTime, 30)
+      }
+      
+      // 씬 촬영
+      scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, scene.shootingDuration)} | 촬영 | 씬 ${scene.scene}: ${scene.title} (${scene.shootingDuration}분) |\n`
+      currentTime = updateTime(currentTime, scene.shootingDuration)
+    })
+    
+    // 정리 및 해산
+    scheduleTable += `| ${formatTimeRange(currentTime.hour, currentTime.minute, 60)} | 정리 및 해산 | 촬영 완료, 장비 정리 |\n`
+  }
+  
+  return `
+다음 정보를 바탕으로 영화 일일촬영계획표를 작성해주세요.
+
+## 프로젝트 정보
+- 제목: ${projectTitle}
+- 촬영 날짜: ${shootingDate}
+- 날씨: ${weather || '맑음'}
+- 일출: ${sunrise || '05:30'}
+- 일몰: ${sunset || '19:30'}
+
+## 촬영할 씬 정보 (시간대별)
+${scenes.map((scene, index) => `
+${index + 1}. 씬 ${scene.scene}: ${scene.title}
+   - 설명: ${scene.description}
+   - 장소: ${scene.keywords?.location || '미정'}
+   - 시간대: ${scene.keywords?.timeOfDay || '낮'}
+   - 등장인물: ${scene.characterLayout || '미정'}
+   - 소품: ${scene.props || '없음'}
+   - 조명: ${scene.lighting || '자연광'}
+   - 카메라: ${scene.cameraAngle || '중간샷'}
+   - 예상 시간: ${scene.estimatedDuration || '5분'}
+`).join('\n')}
+
+## 스태프 정보
+${staffInfo ? staffInfo : '기본 스태프 구성'}
+
+## 장소 정보
+${locationInfo ? locationInfo : '기본 장소 정보'}
+
+다음 형식으로 일일촬영계획표를 작성해주세요:
+
+# 일일촬영계획표
+
+## 1. 기본 정보
+| 항목 | 내용 |
+|------|------|
+| 제목 | ${projectTitle} |
+| 촬영일 | ${shootingDate} |
+| 날씨 | ${weather || '맑음'} |
+| 일출/일몰 | ${sunrise || '05:30'} / ${sunset || '19:30'} |
+
+## 2. 집합 시간 및 장소
+| 구분 | 시간 | 장소 | 비고 |
+|------|------|------|------|
+| 1차 집합 | 06:00 | ${scenes[0]?.keywords?.location || '주요 촬영지'} | 전체 스태프 |
+| 2차 집합 | 07:00 | ${scenes[0]?.keywords?.location || '주요 촬영지'} | 배우 및 단역 |
+
+## 3. 촬영 일정표
+| 시간 | 활동 | 비고 |
+|------|------|------|
+${scheduleTable}
+
+## 4. 리허설 계획
+| 시간 | 리허설 씬 | 리허설 내용 | 참여 인원 |
+|------|-----------|-------------|-----------|
+| ${formatTimeRange(8, 0, totalRehearsalTime)} | 씬 ${firstDay.scenes.map(s => s.scene).join(', ')} | 전체 씬 리허설 (카메라 워크, 배우 연기, 조명 테스트, 씬 전환 연습) | 배우, 감독, 촬영감독, 조명감독, 전체 스태프 |
+
+## 5. 촬영 씬 상세
+| 씬번호 | 장소 | 시간대 | 컷수 | 내용 | 등장인물 | 단역 | 비고 |
+|--------|------|--------|------|------|----------|------|------|
+${scenes.map((scene, index) => `| ${scene.scene} | ${scene.keywords?.location || '미정'} | ${scene.keywords?.timeOfDay || '낮'} | 3-5컷 | ${scene.title} | ${scene.characterLayout || '미정'} | ${scene.props ? '소품 필요' : '없음'} | ${scene.lighting || '자연광'}`).join('\n')} |
+
+## 6. 부서별 준비사항
+| 부서 | 준비사항 | 담당자 |
+|------|----------|--------|
+| 연출부 | 시나리오, 콘티, 무전기, 감독 의자, 리허설 계획서 | 감독 |
+| 제작부 | 촬영 일정표, 연락처 목록, 차량 배치, 리허설 시간 관리 | 제작부장 |
+| 미술 | 촬영지 미술 작업, 소품 준비, 리허설용 임시 소품 | 미술감독 |
+| 소품 | 씬별 소품 목록, 소품 차량, 리허설용 소품 | 소품담당 |
+| 의상/분장 | 배우 의상, 분장 도구, 헤어 도구, 리허설용 의상 | 의상담당 |
+| 촬영부 | 카메라, 렌즈, 조명 장비, 리허설용 조명 셋팅 | 촬영감독 |
+
+## 7. 연락처
+| 부서 | 담당자 | 연락처 |
+|------|--------|--------|
+| 연출부 | 감독 | 010-0000-0000 |
+| 제작부 | 제작부장 | 010-0000-0001 |
+| 미술 | 미술감독 | 010-0000-0002 |
+| 소품 | 소품담당 | 010-0000-0003 |
+| 의상/분장 | 의상담당 | 010-0000-0004 |
+| 촬영부 | 촬영감독 | 010-0000-0005 |
+
+## 8. 특이사항
+- 촬영 시간 준수 필수
+- 리허설 시간(촬영 시간의 20%) 엄수 필수
+- 촬영 완료 후 즉시 해산 (보충 촬영 없음)
+- 날씨 상황에 따른 대비책 준비
+- 안전사고 예방에 유의
+- 촬영 자료 백업 필수
+
+한국어로 자연스럽게 작성하고, 실제 촬영 현장에서 사용할 수 있는 실용적인 내용으로 작성해주세요.
+표 형식을 정확히 유지해주세요.
+`
 }
 
 /**

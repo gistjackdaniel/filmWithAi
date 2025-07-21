@@ -126,6 +126,14 @@ const conteSchema = new mongoose.Schema({
     default: '5분'
   },
   
+  // RealLocation 참조 (외래키) - 실제장소 연결
+  realLocationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RealLocation',
+    required: false,
+    index: true
+  },
+  
   // 이미지 URL (AI 생성 이미지)
   imageUrl: {
     type: String,

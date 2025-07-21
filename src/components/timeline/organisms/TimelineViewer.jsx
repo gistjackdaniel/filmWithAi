@@ -56,7 +56,8 @@ const TimelineViewer = (props) => {
     showTimeInfo = true, // 시간 정보 표시 여부
     baseScale = 1, // 기본 스케일 (픽셀당 초)
     // 스케줄러 관련 props
-    onViewSchedule = null // 스케줄러 보기 핸들러
+    onViewSchedule = null, // 스케줄러 보기 핸들러
+    onAddConte = null // 콘티 추가 핸들러
   } = props || {}
 
   // 디버깅 로그 추가
@@ -555,23 +556,25 @@ const TimelineViewer = (props) => {
         />
 
         {/* 콘티 추가 버튼 */}
-        <Button 
-          variant="outlined" 
-          startIcon={<PlayArrow />}
-          onClick={onGenerateConte}
-          size="small"
-          sx={{
-            borderColor: 'var(--color-primary)',
-            color: 'var(--color-primary)',
-            '&:hover': {
+        {onAddConte && (
+          <Button 
+            variant="outlined" 
+            startIcon={<PlayArrow />}
+            onClick={onAddConte}
+            size="small"
+            sx={{
               borderColor: 'var(--color-primary)',
-              backgroundColor: 'var(--color-primary)',
-              color: 'white',
-            }
-          }}
-        >
-          콘티 추가
-        </Button>
+              color: 'var(--color-primary)',
+              '&:hover': {
+                borderColor: 'var(--color-primary)',
+                backgroundColor: 'var(--color-primary)',
+                color: 'white',
+              }
+            }}
+          >
+            콘티 추가
+          </Button>
+        )}
 
         {/* 스케줄러 버튼 */}
         {onViewSchedule && (

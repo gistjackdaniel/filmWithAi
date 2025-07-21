@@ -4,27 +4,16 @@
  * PRD 스케줄러 기능의 핵심 로직
  */
 
+import api from './api'
+
 /**
- * 콘티 데이터를 바탕으로 최적의 촬영 스케줄 생성
+ * 콘티 데이터를 바탕으로 최적의 촬영 스케줄 생성 (새로운 알고리즘)
  * @param {Array} conteData - 콘티 데이터 배열
  * @returns {Object} 최적화된 스케줄 데이터
  */
-export const generateOptimalSchedule = (conteData) => {
+export const generateOptimalSchedule = async (conteData) => {
   try {
-    console.log('🎬 스케줄러 시작 - 입력 데이터:', {
-      totalCount: conteData?.length || 0,
-      isArray: Array.isArray(conteData),
-      firstItem: conteData?.[0] ? {
-        id: conteData[0].id,
-        title: conteData[0].title,
-        type: conteData[0].type,
-        hasKeywords: !!conteData[0].keywords,
-        keywords: conteData[0].keywords
-      } : '없음'
-    });
-    
     if (!conteData || !Array.isArray(conteData) || conteData.length === 0) {
-      console.warn('⚠️ 스케줄러: 유효하지 않은 콘티 데이터');
       return { 
         days: [], 
         totalDays: 0,
@@ -34,21 +23,13 @@ export const generateOptimalSchedule = (conteData) => {
       }
     }
     
-    // 실사 촬영용 콘티만 필터링 (여러 타입명 지원)
     const liveActionConte = conteData.filter(conte => 
       conte.type === 'live_action' || 
       conte.type === 'LIVE_ACTION' || 
       conte.type === '실사 촬영용'
     )
     
-    console.log('🎬 실사 촬영용 콘티 필터링 결과:', {
-      total: conteData.length,
-      liveAction: liveActionConte.length,
-      types: [...new Set(conteData.map(c => c.type))]
-    });
-    
     if (liveActionConte.length === 0) {
-      console.warn('⚠️ 스케줄러: 실사 촬영용 콘티가 없음');
       return { 
         days: [], 
         totalDays: 0,
@@ -58,35 +39,10 @@ export const generateOptimalSchedule = (conteData) => {
       }
     }
     
-    // 각 콘티의 keywords 정보 로깅
-    liveActionConte.forEach((conte, index) => {
-      console.log(`🎬 콘티 ${index + 1} keywords:`, {
-        id: conte.id,
-        title: conte.title,
-        keywords: conte.keywords,
-        location: conte.keywords?.location,
-        equipment: conte.keywords?.equipment
-      });
-    });
+    // 새로운 스케줄링 알고리즘 적용
+    const newSchedule = await generateNewSchedule(liveActionConte)
     
-    // 장소별로 그룹화
-    const locationGroups = groupByLocation(liveActionConte)
-    console.log('🎬 장소별 그룹화 결과:', Object.keys(locationGroups));
-    
-    // 장비별로 그룹화
-    const equipmentGroups = groupByEquipment(liveActionConte)
-    console.log('🎬 장비별 그룹화 결과:', Object.keys(equipmentGroups));
-    
-    // 가중치 계산 및 최적화
-    const optimizedSchedule = optimizeScheduleWithWeights(liveActionConte, locationGroups, equipmentGroups)
-    
-    console.log('✅ 스케줄러 완료:', {
-      totalDays: optimizedSchedule.totalDays,
-      totalScenes: optimizedSchedule.totalScenes,
-      estimatedDuration: optimizedSchedule.estimatedTotalDuration
-    });
-    
-    return optimizedSchedule
+    return newSchedule
   } catch (error) {
     console.error('❌ 스케줄 생성 중 오류:', error)
     throw new Error('스케줄 생성에 실패했습니다.')
@@ -120,14 +76,6 @@ const groupByLocation = (conteData) => {
  * @returns {string} 추출된 장소 정보 (반드시 keywords.location 기반)
  */
 const extractLocationFromConte = (conte) => {
-  console.log('📍 장소 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsLocation: conte.keywords?.location,
-    fallbackLocation: conte.location
-  });
-  
   // 반드시 keywords.location만 사용 (description fallback 제거)
   if (conte.keywords && conte.keywords.location && conte.keywords.location !== '기본 장소') {
     return conte.keywords.location
@@ -163,129 +111,11 @@ const groupByEquipment = (conteData) => {
   return groups
 }
 
-/**
- * 가중치 기반 스케줄 최적화
- * @param {Array} allScenes - 모든 씬 데이터
- * @param {Object} locationGroups - 장소별 그룹
- * @param {Object} equipmentGroups - 장비별 그룹
- * @returns {Object} 최적화된 스케줄
- */
-const optimizeScheduleWithWeights = (allScenes, locationGroups, equipmentGroups) => {
-  // 각 씬에 대한 가중치 계산
-  const scenesWithWeights = allScenes.map(scene => ({
-    ...scene,
-    weight: calculateSceneWeight(scene, allScenes)
-  }))
-  
-  // 가중치 기반으로 씬들을 최적화된 순서로 정렬
-  const optimizedScenes = optimizeSceneOrder(scenesWithWeights)
-  
-  // 최적화된 씬들을 일정으로 배치
-  const days = createScheduleFromOptimizedScenes(optimizedScenes)
-  
-  return {
-    days,
-    totalDays: days.length,
-    totalScenes: days.reduce((total, day) => total + day.totalScenes, 0),
-    estimatedTotalDuration: days.reduce((total, day) => total + day.estimatedDuration, 0),
-    optimizationScore: calculateOptimizationScore(days)
-  }
-}
 
-/**
- * 씬의 가중치 계산 (우선순위 기반)
- * @param {Object} scene - 씬 객체
- * @param {Array} allScenes - 모든 씬 배열
- * @returns {number} 가중치 점수
- */
-const calculateSceneWeight = (scene, allScenes) => {
-  let weight = 0
-  
-  // 1. 장소 가중치 (최우선) - 같은 장소의 씬이 많을수록 높은 가중치
-  const sameLocationScenes = allScenes.filter(s => 
-    extractLocationFromConte(s) === extractLocationFromConte(scene)
-  )
-  weight += sameLocationScenes.length * 1000 // 최우선 가중치
-  
-  // 2. 배우 가중치 (두 번째 우선순위) - 같은 배우가 나오는 씬이 많을수록 높은 가중치
-  const sameActorScenes = allScenes.filter(s => 
-    hasSameActors(s, scene)
-  )
-  weight += sameActorScenes.length * 500 // 두 번째 우선순위
-  
-  // 3. 촬영 시간대 가중치 (세 번째 우선순위) - 같은 시간대 촬영이 많을수록 높은 가중치
-  const sameTimeSlotScenes = allScenes.filter(s => 
-    hasSameTimeSlot(s, scene)
-  )
-  weight += sameTimeSlotScenes.length * 200 // 세 번째 우선순위
-  
-  // 4. 장비 가중치 (네 번째 우선순위) - 같은 장비의 씬이 많을수록 높은 가중치
-  const sameEquipmentScenes = allScenes.filter(s => 
-    extractEquipmentFromConte(s) === extractEquipmentFromConte(scene)
-  )
-  weight += sameEquipmentScenes.length * 100 // 네 번째 우선순위
-  
-  // 5. 복잡도 가중치 (다섯 번째 우선순위) - 긴 씬은 높은 가중치
-  const duration = scene.estimatedDuration || 5
-  weight += duration * 10 // 복잡도는 낮은 우선순위
-  
-  // 6. 우선순위 가중치 (씬 번호가 낮을수록 높은 가중치)
-  const sceneNumber = scene.scene || 1
-  weight += (100 - sceneNumber) * 1
-  
-  return weight
-}
 
-/**
- * 가중치 기반으로 씬 순서 최적화 (다중 씬 지원)
- * @param {Array} scenesWithWeights - 가중치가 포함된 씬 배열
- * @returns {Array} 최적화된 씬 순서
- */
-const optimizeSceneOrder = (scenesWithWeights) => {
-  if (scenesWithWeights.length <= 2) {
-    // 씬이 2개 이하일 때는 단순 정렬
-    return [...scenesWithWeights].sort((a, b) => b.weight - a.weight)
-  }
-  
-  // 다중 씬을 위한 개선된 그리디 알고리즘
-  const optimizedOrder = []
-  const usedScenes = new Set()
-  
-  // 1단계: 우선순위별 그룹화
-  const locationGroups = groupScenesByLocation(scenesWithWeights)
-  const actorGroups = groupScenesByActors(scenesWithWeights)
-  const timeSlotGroups = groupScenesByTimeSlot(scenesWithWeights)
-  const equipmentGroups = groupScenesByEquipment(scenesWithWeights)
-  
-  // 2단계: 우선순위에 따라 그룹 순서 결정
-  const groupOrder = determineGroupOrder(locationGroups, actorGroups, timeSlotGroups, equipmentGroups)
-  
-  // 3단계: 각 그룹 내에서 최적 순서 결정
-  for (const groupKey of groupOrder) {
-    const groupScenes = locationGroups[groupKey] || actorGroups[groupKey] || 
-                       timeSlotGroups[groupKey] || equipmentGroups[groupKey] || []
-    
-    if (groupScenes.length > 0) {
-      // 그룹 내에서 가중치 순으로 정렬
-      const sortedGroupScenes = groupScenes.sort((a, b) => b.weight - a.weight)
-      
-      // 사용되지 않은 씬들만 추가
-      for (const scene of sortedGroupScenes) {
-        if (!usedScenes.has(scene.id)) {
-          optimizedOrder.push(scene)
-          usedScenes.add(scene.id)
-        }
-      }
-    }
-  }
-  
-  // 4단계: 남은 씬들을 가중치 순으로 추가
-  const remainingScenes = scenesWithWeights.filter(scene => !usedScenes.has(scene.id))
-  remainingScenes.sort((a, b) => b.weight - a.weight)
-  optimizedOrder.push(...remainingScenes)
-  
-  return optimizedOrder
-}
+
+
+
 
 /**
  * 장소별 씬 그룹화
@@ -337,13 +167,12 @@ const groupScenesByTimeSlot = (scenes) => {
   
   scenes.forEach(scene => {
     const timeSlot = extractTimeSlotFromConte(scene)
+    
     if (!groups[timeSlot]) {
       groups[timeSlot] = []
     }
     groups[timeSlot].push(scene)
   })
-  
-  console.log('🕐 시간대별 그룹화 결과:', Object.keys(groups).map(key => `${key}: ${groups[key].length}개`));
   
   return groups
 }
@@ -539,12 +368,8 @@ const calculateCombinationScore = (scenes) => {
  * @returns {Array} 일정 배열
  */
 const createScheduleFromOptimizedScenes = (optimizedScenes) => {
-  console.log('🎬 시간대별 스케줄 생성 시작:', optimizedScenes.length, '개 씬');
-  
   // 1. 시간대별로 씬들을 그룹화
   const timeSlotGroups = groupScenesByTimeSlot(optimizedScenes)
-  
-  console.log('🕐 시간대별 그룹화 결과:', timeSlotGroups);
   
   // 2. 장소별로 그룹화하고, 각 장소 내에서 시간대별로 정렬
   const locationGroups = {}
@@ -557,13 +382,10 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
     locationGroups[location].push(scene)
   }
   
-  console.log('📍 장소별 그룹화 결과:', Object.keys(locationGroups).map(key => `${key}: ${locationGroups[key].length}개`));
-  
   // 3. 각 장소 내에서 시간대별로 정렬
   const locationTimeSlotOptimizedScenes = []
   
   for (const [location, scenes] of Object.entries(locationGroups)) {
-    console.log(`📍 ${location} 장소 내 시간대별 정렬 시작 (${scenes.length}개 씬)`);
     
     // 장소 내 씬들을 시간대별로 그룹화
     const timeSlotGroupsInLocation = groupScenesByTimeSlot(scenes)
@@ -574,39 +396,22 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
     // 정의된 순서대로 씬들을 추가
     for (const timeSlot of timeSlotOrder) {
       if (timeSlotGroupsInLocation[timeSlot]) {
-        console.log(`  ⏰ ${timeSlot} 시간대 최적화 시작 (${timeSlotGroupsInLocation[timeSlot].length}개 씬)`);
-        
         // 시간대별 최적화 실행 (실제 시간 계산 포함) - 같은 장소의 모든 씬들을 전달
         const optimizedScenesForTimeSlot = optimizeScenesByTimeSlot(timeSlotGroupsInLocation[timeSlot], timeSlot, scenes)
         
-        console.log(`  🎯 ${timeSlot} 시간대 최적화 결과:`, optimizedScenesForTimeSlot.map(scene => ({
-          scene: scene.scene,
-          title: scene.title,
-          timeSlotDisplay: scene.timeSlotDisplay,
-          sceneStartTime: scene.sceneStartTime,
-          sceneEndTime: scene.sceneEndTime,
-          actualShootingDuration: scene.actualShootingDuration
-        })));
+            // realLocationId 보존하여 결과 배열에 추가
+    const optimizedScenesWithRealLocation = optimizedScenesForTimeSlot.map(scene => ({
+      ...scene,
+      realLocationId: scene.realLocationId
+    }));
         
         // 최적화된 씬들을 결과 배열에 추가
-        locationTimeSlotOptimizedScenes.push(...optimizedScenesForTimeSlot)
-        
-        console.log(`  ✅ ${timeSlot} 시간대 최적화 완료 (${optimizedScenesForTimeSlot.length}개 씬)`);
-        
-        // 디버깅: 최적화된 씬들의 시간 정보 확인
-        optimizedScenesForTimeSlot.forEach(scene => {
-          console.log(`    - 씬 ${scene.scene}: ${scene.timeSlotDisplay || scene.timeSlot}`);
-          console.log(`      시작시간: ${scene.sceneStartTime}, 종료시간: ${scene.sceneEndTime}`);
-          console.log(`      촬영시간: ${scene.actualShootingDuration}분`);
-          console.log(`      timeSlotDisplay: ${scene.timeSlotDisplay}`);
-        });
+        locationTimeSlotOptimizedScenes.push(...optimizedScenesWithRealLocation)
       }
     }
     
     // 미정 시간대 씬들은 마지막에 추가 (최적화 없이)
     if (timeSlotGroupsInLocation['미정']) {
-      console.log(`  ⏰ 미정 시간대 씬들 추가 (${timeSlotGroupsInLocation['미정'].length}개 씬)`);
-      
       // 미정 시간대 씬들도 기본 시간 정보 추가
       const undefinedTimeScenes = timeSlotGroupsInLocation['미정'].map(scene => ({
         ...scene,
@@ -614,37 +419,15 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
         actualShootingDuration: getSafeDuration(scene),
         sceneStartTime: '10:00', // 기본 시작 시간
         sceneEndTime: addMinutesToTime('10:00', getSafeDuration(scene)),
-        timeSlotDisplay: `미정 (10:00 ~ ${addMinutesToTime('10:00', getSafeDuration(scene))})`
+        timeSlotDisplay: `미정 (10:00 ~ ${addMinutesToTime('10:00', getSafeDuration(scene))})`,
+        realLocationId: scene.realLocationId // realLocationId 보존
       }))
       
       locationTimeSlotOptimizedScenes.push(...undefinedTimeScenes)
     }
   }
   
-  console.log('🎯 최종 최적화된 씬들:', locationTimeSlotOptimizedScenes.map(scene => ({
-    scene: scene.scene,
-    title: scene.title,
-    timeSlot: scene.timeSlot,
-    timeSlotDisplay: scene.timeSlotDisplay,
-    sceneStartTime: scene.sceneStartTime,
-    sceneEndTime: scene.sceneEndTime,
-    actualShootingDuration: scene.actualShootingDuration,
-    keywords: scene.keywords
-  })));
-  
-  // 디버깅: 시간대별 최적화 결과 확인
-  locationTimeSlotOptimizedScenes.forEach((scene, index) => {
-    console.log(`[DEBUG] 최종 씬 ${index + 1}:`, {
-      scene: scene.scene,
-      title: scene.title,
-      timeSlot: scene.timeSlot,
-      timeSlotDisplay: scene.timeSlotDisplay,
-      sceneStartTime: scene.sceneStartTime,
-      sceneEndTime: scene.sceneEndTime,
-      actualShootingDuration: scene.actualShootingDuration,
-      keywords: scene.keywords?.timeOfDay
-    });
-  });
+
   
   // 4. 시간대별로 최적화된 씬들을 일정으로 배치 (정확한 촬영시간 반영)
   const days = []
@@ -659,32 +442,11 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
   // 씬 간 휴식 시간 (1시간 = 60분)
   const SCENE_BREAK_TIME = 60
   
-  console.log('[SchedulerService] 장소별 시간대별 스케줄 배치 시작:', {
-    totalScenes: locationTimeSlotOptimizedScenes.length,
-    maxDailyDuration: MAX_DAILY_DURATION
-  })
-  
   for (let i = 0; i < locationTimeSlotOptimizedScenes.length; i++) {
     const scene = locationTimeSlotOptimizedScenes[i]
     const sceneDuration = scene.actualShootingDuration || getSafeDuration(scene)
     const sceneLocation = extractLocationFromConte(scene)
     const sceneTimeSlot = extractTimeSlotFromConte(scene)
-    
-    // 디버깅: 최적화된 씬 정보 확인
-    console.log(`[SchedulerService] 최적화된 씬 ${i + 1}:`, {
-      scene: scene.scene,
-      title: scene.title,
-      timeSlot: scene.timeSlot,
-      timeSlotDisplay: scene.timeSlotDisplay,
-      sceneStartTime: scene.sceneStartTime,
-      sceneEndTime: scene.sceneEndTime,
-      actualShootingDuration: scene.actualShootingDuration,
-      sceneLocation,
-      sceneTimeSlot
-    });
-    
-    // 디버깅: 분량과 실제 촬영 시간 출력
-    console.log(`[DEBUG] 씬 ${scene.scene} - 분량: ${scene.estimatedDuration}, 실제촬영: ${sceneDuration}, 시간대: ${sceneTimeSlot}`);
     
     // 하루에 배치할 수 없는 경우(시간 부족) 다음 날로 넘김
     const wouldExceed = (currentDayDuration + sceneDuration + (currentDayScenes.length > 0 ? SCENE_BREAK_TIME : 0)) > MAX_DAILY_DURATION;
@@ -719,7 +481,6 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
       currentDayDuration += sceneDuration
       currentDayLocation = sceneLocation
       currentDayTimeSlot = sceneTimeSlot
-      console.log(`[SchedulerService] 시간 부족으로 씬 ${scene.scene}을 다음 날(${currentDay})의 첫 씬으로 배치`);
       continue;
     }
 
@@ -728,16 +489,6 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
     currentDayDuration += sceneDuration + (currentDayScenes.length > 1 ? SCENE_BREAK_TIME : 0)
     currentDayLocation = sceneLocation
     currentDayTimeSlot = sceneTimeSlot
-
-    console.log(`[SchedulerService] 씬 ${scene.scene} 추가:`, {
-      day: currentDay,
-      location: sceneLocation,
-      timeSlot: sceneTimeSlot,
-      duration: sceneDuration,
-      totalDuration: currentDayDuration,
-      scenesCount: currentDayScenes.length,
-      sceneTitle: scene.title
-    })
   }
   
   // 마지막 날짜 추가
@@ -750,11 +501,6 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
       currentDayTimeSlot
     ))
   }
-  
-  console.log('[SchedulerService] 시간대별 스케줄 생성 완료:', {
-    totalDays: days.length,
-    totalScenes: days.reduce((total, day) => total + day.totalScenes, 0)
-  })
   
   return days
 }
@@ -769,32 +515,14 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
  * @returns {Object} (DAY, 장소, 시간대)별 스케줄 row
  */
 const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = null) => {
-  // 디버깅용 로그
-  console.log(`[SchedulerService] Day ${dayNumber}, 장소: ${location}, 시간대: ${timeSlot} 스케줄 생성:`, {
-    scenesCount: scenes.length,
-    totalDuration: duration,
-    locations: scenes.map(scene => extractLocationFromConte(scene)),
-    timeSlots: scenes.map(scene => extractTimeSlotFromConte(scene)),
-    sceneTitles: scenes.map(scene => scene.title || `씬 ${scene.scene}`)
-  })
-  
   // 시간대별 시간 범위 설정
   const timeRange = timeSlot ? getTimeSlotRange(timeSlot) : null
-  
-  // 디버깅: 씬들의 시간 정보 확인
-  console.log(`[SchedulerService] Day ${dayNumber} 씬들의 시간 정보:`, scenes.map(scene => ({
-    scene: scene.scene,
-    title: scene.title,
-    timeSlot: scene.timeSlot,
-    timeSlotDisplay: scene.timeSlotDisplay,
-    sceneStartTime: scene.sceneStartTime,
-    sceneEndTime: scene.sceneEndTime,
-    actualShootingDuration: scene.actualShootingDuration
-  })));
   
   // 각 씬에 상세 정보 추가
   const scenesWithDetails = scenes.map(scene => ({
     ...scene,
+    // realLocationId 명시적으로 보존
+    realLocationId: scene.realLocationId,
     // 상세 카메라 정보 추가
     cameraDetails: extractCameraFromConte(scene),
     // 상세 인력 정보 추가
@@ -816,127 +544,13 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
     crew: getRequiredCrew(scenes),
     equipment: getRequiredEquipment(scenes),
     timeSlots: generateTimeSlots(scenes),
-    optimizationScore: calculateDayOptimizationScore(scenes),
-    efficiency: calculateDayEfficiency(scenes, duration)
+
   }
 }
 
-/**
- * 일일 효율성 계산
- * @param {Array} scenes - 씬 배열
- * @param {number} duration - 총 시간
- * @returns {number} 효율성 점수
- */
-const calculateDayEfficiency = (scenes, duration) => {
-  // scenes의 duration을 안전하게 합산
-  const safeDuration = typeof duration === 'number' && !isNaN(duration) && duration > 0
-    ? duration
-    : scenes.reduce((total, scene) => total + getSafeDuration(scene), 0);
-  if (scenes.length === 0) return 0;
-  
-  // 단일 씬인 경우 특별 처리
-  if (scenes.length === 1) {
-    const singleScene = scenes[0]
-    const sceneDuration = getSafeDuration(singleScene)
-    
-    // 단일 씬 효율성: 기본 60% + 촬영시간에 따른 보너스
-    let efficiency = 60 // 기본 효율성
-    
-    // 촬영시간에 따른 조정
-    if (sceneDuration >= 30 && sceneDuration <= 60) {
-      efficiency += 10 // 적절한 촬영시간 보너스
-    } else if (sceneDuration > 60) {
-      efficiency += 20 // 긴 촬영시간 보너스
-    } else if (sceneDuration < 30) {
-      efficiency -= 10 // 짧은 촬영시간 페널티
-    }
-    
-    console.log(`📊 단일 씬 효율성 계산:`, {
-      scene: singleScene.scene,
-      duration: `${sceneDuration}분`,
-      efficiency: `${efficiency}%`
-    });
-    
-    return Math.min(100, Math.max(0, efficiency))
-  }
-  
-  // 다중 씬인 경우 기존 계산 방식 사용
-  // 장소 효율성 (같은 장소에서 연속 촬영 시 100% 효율성)
-  const locations = scenes.map(scene => extractLocationFromConte(scene))
-  const uniqueLocations = new Set(locations)
-  
-  // 같은 장소에서 연속 촬영 시 100% 효율성, 다른 장소가 있으면 비례 계산
-  const locationEfficiency = uniqueLocations.size === 1 ? 1 : (scenes.length - uniqueLocations.size) / scenes.length
-  
-  // 시간 효율성 (6-8시간이 가장 효율적) - 분 단위로 변환
-  const timeEfficiency = safeDuration >= 360 && safeDuration <= 480 ? 1 : 
-                        safeDuration >= 240 && safeDuration <= 600 ? 0.7 : 0.3
-  
-  // 배우 효율성 (같은 배우들이 연속 출연하는 경우 100% 효율성)
-  const allActors = scenes.map(scene => extractActorsFromConte(scene))
-  
-  let actorEfficiency = 0 // 변수를 블록 외부에서 선언
-  
-  if (allActors.length > 0) {
-    // 모든 씬에서 동일한 배우들이 나오는지 확인
-    const firstActors = new Set(allActors[0])
-    const allActorsSets = allActors.map(actors => new Set(actors))
-    
-    // 모든 씬에서 동일한 배우들이 나오는지 확인
-    const allSameActors = allActorsSets.every(actorSet => {
-      if (actorSet.size !== firstActors.size) return false
-      return Array.from(actorSet).every(actor => firstActors.has(actor))
-    })
-    
-    // 동일한 배우들이 연속 출연하면 100%, 아니면 비례 계산
-    actorEfficiency = allSameActors ? 1 : 
-      (allActors.flat().length - new Set(allActors.flat()).size) / allActors.flat().length
-  }
-  
-  return Math.round((locationEfficiency * 0.5 + timeEfficiency * 0.3 + actorEfficiency * 0.2) * 100)
-}
 
-/**
- * 일정 최적화 (빈 날 제거, 효율성 개선)
- * @param {Array} days - 일정 배열
- * @returns {Array} 최적화된 일정 배열
- */
-const optimizeScheduleDays = (days) => {
-  if (days.length <= 1) return days
-  
-  const optimizedDays = []
-  let dayCounter = 1
-  
-  for (const day of days) {
-    // 효율성이 너무 낮은 날은 다음 날과 병합 시도
-    if (day.efficiency < 30 && optimizedDays.length > 0) {
-      const lastDay = optimizedDays[optimizedDays.length - 1]
-      const combinedScenes = [...lastDay.scenes, ...day.scenes]
-      const combinedDuration = lastDay.estimatedDuration + day.estimatedDuration
-      
-      // 병합 가능한지 확인 (총 10시간 이하, 8개 씬 이하) - 분 단위로 변환
-      if (combinedDuration <= 600 && combinedScenes.length <= 8) {
-        // 병합
-        optimizedDays[optimizedDays.length - 1] = createDaySchedule(
-          lastDay.day, 
-          combinedScenes, 
-          combinedDuration,
-          lastDay.location // 병합 시 장소 유지
-        )
-        continue
-      }
-    }
-    
-    // 새로운 날로 추가
-    optimizedDays.push({
-      ...day,
-      day: dayCounter
-    })
-    dayCounter++
-  }
-  
-  return optimizedDays
-}
+
+
 
 /**
  * 가장 많이 사용된 장소 찾기
@@ -955,51 +569,7 @@ const getMostCommonLocation = (scenes) => {
     .sort(([,a], [,b]) => b - a)[0][0]
 }
 
-/**
- * 일일 최적화 점수 계산 (우선순위 기반)
- * @param {Array} scenes - 씬 배열
- * @returns {number} 최적화 점수
- */
-const calculateDayOptimizationScore = (scenes) => {
-  if (scenes.length === 0) return 0
-  
-  let score = 0
-  
-  // 1. 같은 장소 보너스 (최우선)
-  const locations = scenes.map(scene => extractLocationFromConte(scene))
-  const uniqueLocations = new Set(locations)
-  score += (scenes.length - uniqueLocations.size) * 1000 // 최우선 가중치
-  
-  // 2. 같은 배우 보너스 (두 번째 우선순위)
-  const actors = scenes.map(scene => extractActorsFromConte(scene)).flat()
-  const uniqueActors = new Set(actors)
-  const actorEfficiency = actors.length - uniqueActors.size
-  score += actorEfficiency * 500 // 두 번째 우선순위
-  
-  // 3. 같은 시간대 보너스 (세 번째 우선순위)
-  const timeSlots = scenes.map(scene => extractTimeSlotFromConte(scene))
-  const uniqueTimeSlots = new Set(timeSlots.filter(slot => slot !== '미정'))
-  const timeSlotEfficiency = timeSlots.length - uniqueTimeSlots.size
-  score += timeSlotEfficiency * 200 // 세 번째 우선순위
-  
-  // 4. 같은 장비 보너스 (네 번째 우선순위)
-  const equipments = scenes.map(scene => extractEquipmentFromConte(scene))
-  const uniqueEquipments = new Set(equipments)
-  score += (scenes.length - uniqueEquipments.size) * 100 // 네 번째 우선순위
-  
-  // 5. 복잡도 보너스 (다섯 번째 우선순위)
-  const totalDuration = scenes.reduce((total, scene) => total + (scene.estimatedDuration || 5), 0)
-  if (totalDuration >= 360 && totalDuration <= 480) { // 6-8시간을 분 단위로 변환
-    score += 50 // 적절한 작업량 보너스
-  }
-  
-  // 6. 효율성 보너스
-  if (scenes.length >= 3 && score > 1000) {
-    score += 100 // 높은 효율성 보너스
-  }
-  
-  return score
-}
+
 
 /**
  * 전체 스케줄의 최적화 점수 계산
@@ -1026,22 +596,10 @@ const calculateOptimizationScore = (days) => {
     } else {
       efficiency = 60 // 짧은 촬영 시간
     }
-    
-    console.log(`📊 단일 씬 효율성 계산:`, {
-      duration: `${duration}분`,
-      efficiency: `${efficiency}%`
-    });
   } else {
     // 다중 씬인 경우: 기존 계산 방식 사용
     const maxPossibleScore = 2000 // 최대 가능한 점수
     efficiency = Math.min(100, Math.round((averageScore / maxPossibleScore) * 100))
-    
-    console.log(`📊 다중 씬 최적화 점수 계산:`, {
-      totalScore,
-      averageScore,
-      maxPossibleScore,
-      efficiency: `${efficiency}%`
-    });
   }
   
   return {
@@ -1135,9 +693,9 @@ function getSafeDuration(scene) {
   const num = Number(raw);
   // 기본값: 5분
   if (isNaN(num) || num <= 0) return 5;
-  // 실제 촬영 시간 계산 (분량 시간의 20배)
+  // 실제 촬영 시간 계산 (분량 시간의 60배) - 현실적인 촬영 비율
   const contentDuration = num; // 분량 시간
-  const shootingRatio = 20; // 20배 고정 (현실적인 촬영 비율)
+  const shootingRatio = 60; // 60배 (1분 씬 → 1시간 촬영)
   const actualDuration = Math.round(contentDuration * shootingRatio);
   // 실제 계산된 촬영시간 반환 (제한 없음 - 스케줄러에서 자동 처리)
   return actualDuration;
@@ -1223,36 +781,18 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
     });
   }
   
-  // isLateStart 값 콘솔 출력
-  console.log(`🔍 [optimizeScenesByTimeSlot] 시간대: ${timeOfDay}, isLateStart: ${isLateStart}`);
-  if (allScenesInLocation) {
-    console.log(`📍 같은 장소의 모든 씬들:`, allScenesInLocation.map(s => ({
-      scene: s.scene,
-      title: s.title,
-      timeOfDay: extractTimeSlotFromConte(s)
-    })));
-  }
-  
   // 낮 씬이면서 밤 씬이 같은 장소에 있으면 늦은 낮부터 시작
   const timeRange = getTimeSlotRange(timeOfDay, scenes, isLateStart);
-  console.log(`⏰ 시간대별 최적화: ${timeOfDay} (${scenes.length}개 씬)`);
+
   
   // 시간대별 시간 범위 설정 (실제 촬영 가능 시간)
   const availableMinutes = timeRange.availableMinutes
   
-  console.log(`  📅 시간 범위: ${timeRange.label} (총 ${availableMinutes}분)`);
-  
-  // 씬이 1개 이하일 때도 시간 정보 설정
   if (scenes.length <= 1) {
     const optimizedScenes = scenes.map(scene => {
       const sceneDuration = getSafeDuration(scene)
       const sceneStartTime = timeRange.optimalStartTime
       const sceneEndTime = addMinutesToTime(sceneStartTime, sceneDuration)
-      
-      console.log(`  📋 단일 씬 "${scene.title}" 시간 설정:`);
-      console.log(`    - 분량: ${scene.estimatedDuration}분`);
-      console.log(`    - 실제 촬영시간: ${sceneDuration}분`);
-      console.log(`    - 시작시간: ${sceneStartTime}, 종료시간: ${sceneEndTime}`);
       
       return {
         ...scene,
@@ -1264,16 +804,15 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
         breakTime: 0, // 단일 씬은 휴식시간 없음
         totalTimeSlot: sceneDuration,
         // 정확한 시간대 표시를 위한 추가 정보 (우선순위 높음)
-        timeSlotDisplay: `${timeOfDay} (${sceneStartTime} ~ ${sceneEndTime})`
+        timeSlotDisplay: `${timeOfDay} (${sceneStartTime} ~ ${sceneEndTime})`,
+        virtualLocationId: scene.virtualLocationId // virtualLocationId 보존
       }
     })
     
-    console.log(`  ✅ 단일 씬 최적화 완료: ${optimizedScenes.length}개 씬`);
     return optimizedScenes
   }
   
   // 시간대별 시간 범위 설정 (실제 촬영 가능 시간)
-  console.log(`  📅 시간 범위: ${timeRange.label} (총 ${availableMinutes}분)`);
   
   // 씬들을 실제 촬영시간 순으로 정렬 (긴 씬부터)
   const sortedScenes = [...scenes].sort((a, b) => {
@@ -1287,18 +826,10 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
   let remainingMinutes = availableMinutes
   let currentTime = timeRange.optimalStartTime
   
-  console.log(`  🎬 시간대별 촬영 스케줄 시작: ${currentTime}부터`);
-  
   for (const scene of sortedScenes) {
     const sceneDuration = getSafeDuration(scene)
     const sceneBreakTime = 60 // 씬 간 휴식 시간 (1시간 = 60분)
     const totalSceneTime = sceneDuration + sceneBreakTime
-    
-    console.log(`  📋 씬 "${scene.title}" 검토:`);
-    console.log(`    - 분량: ${scene.estimatedDuration}분`);
-    console.log(`    - 실제 촬영시간: ${sceneDuration}분`);
-    console.log(`    - 휴식시간 포함: ${totalSceneTime}분`);
-    console.log(`    - 남은 시간: ${remainingMinutes}분`);
     
     if (totalSceneTime <= remainingMinutes) {
       // 씬 배치 가능
@@ -1315,25 +846,14 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
         breakTime: sceneBreakTime,
         totalTimeSlot: totalSceneTime,
         // 정확한 시간대 표시를 위한 추가 정보 (우선순위 높음)
-        timeSlotDisplay: `${timeOfDay} (${sceneStartTime} ~ ${sceneEndTime})`
+        timeSlotDisplay: `${timeOfDay} (${sceneStartTime} ~ ${sceneEndTime})`,
+        realLocationId: scene.realLocationId // realLocationId 보존
       })
-      
-      console.log(`  ✅ 씬 "${scene.title}" timeSlotDisplay 설정: ${timeOfDay} (${sceneStartTime} ~ ${sceneEndTime})`)
       
       remainingMinutes -= totalSceneTime
       currentTime = addMinutesToTime(sceneEndTime, sceneBreakTime)
-      
-      console.log(`  ✅ 씬 "${scene.title}" 배치 완료:`);
-      console.log(`    - 시작: ${sceneStartTime}, 종료: ${sceneEndTime}`);
-      console.log(`    - 남은 시간: ${remainingMinutes}분`);
-    } else {
-      console.log(`  ⚠️ 씬 "${scene.title}" 시간 부족으로 배치 불가`);
-      console.log(`    - 필요 시간: ${totalSceneTime}분`);
-      console.log(`    - 남은 시간: ${remainingMinutes}분`);
     }
   }
-  
-  console.log(`  🎯 시간대별 최적화 완료: ${optimizedScenes.length}개 씬 배치됨`);
   
   return optimizedScenes
 }
@@ -1368,8 +888,6 @@ const generateTimeSlots = (scenes) => {
   const timeSlots = []
   let currentTime = '09:00' // 기본 시작 시간 (오전 9시)
   
-  console.log('🕐 시간대별 슬롯 생성 시작:', scenes.length, '개 씬');
-  
   scenes.forEach((scene, idx) => {
     // 실제 촬영시간 사용
     const durationMin = scene.actualShootingDuration || getSafeDuration(scene)
@@ -1383,13 +901,6 @@ const generateTimeSlots = (scenes) => {
     
     // 다음 씬 시작 시간 (휴식시간 포함)
     const nextStartTime = addMinutesToTime(endTime, breakTime)
-    
-    console.log(`  📋 씬 ${scene.scene || idx + 1}:`);
-    console.log(`    - 제목: ${scene.title}`);
-    console.log(`    - 시작: ${startTime}, 종료: ${endTime}`);
-    console.log(`    - 촬영시간: ${durationMin}분`);
-    console.log(`    - 휴식시간: ${breakTime}분`);
-    console.log(`    - 다음 씬 시작: ${nextStartTime}`);
     
     timeSlots.push({
       scene: scene.scene || idx + 1,
@@ -1406,8 +917,6 @@ const generateTimeSlots = (scenes) => {
     // 다음 씬을 위한 시간 업데이트
     currentTime = nextStartTime
   })
-  
-  console.log('✅ 시간대별 슬롯 생성 완료');
   
   return timeSlots
 }
@@ -1513,12 +1022,7 @@ export const generateBreakdown = (conteData) => {
  * @returns {Array} 추출된 인력 리스트
  */
 const extractCrewFromConte = (conte) => {
-  console.log('👥 인력 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasScheduling: !!conte.scheduling,
-    hasKeywords: !!conte.keywords
-  });
+
   
   const crew = [];
   
@@ -1568,7 +1072,6 @@ const extractCrewFromConte = (conte) => {
     crew.push('감독', '촬영감독', '카메라맨');
   }
   
-  console.log('✅ 추출된 인력:', crew);
   return crew;
 }
 
@@ -1596,11 +1099,6 @@ const hasSameActors = (scene1, scene2) => {
   const actors1 = extractActorsFromConte(scene1)
   const actors2 = extractActorsFromConte(scene2)
   
-  console.log('🎭 배우 비교:', {
-    scene1: { id: scene1.id, title: scene1.title, actors: actors1 },
-    scene2: { id: scene2.id, title: scene2.title, actors: actors2 }
-  });
-  
   return actors1.some(actor => actors2.includes(actor))
 }
 
@@ -1610,14 +1108,6 @@ const hasSameActors = (scene1, scene2) => {
  * @returns {Array} 배우 배열
  */
 const extractActorsFromConte = (conte) => {
-  console.log('🎭 배우 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsCast: conte.keywords?.cast,
-    fallbackCast: conte.cast
-  });
-  
   if (conte.keywords && conte.keywords.cast && Array.isArray(conte.keywords.cast)) {
     return conte.keywords.cast
   }
@@ -1634,11 +1124,6 @@ const hasSameTimeSlot = (scene1, scene2) => {
   const time1 = extractTimeSlotFromConte(scene1)
   const time2 = extractTimeSlotFromConte(scene2)
   
-  console.log('⏰ 시간대 비교:', {
-    scene1: { id: scene1.id, title: scene1.title, time: time1 },
-    scene2: { id: scene2.id, title: scene2.title, time: time2 }
-  });
-  
   return time1 === time2
 }
 
@@ -1648,14 +1133,6 @@ const hasSameTimeSlot = (scene1, scene2) => {
  * @returns {string} 시간대 정보
  */
 const extractTimeSlotFromConte = (conte) => {
-  console.log('⏰ 시간대 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsTimeOfDay: conte.keywords?.timeOfDay,
-    fallbackTimeOfDay: conte.timeOfDay
-  });
-  
   if (conte.keywords && conte.keywords.timeOfDay) {
     return conte.keywords.timeOfDay
   }
@@ -1727,17 +1204,571 @@ export const generateBreakdownCSV = (breakdownData) => {
 }
 
 /**
+ * 새로운 스케줄링 알고리즘
+ * @param {Array} conteData - 콘티 데이터 배열
+ * @returns {Object} 새로운 스케줄 데이터
+ */
+const generateNewSchedule = async (conteData) => {
+  console.log('🎬 새로운 스케줄링 알고리즘 시작:', conteData.length, '개 콘티')
+  
+  // 1. 촬영시간 계산 및 DB에서 실제장소/그룹 정보 조회
+  const scenesWithLocationInfo = await Promise.all(conteData.map(async (conte) => {
+    const contentDuration = parseContentDuration(conte.estimatedDuration)
+    const shootingDuration = contentDuration * 60 // 60배
+    
+    // 장소 정보 추출 (부가설명용)
+    const location = extractLocationFromConte(conte)
+    
+    // DB에서 씬의 실제장소와 그룹 정보 조회
+    const locationInfo = await getRealLocationInfoFromDB(conte._id, conte.projectId)
+    
+    return {
+      ...conte,
+      contentDuration, // 실제 상영시간 (분)
+      shootingDuration, // 실제 촬영시간 (분)
+      location: location, // 부가설명용 장소
+      locationGroupId: locationInfo.groupId,
+      realLocationId: locationInfo.realLocationId,
+      locationGroupName: locationInfo.groupName,
+      realLocationName: locationInfo.realLocationName
+    }
+  }))
+  
+  console.log('📊 촬영시간 계산 및 실제장소 정보 조회 완료:', scenesWithLocationInfo.map(s => ({
+    scene: s.scene,
+    content: s.contentDuration,
+    shooting: s.shootingDuration,
+    location: s.location,
+    groupId: s.locationGroupId,
+    realLocationId: s.realLocationId
+  })))
+  
+  // 2. 그룹별로 씬들을 분류
+  const groupScenes = groupScenesByLocationGroup(scenesWithLocationInfo)
+  console.log('🏢 그룹별 분류 완료:', Object.keys(groupScenes).map(group => ({
+    group,
+    sceneCount: groupScenes[group].length
+  })))
+  
+  // 3. 각 그룹 내에서 실제장소별로 씬들을 정렬
+  const optimizedGroups = optimizeGroupsByRealLocation(groupScenes)
+  console.log('📍 실제장소별 최적화 완료')
+  
+  // 4. 일일 스케줄 생성 (6시간 제한)
+  const dailySchedules = createDailySchedules(optimizedGroups)
+  console.log('📅 일일 스케줄 생성 완료:', dailySchedules.length, '일')
+  
+  // 5. 최종 스케줄 데이터 구성
+  const totalShootingTime = dailySchedules.reduce((total, day) => 
+    total + day.scenes.reduce((dayTotal, scene) => dayTotal + scene.shootingDuration, 0), 0
+  )
+  
+  const totalScenes = dailySchedules.reduce((total, day) => total + day.scenes.length, 0)
+  
+  return {
+    days: dailySchedules,
+    totalDays: dailySchedules.length,
+    totalScenes: totalScenes,
+    estimatedTotalDuration: totalShootingTime,
+
+    message: '새로운 알고리즘으로 스케줄이 생성되었습니다.'
+  }
+}
+
+/**
+ * 콘티에서 실제 상영시간 파싱
+ * @param {string} durationStr - 시간 문자열 (예: "2분", "1.5분")
+ * @returns {number} 실제 상영시간 (분)
+ */
+const parseContentDuration = (durationStr) => {
+  if (typeof durationStr === 'string') {
+    const match = durationStr.match(/(\d+(?:\.\d+)?)분/)
+    return match ? parseFloat(match[1]) : 1
+  }
+  return 1
+}
+
+/**
+ * 그룹별로 씬들을 분류
+ * @param {Array} scenes - 씬 배열
+ * @returns {Object} 그룹별 씬 객체
+ */
+const groupScenesByLocationGroup = (scenes) => {
+  const groups = {}
+  
+  scenes.forEach(scene => {
+    const groupId = scene.locationGroupId || 'unknown'
+    if (!groups[groupId]) {
+      groups[groupId] = []
+    }
+    groups[groupId].push(scene)
+  })
+  
+  // unknown 그룹이 있으면 다른 그룹으로 분산
+  if (groups['unknown'] && groups['unknown'].length > 0) {
+    const unknownScenes = groups['unknown']
+    delete groups['unknown']
+    
+    // 각 씬을 개별 그룹으로 분리
+    unknownScenes.forEach((scene, index) => {
+      const individualGroupId = `individual_${index + 1}`
+      groups[individualGroupId] = [scene]
+    })
+  }
+  
+  return groups
+}
+
+/**
+ * 그룹 내에서 실제장소별로 씬들을 최적화
+ * @param {Object} groupScenes - 그룹별 씬 객체
+ * @returns {Object} 최적화된 그룹별 씬 객체
+ */
+const optimizeGroupsByRealLocation = (groupScenes) => {
+  const optimized = {}
+  
+  Object.keys(groupScenes).forEach(groupId => {
+    const scenes = groupScenes[groupId]
+    
+    // 실제장소별로 그룹화
+    const realLocationGroups = {}
+    scenes.forEach(scene => {
+      const realLocationId = scene.realLocationId || 'unknown'
+      if (!realLocationGroups[realLocationId]) {
+        realLocationGroups[realLocationId] = []
+      }
+      realLocationGroups[realLocationId].push(scene)
+    })
+    
+    // 각 실제장소 내에서 씬 번호순으로 정렬
+    Object.keys(realLocationGroups).forEach(realLocationId => {
+      realLocationGroups[realLocationId].sort((a, b) => a.scene - b.scene)
+    })
+    
+    // 실제장소별로 정렬된 씬들을 하나의 배열로 합치기
+    const sortedScenes = []
+    Object.keys(realLocationGroups).forEach(realLocationId => {
+      sortedScenes.push(...realLocationGroups[realLocationId])
+    })
+    
+    optimized[groupId] = sortedScenes
+  })
+  
+  return optimized
+}
+
+/**
+ * 일일 스케줄 생성 (6시간 제한)
+ * @param {Object} optimizedGroups - 최적화된 그룹별 씬 객체
+ * @returns {Array} 일일 스케줄 배열 (시간, 씬, 장소, 카메라, 주요 인물, 필요 인력, 필요 장비 포함)
+ */
+const createDailySchedules = (optimizedGroups) => {
+  const dailySchedules = []
+  let dayCounter = 1
+  
+  Object.keys(optimizedGroups).forEach(groupId => {
+    const scenes = optimizedGroups[groupId]
+    const MAX_DAILY_SHOOTING_TIME = 6 * 60 // 6시간 = 360분
+    
+    let currentDayScenes = []
+    let currentDayShootingTime = 0
+    
+    scenes.forEach(scene => {
+      // 리허설 시간 계산 (촬영시간의 20%)
+      const rehearsalTime = Math.ceil(scene.shootingDuration * 0.2)
+      const totalSceneTime = scene.shootingDuration + rehearsalTime
+      
+      // 6시간을 초과하는지 확인
+      if (currentDayShootingTime + totalSceneTime > MAX_DAILY_SHOOTING_TIME) {
+        // 현재 날짜 완료하고 새 날짜 시작
+        if (currentDayScenes.length > 0) {
+          const daySchedule = createNewDaySchedule(dayCounter, currentDayScenes, groupId)
+          dailySchedules.push(daySchedule)
+          dayCounter++
+          currentDayScenes = []
+          currentDayShootingTime = 0
+        }
+      }
+      
+      currentDayScenes.push(scene)
+      currentDayShootingTime += totalSceneTime
+    })
+    
+    // 마지막 날짜 처리
+    if (currentDayScenes.length > 0) {
+      const daySchedule = createNewDaySchedule(dayCounter, currentDayScenes, groupId)
+      dailySchedules.push(daySchedule)
+      dayCounter++
+    }
+  })
+  
+  // 각 일차별로 요청하신 정보들을 정리하여 반환
+  const schedulesWithDetails = dailySchedules.map(daySchedule => {
+    return {
+      // 기본 정보
+      day: daySchedule.day,
+      date: daySchedule.date,
+      location: daySchedule.location,
+      totalScenes: daySchedule.totalScenes,
+      
+      // 요청하신 상세 정보들
+      time: daySchedule.scheduleDetails.time,           // 시간별 활동
+      scenes: daySchedule.scheduleDetails.scenes,       // 씬별 정보
+      location: daySchedule.scheduleDetails.location,   // 장소 정보
+      camera: daySchedule.scheduleDetails.camera,       // 카메라 정보
+      actors: daySchedule.scheduleDetails.actors,       // 주요 인물
+      crew: daySchedule.scheduleDetails.crew,           // 필요 인력
+      equipment: daySchedule.scheduleDetails.equipment, // 필요 장비
+      
+      // 기존 정보들 (호환성 유지)
+      scenes: daySchedule.scenes,
+      dailySchedule: daySchedule.dailySchedule,
+      estimatedDuration: daySchedule.estimatedDuration,
+      rehearsalDuration: daySchedule.rehearsalDuration,
+      totalDuration: daySchedule.totalDuration,
+      crew: daySchedule.crew,
+      equipment: daySchedule.equipment
+    }
+  })
+  
+  return schedulesWithDetails
+}
+
+/**
+ * 일일 스케줄 생성 (새로운 알고리즘)
+ * @param {number} dayNumber - 일차
+ * @param {Array} scenes - 씬 배열
+ * @param {string} groupId - 그룹 ID
+ * @returns {Object} 일일 스케줄 객체
+ */
+const createNewDaySchedule = (dayNumber, scenes, groupId) => {
+  const totalShootingTime = scenes.reduce((total, scene) => total + scene.shootingDuration, 0)
+  const totalRehearsalTime = Math.ceil(totalShootingTime * 0.2)
+  
+  // 일일 상세 스케줄 생성
+  const dailySchedule = generateDailyDetailedSchedule(scenes, totalRehearsalTime)
+  
+  // 각 씬별 상세 정보 추출
+  const scenesWithDetails = scenes.map(scene => {
+    // 카메라 정보 추출
+    const cameraInfo = extractCameraFromConte(scene)
+    
+    // 주요 인물 (배우) 정보 추출
+    const actors = extractActorsFromConte(scene)
+    
+    // 필요 인력 정보 추출
+    const crewInfo = extractCrewFromConte(scene)
+    
+    // 필요 장비 정보 추출
+    const equipmentInfo = extractEquipmentFromConte(scene)
+    
+    // 시간대 정보 추출
+    const timeSlot = extractTimeSlotFromConte(scene)
+    
+    return {
+      ...scene,
+      rehearsalTime: Math.ceil(scene.shootingDuration * 0.2),
+      totalTime: scene.shootingDuration + Math.ceil(scene.shootingDuration * 0.2),
+      // 추가 상세 정보
+      camera: cameraInfo,
+      actors: actors,
+      crew: crewInfo,
+      equipment: equipmentInfo,
+      timeSlot: timeSlot,
+      // 시간 정보 (dailySchedule에서 계산된 실제 촬영 시간)
+      shootingStartTime: null, // dailySchedule에서 설정
+      shootingEndTime: null,   // dailySchedule에서 설정
+      // 장소 정보
+      location: scene.keywords?.location || '미정',
+      realLocation: scene.realLocationId || '미정'
+    }
+  })
+  
+  // dailySchedule에서 실제 촬영 시간 정보를 씬에 매핑
+  const updatedScenesWithDetails = scenesWithDetails.map(scene => {
+    const shootingSchedule = dailySchedule.find(schedule => 
+      schedule.activity === '촬영' && schedule.description.includes(`씬 ${scene.scene}`)
+    )
+    
+    if (shootingSchedule) {
+      const [startTime, endTime] = shootingSchedule.time.split('-')
+      return {
+        ...scene,
+        shootingStartTime: startTime,
+        shootingEndTime: endTime
+      }
+    }
+    
+    return scene
+  })
+  
+  return {
+    day: dayNumber,
+    date: `Day ${dayNumber}`,
+    location: getGroupName(groupId),
+    locationGroupId: groupId,
+    scenes: updatedScenesWithDetails,
+    totalScenes: scenes.length,
+    estimatedDuration: totalShootingTime,
+    rehearsalDuration: totalRehearsalTime,
+    totalDuration: totalShootingTime + totalRehearsalTime,
+    crew: getRequiredCrew(scenes),
+    equipment: getRequiredEquipment(scenes),
+    dailySchedule: dailySchedule,
+    
+    // 요청하신 정보들을 포함한 상세 데이터
+    scheduleDetails: {
+      time: dailySchedule.map(schedule => ({
+        time: schedule.time,
+        activity: schedule.activity,
+        description: schedule.description
+      })),
+      scenes: updatedScenesWithDetails.map(scene => ({
+        scene: scene.scene,
+        title: scene.title,
+        time: `${scene.shootingStartTime || '미정'}-${scene.shootingEndTime || '미정'}`,
+        duration: scene.shootingDuration
+      })),
+      location: getGroupName(groupId),
+      camera: updatedScenesWithDetails.map(scene => ({
+        scene: scene.scene,
+        camera: typeof scene.camera === 'string' ? scene.camera : '기본 카메라'
+      })),
+      actors: updatedScenesWithDetails.map(scene => ({
+        scene: scene.scene,
+        actors: Array.isArray(scene.actors) ? scene.actors : []
+      })),
+      crew: updatedScenesWithDetails.map(scene => ({
+        scene: scene.scene,
+        crew: Array.isArray(scene.crew) ? scene.crew : []
+      })),
+      equipment: updatedScenesWithDetails.map(scene => ({
+        scene: scene.scene,
+        equipment: Array.isArray(scene.equipment) ? scene.equipment : []
+      }))
+    }
+  }
+}
+
+/**
+ * 일일 상세 스케줄 생성
+ * @param {Array} scenes - 씬 배열
+ * @param {number} totalRehearsalTime - 총 리허설 시간
+ * @returns {Array} 상세 스케줄 배열
+ */
+const generateDailyDetailedSchedule = (scenes, totalRehearsalTime) => {
+  const schedule = []
+  let currentTime = { hour: 6, minute: 0 }
+  
+  // 6:00 - 집합
+  schedule.push({
+    time: '06:00-07:00',
+    activity: '집합',
+    description: '전체 스태프 집합',
+    realLocation: null,
+    scene: null
+  })
+  
+  // 7:00-8:00 - 이동
+  schedule.push({
+    time: '07:00-08:00',
+    activity: '이동',
+    description: '촬영 현장으로 이동',
+    realLocation: null,
+    scene: null
+  })
+  
+  // 8:00 - 현장 도착 및 리허설
+  currentTime = { hour: 8, minute: 0 } // 8시로 설정
+  const rehearsalStartTime = formatTime(currentTime)
+  currentTime = addMinutes(currentTime, totalRehearsalTime)
+  const rehearsalEndTime = formatTime(currentTime)
+  
+  schedule.push({
+    time: `${rehearsalStartTime}-${rehearsalEndTime}`,
+    activity: '리허설',
+    description: `전체 씬 리허설 (씬 ${scenes.map(s => s.scene).join(', ')})`,
+    realLocation: scenes.length > 0 ? scenes[0].realLocationId : null,
+    scene: scenes.map(s => s.scene).join(', ')
+  })
+  
+  // 씬별 촬영
+  scenes.forEach((scene, index) => {
+    const prevScene = index > 0 ? scenes[index - 1] : null
+    
+    // 점심시간 체크 (12:00-13:00)
+    if (currentTime.hour === 12 && currentTime.minute === 0) {
+      schedule.push({
+        time: '12:00-13:00',
+        activity: '점심식사',
+        description: '1시간 휴식',
+        realLocation: null,
+        scene: null
+      })
+      currentTime = { hour: 13, minute: 0 }
+    }
+    
+    // 저녁시간 체크 (18:00-19:00)
+    if (currentTime.hour === 18 && currentTime.minute === 0) {
+      schedule.push({
+        time: '18:00-19:00',
+        activity: '저녁식사',
+        description: '1시간 휴식',
+        realLocation: null,
+        scene: null
+      })
+      currentTime = { hour: 19, minute: 0 }
+    }
+    
+    // 실제장소 변경 시 세팅 시간 (30분)
+    if (prevScene && prevScene.realLocationId !== scene.realLocationId) {
+      const setupStartTime = formatTime(currentTime)
+      currentTime = addMinutes(currentTime, 30)
+      const setupEndTime = formatTime(currentTime)
+      
+      schedule.push({
+        time: `${setupStartTime}-${setupEndTime}`,
+        activity: '세팅',
+        description: `${scene.keywords?.location || '새 장소'} 세팅`,
+        realLocation: scene.realLocationId,
+        scene: null
+      })
+    }
+    
+    // 씬 촬영
+    const shootingStartTime = formatTime(currentTime)
+    currentTime = addMinutes(currentTime, scene.shootingDuration)
+    const shootingEndTime = formatTime(currentTime)
+    
+          schedule.push({
+        time: `${shootingStartTime}-${shootingEndTime}`,
+        activity: '촬영',
+        description: `씬 ${scene.scene}: ${scene.title} (${scene.shootingDuration}분)`,
+        realLocation: scene.realLocationId,
+        scene: scene.scene
+      })
+  })
+  
+  // 정리 및 해산
+  const cleanupStartTime = formatTime(currentTime)
+  currentTime = addMinutes(currentTime, 60)
+  const cleanupEndTime = formatTime(currentTime)
+  
+  schedule.push({
+    time: `${cleanupStartTime}-${cleanupEndTime}`,
+    activity: '정리 및 해산',
+    description: '촬영 완료, 장비 정리',
+    realLocation: scenes.length > 0 ? scenes[scenes.length - 1].realLocationId : null,
+    scene: null
+  })
+  
+  return schedule
+}
+
+/**
+ * 시간 포맷팅
+ * @param {Object} time - 시간 객체 {hour, minute}
+ * @returns {string} 포맷된 시간 (HH:MM)
+ */
+const formatTime = (time) => {
+  return `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`
+}
+
+/**
+ * 시간에 분 추가
+ * @param {Object} time - 시간 객체 {hour, minute}
+ * @param {number} minutes - 추가할 분
+ * @returns {Object} 업데이트된 시간 객체
+ */
+const addMinutes = (time, minutes) => {
+  const totalMinutes = time.hour * 60 + time.minute + minutes
+  return {
+    hour: Math.floor(totalMinutes / 60),
+    minute: totalMinutes % 60
+  }
+}
+
+/**
+ * location에서 그룹 ID 생성
+ * @param {string} location - 장소명
+ * @returns {string} 그룹 ID
+ */
+const generateLocationGroupId = (location) => {
+  if (!location || location === '미정') return 'unknown'
+  
+  // 장소명에서 그룹 추출
+  const locationLower = location.toLowerCase()
+  
+  if (locationLower.includes('학교') || locationLower.includes('교실') || locationLower.includes('강의실') || locationLower.includes('도서관')) {
+    return 'school'
+  } else if (locationLower.includes('병원') || locationLower.includes('의원') || locationLower.includes('진료실')) {
+    return 'hospital'
+  } else if (locationLower.includes('회사') || locationLower.includes('사무실') || locationLower.includes('오피스')) {
+    return 'office'
+  } else if (locationLower.includes('집') || locationLower.includes('집안') || locationLower.includes('거실') || locationLower.includes('방')) {
+    return 'home'
+  } else if (locationLower.includes('카페') || locationLower.includes('커피')) {
+    return 'cafe'
+  } else if (locationLower.includes('레스토랑') || locationLower.includes('식당')) {
+    return 'restaurant'
+  } else if (locationLower.includes('공원') || locationLower.includes('산') || locationLower.includes('바다')) {
+    return 'outdoor'
+  } else {
+    // 기본적으로 location을 그룹 ID로 사용
+    return location.replace(/\s+/g, '_').toLowerCase()
+  }
+}
+
+/**
+ * location과 콘티에서 가상장소 ID 생성
+ * @param {string} location - 장소명
+ * @param {Object} conte - 콘티 객체
+ * @returns {string} 가상장소 ID
+ */
+const generateVirtualLocationId = (location, conte) => {
+  if (!location || location === '미정') return 'unknown'
+  
+  // 씬 번호와 장소를 조합하여 고유한 가상장소 ID 생성
+  const sceneNumber = conte.scene || 1
+  const locationKey = location.replace(/\s+/g, '_').toLowerCase()
+  
+  return `${locationKey}_scene_${sceneNumber}`
+}
+
+/**
+ * 그룹 이름 가져오기
+ * @param {string} groupId - 그룹 ID
+ * @returns {string} 그룹 이름
+ */
+const getGroupName = (groupId) => {
+  // 실제로는 데이터베이스에서 그룹 정보를 가져와야 함
+  const groupNames = {
+    'school': '학교',
+    'hospital': '병원',
+    'office': '회사',
+    'home': '집',
+    'cafe': '카페',
+    'restaurant': '레스토랑',
+    'outdoor': '야외',
+    'unknown': '미정'
+  }
+  
+  // individual 그룹 처리
+  if (groupId.startsWith('individual_')) {
+    return '개별 촬영'
+  }
+  
+  return groupNames[groupId] || groupId
+}
+
+
+
+/**
  * 콘티에서 장비 정보 추출 (개선된 버전)
  * @param {Object} conte - 콘티 객체
  * @returns {Array} 추출된 장비 리스트
  */
 const extractEquipmentFromConte = (conte) => {
-  console.log('🎥 장비 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasScheduling: !!conte.scheduling,
-    hasKeywords: !!conte.keywords
-  });
   
   const equipment = [];
   
@@ -1800,23 +1831,15 @@ const extractEquipmentFromConte = (conte) => {
     equipment.push('카메라', '조명', '마이크');
   }
   
-  console.log('✅ 추출된 장비:', equipment);
   return equipment;
 }
 
 /**
  * 콘티에서 카메라 정보 추출 (개선된 버전)
  * @param {Object} conte - 콘티 객체
- * @returns {Object} 추출된 카메라 정보
+ * @returns {string} 추출된 카메라 정보 문자열
  */
 const extractCameraFromConte = (conte) => {
-  console.log('📹 카메라 정보 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasScheduling: !!conte.scheduling,
-    hasKeywords: !!conte.keywords
-  });
-  
   const cameraInfo = {
     model: '기본 카메라',
     lens: '기본 렌즈',
@@ -1856,6 +1879,210 @@ const extractCameraFromConte = (conte) => {
     cameraInfo.lens = conte.lensSpecs;
   }
   
-  console.log('✅ 추출된 카메라 정보:', cameraInfo);
-  return cameraInfo;
+  // 4. 카메라 정보를 문자열로 변환
+  const cameraParts = [];
+  
+  if (cameraInfo.model && cameraInfo.model !== '기본 카메라') {
+    cameraParts.push(cameraInfo.model);
+  }
+  
+  if (cameraInfo.lens && cameraInfo.lens !== '기본 렌즈') {
+    cameraParts.push(cameraInfo.lens);
+  }
+  
+  if (cameraInfo.movement && cameraInfo.movement !== '고정') {
+    cameraParts.push(cameraInfo.movement);
+  }
+  
+  if (cameraInfo.angle) {
+    cameraParts.push(cameraInfo.angle);
+  }
+  
+  if (cameraInfo.work) {
+    cameraParts.push(cameraInfo.work);
+  }
+  
+  // 기본값이거나 정보가 없는 경우
+  if (cameraParts.length === 0) {
+    return '기본 카메라';
+  }
+  
+  return cameraParts.join(', ');
 } 
+
+/**
+ * 일일촬영계획표 생성 API
+ * @param {Object} requestData - 요청 데이터
+ * @returns {Promise<Object>} 생성된 일일촬영계획표
+ */
+export const generateDailyShootingPlan = async (requestData) => {
+  try {
+    console.log('🎬 일일촬영계획표 생성 요청:', {
+      projectTitle: requestData.projectTitle,
+      shootingDate: requestData.shootingDate,
+      scenesCount: requestData.scenes?.length || 0,
+      requestData: requestData
+    })
+
+    const response = await api.post('/scheduler/generate-daily-plan', requestData, {
+      timeout: 120000, // 2분 타임아웃
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    console.log('✅ 일일촬영계획표 생성 완료:', {
+      status: response.status,
+      responseData: response.data
+    })
+
+    return response.data
+
+  } catch (error) {
+    console.error('❌ 일일촬영계획표 생성 실패:', error)
+    
+    if (error.response?.status === 401) {
+      throw new Error('로그인이 필요합니다.')
+    } else if (error.response?.status === 500) {
+      throw new Error('서버 오류가 발생했습니다.')
+    } else if (error.code === 'ECONNABORTED') {
+      throw new Error('요청 시간이 초과되었습니다.')
+    } else {
+      throw new Error(error.message || '일일촬영계획표 생성에 실패했습니다.')
+    }
+  }
+}
+
+/**
+ * 일일촬영계획표 재생성 (재시도 로직 포함)
+ * @param {Object} requestData - 요청 데이터
+ * @param {number} maxRetries - 최대 재시도 횟수
+ * @returns {Promise<Object>} 생성된 일일촬영계획표
+ */
+export const generateDailyShootingPlanWithRetry = async (requestData, maxRetries = 3) => {
+  let lastError = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🎬 일일촬영계획표 생성 시도 ${attempt}/${maxRetries}`)
+      
+      const result = await generateDailyShootingPlan(requestData)
+      
+      console.log(`✅ 일일촬영계획표 생성 성공 (시도 ${attempt})`)
+      return result
+      
+    } catch (error) {
+      console.error(`❌ 일일촬영계획표 생성 실패 (시도 ${attempt}):`, error.message)
+      lastError = error
+      
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000) // 지수 백오프
+        console.log(`⏳ ${delay}ms 후 재시도...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+  }
+  
+  throw lastError
+} 
+
+/**
+ * DB에서 씬의 실제장소 정보 조회
+ * @param {string} conteId - 씬 ID
+ * @param {string} projectId - 프로젝트 ID
+ * @returns {Object} 실제장소와 그룹 정보
+ */
+const getRealLocationInfoFromDB = async (conteId, projectId) => {
+  try {
+    console.log('🔍 DB에서 씬의 실제장소 정보 조회:', { conteId, projectId })
+    
+    // API 호출을 위한 기본 설정
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'
+    
+    // 1. 씬의 실제장소 매핑 조회
+    const mappingResponse = await fetch(`${API_BASE_URL}/projects/${projectId}/contes/${conteId}/real-location`, {
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!mappingResponse.ok) {
+      console.warn('⚠️ 씬-실제장소 매핑 조회 실패, 기본값 사용:', conteId)
+      return {
+        groupId: 'unknown',
+        realLocationId: `unknown_scene_${conteId}`,
+        groupName: '미정',
+        realLocationName: '미정'
+      }
+    }
+    
+    const mappingData = await mappingResponse.json()
+    const mapping = mappingData.data
+    
+    if (!mapping || !mapping.realLocationId) {
+      console.warn('⚠️ 씬에 매핑된 실제장소 없음, 기본값 사용:', conteId)
+      return {
+        groupId: 'unknown',
+        realLocationId: `unknown_scene_${conteId}`,
+        groupName: '미정',
+        realLocationName: '미정'
+      }
+    }
+    
+    const realLocation = mapping.realLocationId
+    const locationGroup = mapping.realLocationId.locationGroupId
+    
+    console.log('✅ 실제장소 정보 조회 완료:', {
+      conteId,
+      realLocationId: realLocation._id,
+      realLocationName: realLocation.name,
+      groupId: locationGroup?._id || 'unknown',
+      groupName: locationGroup?.name || '미정'
+    })
+    
+    return {
+      groupId: locationGroup?._id || 'unknown',
+      realLocationId: realLocation._id,
+      groupName: locationGroup?.name || '미정',
+      realLocationName: realLocation.name
+    }
+    
+  } catch (error) {
+    console.error('❌ 실제장소 정보 조회 오류:', error)
+    return {
+      groupId: 'unknown',
+      realLocationId: `unknown_scene_${conteId}`,
+      groupName: '미정',
+      realLocationName: '미정'
+    }
+  }
+}
+
+/**
+ * 인증 토큰 가져오기
+ * @returns {string} 인증 토큰
+ */
+const getAuthToken = () => {
+  // 세션 스토리지에서 토큰 확인
+  let token = sessionStorage.getItem('auth-token')
+  
+  // 세션 스토리지에 없으면 로컬 스토리지에서 확인
+  if (!token) {
+    const authStorage = localStorage.getItem('auth-storage')
+    if (authStorage) {
+      try {
+        const parsedToken = JSON.parse(authStorage)
+        if (parsedToken.state?.token) {
+          token = parsedToken.state.token
+          // 세션 스토리지에도 저장
+          sessionStorage.setItem('auth-token', token)
+        }
+      } catch (error) {
+        console.error('토큰 파싱 오류:', error)
+      }
+    }
+  }
+  
+  return token
+}

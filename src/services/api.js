@@ -91,6 +91,43 @@ export const conteAPI = {
 }
 
 /**
+ * 위치 관리 API
+ */
+export const locationAPI = {
+  // LocationGroup 조회
+  getLocationGroups: (projectId) => api.get(`/projects/${projectId}/location-groups`),
+  
+  // LocationGroup 생성
+  createLocationGroup: (projectId, groupData) => api.post(`/projects/${projectId}/location-groups`, groupData),
+  
+  // LocationGroup 수정
+  updateLocationGroup: (projectId, groupId, updateData) => api.put(`/projects/${projectId}/location-groups/${groupId}`, updateData),
+  
+  // LocationGroup 삭제
+  deleteLocationGroup: (projectId, groupId) => api.delete(`/projects/${projectId}/location-groups/${groupId}`),
+  
+  // RealLocation 조회
+  getRealLocations: (projectId) => api.get(`/projects/${projectId}/real-locations`),
+  
+  // 그룹별 VirtualLocation 조회
+  getVirtualLocationsByGroup: (projectId, groupId) => api.get(`/projects/${projectId}/location-groups/${groupId}/virtual-locations`),
+  
+  // RealLocation 생성 (백엔드에서 자동 처리하므로 제거)
+  
+  // VirtualLocation 수정
+  updateVirtualLocation: (projectId, locationId, updateData) => api.put(`/projects/${projectId}/virtual-locations/${locationId}`, updateData),
+  
+  // VirtualLocation 삭제
+  deleteVirtualLocation: (projectId, locationId) => api.delete(`/projects/${projectId}/virtual-locations/${locationId}`),
+  
+  // VirtualLocation 그룹 할당
+  assignVirtualLocationToGroup: (projectId, locationId, groupId) => api.put(`/projects/${projectId}/virtual-locations/${locationId}/assign-group`, { groupId }),
+  
+  // 씬에 VirtualLocation 할당
+  assignLocationToScene: (projectId, conteId, locationId) => api.put(`/projects/${projectId}/contes/${conteId}/assign-location`, { locationId })
+}
+
+/**
  * AI 생성 API (기존)
  */
 export const aiAPI = {

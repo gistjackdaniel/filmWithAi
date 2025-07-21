@@ -30,6 +30,7 @@ import ConteEditModal from './ConteEditModal'
 import useStoryGenerationStore from '../../stores/storyGenerationStore'
 import toast from 'react-hot-toast'
 import useProjectStore from '../../stores/projectStore'
+import { locationAPI } from '../../services/api'
 
 /**
  * AI 캡션 카드 생성 컴포넌트
@@ -101,6 +102,56 @@ const ConteGenerator = ({
     { value: '연기적', label: '연기적 (인물, 대사 중심)' },
     { value: '기술적', label: '기술적 (촬영, 특수효과 중심)' }
   ]
+
+  /**
+   * 기존 콘티 삭제 함수
+   * @param {string} projectId - 프로젝트 ID
+   */
+  const clearExistingContes = async (projectId) => {
+    if (!projectId) return
+    
+    try {
+      console.log('🗑️ 기존 콘티 삭제 시작...')
+      
+      const { conteAPI } = await import('../../services/api')
+      
+      // 기존 콘티 목록 조회
+      const existingContesResponse = await conteAPI.getContes(projectId)
+      
+      if (existingContesResponse.data && existingContesResponse.data.success) {
+        const existingContes = existingContesResponse.data.data
+        
+        if (existingContes.length > 0) {
+          console.log(`🗑️ 기존 콘티 ${existingContes.length}개 발견, 삭제 중...`)
+          
+          // 모든 기존 콘티 삭제
+          const deletePromises = existingContes.map(async (conte) => {
+            try {
+              await conteAPI.deleteConte(projectId, conte._id)
+              console.log(`🗑️ 콘티 삭제 완료: 씬 ${conte.scene} - ${conte.title}`)
+            } catch (error) {
+              console.error(`❌ 콘티 삭제 실패: 씬 ${conte.scene}`, error)
+            }
+          })
+          
+          await Promise.all(deletePromises)
+          console.log('✅ 기존 콘티 삭제 완료')
+        } else {
+          console.log('ℹ️ 기존 콘티가 없습니다.')
+        }
+      }
+    } catch (error) {
+      console.error('❌ 기존 콘티 삭제 중 오류:', error)
+    }
+  }
+
+  /**
+   * 가상장소 자동 생성 함수
+   * @param {Array} conteList - 콘티 리스트
+   * @param {string} projectId - 프로젝트 ID
+   * @returns {Promise<Array>} 가상장소가 연결된 콘티 리스트
+   */
+  // 백엔드에서 실제장소를 자동으로 생성하고 연결하므로 프론트엔드에서는 제거
 
   /**
    * 씬 이미지 생성 함수
@@ -215,6 +266,12 @@ const ConteGenerator = ({
         storyLength: story.length, 
         settings: conteSettings 
       })
+      
+      // 기존 콘티 삭제 (프로젝트가 있는 경우)
+      if (projectId) {
+        console.log('🗑️ 기존 콘티 정리 시작...')
+        await clearExistingContes(projectId)
+      }
 
       // AI 캡션 카드 생성 API 호출 (crew/equipment/cameras 안내문 포함)
       const response = await generateConteWithRetry({
@@ -228,6 +285,40 @@ const ConteGenerator = ({
         response: response,
         tokenCount: response.tokenCount 
       })
+
+      // 🔍 백엔드로부터 받은 콘티의 realLocationId 확인 로그
+      console.log('🔍 백엔드 응답에서 realLocationId 확인:', {
+        responseType: typeof response,
+        responseKeys: typeof response === 'object' ? Object.keys(response) : 'N/A',
+        hasConteList: response?.conteList ? 'yes' : 'no',
+        conteListLength: response?.conteList?.length || 'N/A'
+      })
+      
+      if (response?.conteList && Array.isArray(response.conteList)) {
+        response.conteList.forEach((conte, index) => {
+          console.log(`🔍 백엔드 콘티 ${index + 1} realLocationId 확인:`, {
+            scene: conte.scene,
+            title: conte.title,
+            realLocationId: conte.realLocationId || '미정',
+            realLocationName: conte.realLocationName || '미정',
+            location: conte.keywords?.location || conte.location || '미정',
+            hasRealLocationId: !!conte.realLocationId,
+            realLocationIdType: typeof conte.realLocationId
+          })
+        })
+      } else if (Array.isArray(response)) {
+        response.forEach((conte, index) => {
+          console.log(`🔍 백엔드 콘티 ${index + 1} realLocationId 확인 (배열):`, {
+            scene: conte.scene,
+            title: conte.title,
+            realLocationId: conte.realLocationId || '미정',
+            realLocationName: conte.realLocationName || '미정',
+            location: conte.keywords?.location || conte.location || '미정',
+            hasRealLocationId: !!conte.realLocationId,
+            realLocationIdType: typeof conte.realLocationId
+          })
+        })
+      }
 
       // 응답 데이터 처리
       let conteList = []
@@ -275,6 +366,38 @@ const ConteGenerator = ({
 
       console.log('✅ 처리된 캡션 카드 리스트:', processedConteList)
 
+      // 가상장소 자동 생성 (백그라운드에서 진행)
+      console.log('🏗️ 가상장소 자동 생성 시작 (백그라운드)...', {
+        projectId,
+        hasProjectId: !!projectId,
+        conteCount: processedConteList.length,
+        contesWithLocation: processedConteList.filter(c => c.keywords?.location && c.keywords.location !== '미정').length
+      })
+      
+      // 각 콘티의 장소 정보 로그
+      processedConteList.forEach((conte, index) => {
+        console.log(`📍 씬 ${conte.scene} 장소 정보:`, {
+          title: conte.title,
+          location: conte.keywords?.location || conte.location || '미정',
+          hasLocation: !!(conte.keywords?.location && conte.keywords.location !== '미정')
+        })
+      })
+      
+      // 백엔드에서 실제장소를 자동으로 생성하고 연결하므로 프론트엔드에서는 처리하지 않음
+      console.log('✅ 콘티 생성 완료 - 백엔드에서 실제장소 자동 생성됨')
+      
+      // 콘티별 장소와 실제장소 정보 로그 출력
+      processedConteList.forEach((conte, index) => {
+        console.log(`🎬 콘티 ${index + 1} 생성 완료:`, {
+          scene: conte.scene,
+          title: conte.title,
+          location: conte.keywords?.location || '미정',
+          realLocationId: conte.realLocationId || '미정',
+          realLocationName: conte.keywords?.location || '미정', // 백엔드에서 같은 이름으로 생성
+          projectId: projectId
+        });
+      });
+      
       // 콘티 생성 완료 - 즉시 부모 컴포넌트에 전달하여 프로젝트 상태 업데이트
       console.log('🎬 콘티 생성 완료 - 즉시 부모 컴포넌트에 전달:', {
         processedConteListLength: processedConteList?.length,
@@ -294,6 +417,10 @@ const ConteGenerator = ({
       setShowResult(true)
       completeConteGeneration(processedConteList)
       toast.success(`${processedConteList.length}개의 캡션 카드가 생성되었습니다.`)
+      
+      // UI 업데이트 (즉시) - 가상장소 생성 완료 후 업데이트되도록 제거
+      // setShowResult(true)
+      // completeConteGeneration(processedConteList)
 
       // 씬 이미지 생성 시작 (백그라운드에서 진행)
       console.log('🎨 씬 이미지 생성 시작 (백그라운드)...')
