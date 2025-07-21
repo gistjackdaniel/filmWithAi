@@ -4,17 +4,29 @@ import {
   Box, 
   Typography, 
   Container,
-  Button
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  IconButton,
+  Tooltip
 } from '@mui/material'
 import { 
   Save,
-  PlayArrow
+  PlayArrow,
+  Edit,
+  Visibility,
+  Add,
+  List
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
 import CutTimelineViewer from '../components/timeline/organisms/CutTimelineViewer'
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
+import CutEditModal from '../components/StoryGeneration/CutEditModal'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
 import StoryResult from '../components/StoryGeneration/StoryResult' // StoryResult 컴포넌트 추가
 import useTimelineStore from '../stores/timelineStore'
@@ -35,33 +47,146 @@ const ProjectPage = () => {
   
   // 타임라인 스토어
   const {
-    scenes,
+    cuts,
     selectedCutId,
     selectedSceneId, // 추가
     loading: timelineLoading,
     error: timelineError,
     modalOpen,
-    currentScene,
+    currentCut,
+    currentScene, // 추가
     setCurrentProjectId,
-    loadProjectContes,
+    
+    loadProjectCuts,
     selectCut,
     openModal,
     closeModal,
     disconnectRealtimeUpdates,
-    loadSceneDetails,
-    generateCutsForScene,
-    generateCutsForAllScenes
+    loadCutDetails,
+    updateCutWithAPI,
+    deleteCutWithAPI
   } = useTimelineStore()
-  
+
   // 로컬 상태 관리
   const [project, setProject] = useState(null) // 프로젝트 정보
   const [loading, setLoading] = useState(true) // 로딩 상태
   const [editModalOpen, setEditModalOpen] = useState(false) // 편집 모달 열림 상태
   const [editingScene, setEditingScene] = useState(null) // 편집 중인 씬
+  const [showSceneList, setShowSceneList] = useState(true) // 씬 리스트 표시 여부
+  const [showTimeline, setShowTimeline] = useState(false) // 타임라인 표시 여부
+
+  // 컷 생성 관련 함수들 (로컬에서 구현)
+  const generateCutsForScene = useCallback(async (scene) => {
+    try {
+      console.log('🎬 씬 컷 생성 시작:', scene)
+      
+      // 실제 컷 생성 로직은 백엔드 API를 호출
+      const response = await api.post(`/cuts/generate`, {
+        projectId: projectId,
+        sceneId: scene.id,
+        sceneData: scene
+      })
+      
+      if (response.data.success) {
+        return {
+          success: true,
+          cuts: response.data.cuts || []
+        }
+      } else {
+        return {
+          success: false,
+          error: response.data.message || '컷 생성에 실패했습니다.'
+        }
+      }
+    } catch (error) {
+      console.error('❌ 컷 생성 오류:', error)
+      return {
+        success: false,
+        error: '컷 생성 중 오류가 발생했습니다.'
+      }
+    }
+  }, [projectId])
+
+  const generateCutsForAllScenes = useCallback(async () => {
+    try {
+      console.log('🎬 모든 씬 컷 생성 시작')
+      
+      if (!project?.conteList || project.conteList.length === 0) {
+        return {
+          success: false,
+          error: '씬이 없습니다.'
+        }
+      }
+      
+      const results = []
+      
+      // 각 씬에 대해 컷 생성
+      for (const scene of project.conteList) {
+        try {
+          const result = await generateCutsForScene(scene)
+          results.push({
+            sceneId: scene.id,
+            sceneTitle: scene.title,
+            success: result.success,
+            cuts: result.cuts || [],
+            error: result.error
+          })
+        } catch (error) {
+          results.push({
+            sceneId: scene.id,
+            sceneTitle: scene.title,
+            success: false,
+            cuts: [],
+            error: error.message
+          })
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length
+      
+      return {
+        success: successCount > 0,
+        results: results,
+        error: successCount === 0 ? '모든 씬에서 컷 생성에 실패했습니다.' : null
+      }
+    } catch (error) {
+      console.error('❌ 모든 씬 컷 생성 오류:', error)
+      return {
+        success: false,
+        error: '컷 생성 중 오류가 발생했습니다.'
+      }
+    }
+  }, [project, generateCutsForScene])
+
+  // 프로젝트 상태 업데이트 함수
+  const updateProjectStatus = useCallback(async (status) => {
+    try {
+      if (projectId === 'temp-project-id') {
+        console.log('임시 프로젝트 상태 업데이트:', status)
+        return
+      }
+      
+      const response = await api.put(`/projects/${projectId}/status`, { status })
+      
+      if (response.data.success) {
+        console.log('프로젝트 상태 업데이트 완료:', status)
+      } else {
+        console.error('프로젝트 상태 업데이트 실패:', response.data.message)
+      }
+    } catch (error) {
+      console.error('프로젝트 상태 업데이트 오류:', error)
+    }
+  }, [projectId])
+
+  // URL 파라미터 확인
+  const searchParams = new URLSearchParams(location.search)
+  const mode = searchParams.get('mode')
+  const generateCuts = searchParams.get('generateCuts') === 'true'
 
   // 프로젝트 ID가 변경될 때마다 프로젝트 정보와 타임라인 데이터 로드
   useEffect(() => {
     console.log('ProjectPage useEffect triggered with projectId:', projectId)
+    console.log('URL 파라미터 - mode:', mode, 'generateCuts:', generateCuts)
     
     // projectId가 undefined이거나 빈 문자열인 경우 처리
     if (!projectId || projectId === 'undefined' || projectId === '') {
@@ -72,7 +197,7 @@ const ProjectPage = () => {
     }
     
     // 중복 요청 방지를 위한 디바운싱
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       // temp-project-id인 경우 로컬 스토리지에서 데이터 로드
       if (projectId === 'temp-project-id') {
         console.log('ProjectPage temp-project-id detected, checking timeline store first')
@@ -129,6 +254,13 @@ const ProjectPage = () => {
           
           setProject(tempProject)
           setLoading(false)
+          
+          // 컷 생성이 요청된 경우
+          if (generateCuts && mode === 'timeline') {
+            console.log('🎬 컷 생성 및 타임라인 표시 시작')
+            await handleGenerateCutsAndShowTimeline(scenes)
+          }
+          
           return
         }
         
@@ -141,7 +273,7 @@ const ProjectPage = () => {
     }, 100) // 100ms 디바운싱
     
     return () => clearTimeout(timeoutId)
-  }, [projectId])
+  }, [projectId, mode, generateCuts])
 
   // 컴포넌트 언마운트 시 실시간 연결 해제
   useEffect(() => {
@@ -187,6 +319,87 @@ const ProjectPage = () => {
   }
 
   /**
+   * 컷 클릭 핸들러 (일반 클릭 - CutEditModal 열기)
+   */
+  const handleCutClick = useCallback((cut) => {
+    console.log('🎬 컷 클릭 (CutEditModal):', cut)
+    
+    // CutEditModal에서 편집할 수 있도록 컷 데이터 설정
+    setEditingScene({
+      ...cut,
+      isCut: true
+    })
+    setEditModalOpen(true)
+  }, [])
+
+  /**
+   * 씬 클릭 핸들러 (Shift + 클릭 - ConteEditModal 열기)
+   */
+  const handleSceneClick = useCallback((scene) => {
+    console.log('🎬 씬 클릭 (ConteEditModal):', scene)
+    
+    // ConteEditModal에서 편집할 수 있도록 씬 데이터 설정
+    setEditingScene({
+      ...scene,
+      isCut: false
+    })
+    setEditModalOpen(true)
+  }, [])
+
+  /**
+   * 컷 편집 핸들러
+   */
+  const handleCutEdit = useCallback((cut) => {
+    console.log('✏️ 컷 편집:', cut)
+    handleCutClick(cut)
+  }, [handleCutClick])
+
+  /**
+   * 컷 정보 핸들러
+   */
+  const handleCutInfo = useCallback((cut) => {
+    console.log('ℹ️ 컷 정보:', cut)
+    handleCutClick(cut)
+  }, [handleCutClick])
+
+
+
+  /**
+   * 컷 생성 및 타임라인 표시 처리 함수
+   */
+  const handleGenerateCutsAndShowTimeline = async (scenes) => {
+    try {
+      console.log('🎬 컷 생성 및 타임라인 표시 시작:', scenes.length, '개 씬')
+      
+      // 로딩 상태 표시
+      toast.loading('컷을 생성하고 타임라인을 준비하고 있습니다...', { id: 'cuts-generation' })
+      
+      // 모든 씬에 대해 컷 생성
+      for (const scene of scenes) {
+        console.log(`🎬 씬 ${scene.scene} 컷 생성 시작:`, scene.title)
+        
+        try {
+          await generateCutsForScene(scene)
+          console.log(`✅ 씬 ${scene.scene} 컷 생성 완료`)
+        } catch (error) {
+          console.error(`❌ 씬 ${scene.scene} 컷 생성 실패:`, error)
+          toast.error(`씬 ${scene.scene} 컷 생성에 실패했습니다.`)
+        }
+      }
+      
+      // 타임라인 모달 열기
+      console.log('🎬 타임라인 모달 열기')
+      openModal('timeline')
+      
+      toast.success('컷 생성이 완료되었습니다!', { id: 'cuts-generation' })
+      
+    } catch (error) {
+      console.error('❌ 컷 생성 및 타임라인 표시 실패:', error)
+      toast.error('컷 생성에 실패했습니다.', { id: 'cuts-generation' })
+    }
+  }
+
+  /**
    * 전달받은 콘티 데이터를 로드하는 함수
    */
   const loadPassedConteData = (conteData) => {
@@ -197,7 +410,7 @@ const ProjectPage = () => {
       if (!Array.isArray(conteData) || conteData.length === 0) {
         console.log('ProjectPage invalid passed conte data')
         setProject({
-          projectTitle: '임시 프로젝트',
+          projectTitle: location.state?.projectTitle || '임시 프로젝트',
           synopsis: '콘티 생성으로 만들어진 임시 프로젝트입니다.',
           story: '',
           conteList: []
@@ -396,45 +609,83 @@ const ProjectPage = () => {
         throw new Error('프로젝트 데이터가 없습니다.')
       }
       
-      setProject(projectData)
-      
-      // 타임라인 스토어에 프로젝트 ID 설정
-      setCurrentProjectId(projectId)
-      
       // 콘티 데이터 확인 및 타임라인 로드
       const conteList = responseData.conteList || []
       
       console.log('ProjectPage conteList found:', conteList.length, 'items')
       
+      // 프로젝트 데이터에 콘티 리스트 추가
+      const projectWithContes = {
+        ...projectData,
+        conteList: conteList
+      }
+      
+      console.log('ProjectPage project with contes:', {
+        projectTitle: projectWithContes.projectTitle,
+        conteListLength: projectWithContes.conteList?.length || 0,
+        contes: projectWithContes.conteList?.map(conte => ({
+          id: conte.id,
+          scene: conte.scene,
+          title: conte.title,
+          type: conte.type
+        }))
+      })
+      
+      setProject(projectWithContes)
+      
+      // 타임라인 스토어에 프로젝트 ID 설정
+      setCurrentProjectId(projectId)
+      
+      // 각 콘티의 컷 데이터 확인
+      conteList.forEach((conte, index) => {
+        console.log(`ProjectPage conte ${index + 1}:`, {
+          id: conte.id,
+          scene: conte.scene,
+          title: conte.title,
+          cuts: conte.cuts,
+          cutsLength: conte.cuts?.length || 0
+        })
+      })
+      
       if (conteList && Array.isArray(conteList) && conteList.length > 0) {
         console.log('ProjectPage loading contes via timelineStore, count:', conteList.length)
         
-        // 타임라인 스토어를 통해 콘티 데이터 로드
-        const result = await loadProjectContes(projectId)
-        console.log('ProjectPage loadProjectContes result:', result)
+        // 타임라인 스토어를 통해 컷 데이터 로드
+        const result = await loadProjectCuts(projectId)
+        console.log('ProjectPage loadProjectCuts result:', result)
         
         if (result.success) {
-          console.log('✅ 프로젝트 콘티가 타임라인에 연결되었습니다:', result.data.length, '개')
-          toast.success(`${result.data.length}개의 콘티가 타임라인에 로드되었습니다.`)
+          console.log('✅ 프로젝트 컷이 타임라인에 연결되었습니다:', result.data.length, '개')
+          toast.success(`${result.data.length}개의 컷이 타임라인에 로드되었습니다.`)
         } else {
           console.error('❌ 타임라인 데이터 로드 실패:', result.error)
           toast.error(result.error || '타임라인 데이터를 불러올 수 없습니다.')
           
           // 실패 시 로컬 데이터로 폴백
-          console.log('ProjectPage falling back to local conte data')
-          const { setScenes } = useTimelineStore.getState()
-          const localScenes = conteList.map((conte, index) => ({
-            id: conte.id || conte._id || `scene_${conte.scene || index + 1}`,
-            scene: conte.scene || index + 1,
-            title: conte.title || `씬 ${conte.scene || index + 1}`,
-            description: conte.description || '',
-            type: conte.type || 'live_action',
-            estimatedDuration: conte.estimatedDuration || '5분',
-            duration: parseDurationToSeconds(conte.estimatedDuration || '5분'),
-            imageUrl: conte.imageUrl || null
-          }))
-          setScenes(localScenes)
-          console.log('ProjectPage local fallback scenes set:', localScenes.length, 'scenes')
+          console.log('ProjectPage falling back to local cuts data')
+          const { setCuts } = useTimelineStore.getState()
+          const localCuts = []
+          conteList.forEach((conte, sceneIndex) => {
+            if (conte.cuts && Array.isArray(conte.cuts)) {
+              conte.cuts.forEach((cut, cutIndex) => {
+                localCuts.push({
+                  id: cut.id || cut._id || `cut_${sceneIndex}_${cutIndex}`,
+                  shotNumber: cut.shotNumber || cutIndex + 1,
+                  title: cut.title || `컷 ${cut.shotNumber || cutIndex + 1}`,
+                  description: cut.description || '',
+                  cutType: cut.cutType || 'MS',
+                  estimatedDuration: cut.estimatedDuration || 5,
+                  duration: parseDurationToSeconds(cut.estimatedDuration || 5),
+                  imageUrl: cut.imageUrl || null,
+                  sceneId: conte.id || conte._id,
+                  sceneNumber: conte.scene || sceneIndex + 1,
+                  sceneTitle: conte.title || `씬 ${conte.scene || sceneIndex + 1}`
+                })
+              })
+            }
+          })
+          setCuts(localCuts)
+          console.log('ProjectPage local fallback cuts set:', localCuts.length, 'cuts')
         }
       } else {
         console.log('ProjectPage no contes found in project data, conteList:', conteList)
@@ -525,34 +776,6 @@ const ProjectPage = () => {
   }
 
   /**
-   * 컷 클릭 핸들러
-   */
-  const handleCutClick = useCallback(async (cut) => {
-    try {
-      console.log('ProjectPage handleCutClick called with cut:', cut)
-      
-      // 컷 선택
-      selectCut(cut.id)
-      
-      // ConteEditModal을 직접 열기
-      setEditingScene(cut)
-      setEditModalOpen(true)
-      
-    } catch (error) {
-      console.error('ProjectPage handleCutClick error:', error)
-      toast.error('컷 정보를 불러오는데 실패했습니다.')
-    }
-  }, [selectCut])
-
-  /**
-   * 컷 편집 핸들러
-   */
-  const handleCutEdit = useCallback((cut) => {
-    setEditingScene(cut)
-    setEditModalOpen(true)
-  }, [])
-
-  /**
    * 편집 모달 닫기 핸들러
    */
   const handleEditModalClose = useCallback(() => {
@@ -626,20 +849,6 @@ const ProjectPage = () => {
   }, [])
 
   /**
-   * 컷 정보 핸들러
-   */
-  const handleCutInfo = useCallback((cut) => {
-    openModal(cut)
-  }, [openModal])
-
-  /**
-   * 씬 재생성 핸들러
-   */
-  const handleSceneRegenerate = useCallback((scene) => {
-    toast.info('AI 재생성 기능은 향후 구현 예정입니다.')
-  }, [])
-
-  /**
    * 컷 순서 변경 핸들러
    */
   const handleCutsReorder = useCallback(async (newCuts) => {
@@ -664,17 +873,77 @@ const ProjectPage = () => {
   }, [projectId])
 
   /**
+   * 프로젝트 상태 업데이트
+   */
+  /**
+   * 컷 생성 상태 확인
+   */
+  const getCutGenerationStatus = useCallback(() => {
+    if (!project?.conteList || project.conteList.length === 0) return 'no_scenes'
+    
+    const scenesWithCuts = project.conteList.filter(scene => scene.cuts && scene.cuts.length > 0)
+    const totalScenes = project.conteList.length
+    const scenesWithCutsCount = scenesWithCuts.length
+    
+    if (scenesWithCutsCount === 0) return 'no_cuts'
+    if (scenesWithCutsCount === totalScenes) return 'all_cuts_generated'
+    return 'partial_cuts_generated'
+  }, [project])
+
+  /**
    * 특정 씬에 컷 생성
    */
   const handleGenerateCutsForScene = useCallback(async (scene) => {
     try {
       console.log('🎬 씬 컷 생성 시작:', scene)
       
+      // 상태를 cut_generating으로 업데이트
+      await updateProjectStatus('cut_generating')
+      
       const result = await generateCutsForScene(scene)
       
       if (result.success) {
         toast.success(`${scene.title} 씬에 ${result.cuts.length}개의 컷이 생성되었습니다.`)
         console.log('✅ 컷 생성 완료:', result.cuts)
+        
+        // 타임라인 스토어에 컷 데이터 추가
+        const { cuts: existingCuts, setCuts } = useTimelineStore.getState()
+        const newCuts = result.cuts.map((cut, index) => ({
+          id: cut.id || cut._id || `cut_${scene.scene}_${index}`,
+          shotNumber: cut.shotNumber || index + 1,
+          title: cut.title || `컷 ${cut.shotNumber || index + 1}`,
+          description: cut.description || '',
+          cutType: cut.cutType || 'MS',
+          estimatedDuration: cut.estimatedDuration || 5,
+          duration: parseDurationToSeconds(cut.estimatedDuration || 5),
+          imageUrl: cut.imageUrl || null,
+          sceneId: scene.id || scene._id,
+          sceneNumber: scene.scene,
+          sceneTitle: scene.title
+        }))
+        
+        // 기존 컷과 새 컷을 합쳐서 타임라인 스토어에 설정
+        const updatedCuts = [...existingCuts, ...newCuts]
+        setCuts(updatedCuts)
+        
+        console.log('✅ 타임라인 스토어에 컷 데이터 추가됨:', newCuts.length, '개')
+        console.log('✅ 전체 컷 개수:', updatedCuts.length, '개')
+        
+        // 컷 생성 후 프로젝트 데이터를 다시 불러와서 컷 데이터를 포함
+        await fetchProject()
+        
+        // 컷 생성 후 상태 확인 및 업데이트
+        const cutStatus = getCutGenerationStatus()
+        if (cutStatus === 'all_cuts_generated') {
+          await updateProjectStatus('cut_generated')
+        }
+        
+        // 컷이 생성되었으면 타임라인으로 자동 전환
+        if (result.cuts && result.cuts.length > 0) {
+          setShowTimeline(true)
+          setShowSceneList(false)
+          toast.success('컷이 생성되었습니다. 타임라인으로 이동합니다.')
+        }
       } else {
         toast.error(`컷 생성 실패: ${result.error}`)
         console.error('❌ 컷 생성 실패:', result.error)
@@ -683,7 +952,57 @@ const ProjectPage = () => {
       toast.error('컷 생성 중 오류가 발생했습니다.')
       console.error('❌ 컷 생성 오류:', error)
     }
-  }, [generateCutsForScene])
+  }, [generateCutsForScene, updateProjectStatus, getCutGenerationStatus, fetchProject])
+
+  /**
+   * 프로젝트 상태 라벨 반환
+   */
+  const getProjectStatusLabel = useCallback((status) => {
+    const statusLabels = {
+      'draft': '초안',
+      'story_generated': '스토리 생성됨',
+      'conte_generated': '콘티 생성됨',
+      'cut_generating': '컷 생성 중',
+      'cut_generated': '컷 생성 완료',
+      'in_progress': '진행 중',
+      'completed': '완료'
+    }
+    return statusLabels[status] || status
+  }, [])
+
+  /**
+   * 프로젝트 상태 색상 반환
+   */
+  const getProjectStatusColor = useCallback((status) => {
+    const statusColors = {
+      'draft': 'default',
+      'story_generated': 'primary',
+      'conte_generated': 'secondary',
+      'cut_generating': 'warning',
+      'cut_generated': 'success',
+      'in_progress': 'info',
+      'completed': 'success'
+    }
+    return statusColors[status] || 'default'
+  }, [])
+
+  /**
+   * 컷 생성 진행률 반환 (씬과 컷 모두 체크)
+   */
+  const getCutGenerationProgress = useCallback(() => {
+    if (!project?.conteList || project.conteList.length === 0) return ''
+    
+    const scenesWithCuts = project.conteList.filter(scene => scene.cuts && scene.cuts.length > 0)
+    const totalScenes = project.conteList.length
+    const scenesWithCutsCount = scenesWithCuts.length
+    
+    // 전체 컷 개수 계산
+    const totalCuts = project.conteList.reduce((total, scene) => {
+      return total + (scene.cuts ? scene.cuts.length : 0)
+    }, 0)
+    
+    return `${scenesWithCutsCount}/${totalScenes} 씬, ${totalCuts}개 컷`
+  }, [project])
 
   /**
    * 모든 씬에 컷 생성
@@ -691,6 +1010,21 @@ const ProjectPage = () => {
   const handleGenerateCutsForAllScenes = useCallback(async () => {
     try {
       console.log('🎬 모든 씬 컷 생성 시작')
+      console.log('현재 project 상태:', { 
+        projectTitle: project?.projectTitle,
+        conteListLength: project?.conteList?.length || 0,
+        projectId: projectId
+      })
+      
+      // 씬이 없으면 에러 메시지
+      if (!project?.conteList || project.conteList.length === 0) {
+        toast.error('씬이 없습니다. 먼저 콘티를 생성해주세요.')
+        console.error('❌ 씬이 없습니다:', project?.conteList)
+        return
+      }
+      
+      // 상태를 cut_generating으로 업데이트
+      await updateProjectStatus('cut_generating')
       
       const result = await generateCutsForAllScenes()
       
@@ -698,6 +1032,53 @@ const ProjectPage = () => {
         const successCount = result.results.filter(r => r.success).length
         toast.success(`${successCount}개 씬에 컷이 생성되었습니다.`)
         console.log('✅ 모든 씬 컷 생성 완료:', result.results)
+        
+        // 타임라인 스토어에 모든 컷 데이터 추가
+        const { cuts: existingCuts, setCuts } = useTimelineStore.getState()
+        const allNewCuts = []
+        
+        result.results.forEach(resultItem => {
+          if (resultItem.success && resultItem.cuts) {
+            const scene = project.conteList.find(s => s.id === resultItem.sceneId)
+            const newCuts = resultItem.cuts.map((cut, index) => ({
+              id: cut.id || cut._id || `cut_${scene?.scene || resultItem.sceneId}_${index}`,
+              shotNumber: cut.shotNumber || index + 1,
+              title: cut.title || `컷 ${cut.shotNumber || index + 1}`,
+              description: cut.description || '',
+              cutType: cut.cutType || 'MS',
+              estimatedDuration: cut.estimatedDuration || 5,
+              duration: parseDurationToSeconds(cut.estimatedDuration || 5),
+              imageUrl: cut.imageUrl || null,
+              sceneId: scene?.id || scene?._id || resultItem.sceneId,
+              sceneNumber: scene?.scene || 1,
+              sceneTitle: scene?.title || resultItem.sceneTitle
+            }))
+            allNewCuts.push(...newCuts)
+          }
+        })
+        
+        // 기존 컷과 새 컷을 합쳐서 타임라인 스토어에 설정
+        const updatedCuts = [...existingCuts, ...allNewCuts]
+        setCuts(updatedCuts)
+        
+        console.log('✅ 타임라인 스토어에 모든 컷 데이터 추가됨:', allNewCuts.length, '개')
+        console.log('✅ 전체 컷 개수:', updatedCuts.length, '개')
+        
+        // 컷 생성 후 프로젝트 데이터를 다시 불러와서 컷 데이터를 포함
+        await fetchProject()
+        
+        // 모든 씬에 컷이 생성되었으면 상태를 cut_generated로 업데이트
+        const cutStatus = getCutGenerationStatus()
+        if (cutStatus === 'all_cuts_generated') {
+          await updateProjectStatus('cut_generated')
+        }
+        
+        // 컷이 생성되었으면 타임라인으로 자동 전환
+        if (successCount > 0) {
+          setShowTimeline(true)
+          setShowSceneList(false)
+          toast.success(`${successCount}개 씬에 컷이 생성되었습니다. 타임라인으로 이동합니다.`)
+        }
       } else {
         toast.error(`컷 생성 실패: ${result.error}`)
         console.error('❌ 모든 씬 컷 생성 실패:', result.error)
@@ -706,17 +1087,46 @@ const ProjectPage = () => {
       toast.error('컷 생성 중 오류가 발생했습니다.')
       console.error('❌ 모든 씬 컷 생성 오류:', error)
     }
-  }, [generateCutsForAllScenes])
+  }, [generateCutsForAllScenes, updateProjectStatus, getCutGenerationStatus, fetchProject, project])
+
+  /**
+   * 씬 재생성 핸들러
+   */
+  const handleSceneRegenerate = useCallback(async (scene) => {
+    try {
+      console.log('🔄 씬 재생성 시작:', scene)
+      toast.info('씬 재생성 기능은 향후 구현 예정입니다.')
+    } catch (error) {
+      console.error('❌ 씬 재생성 실패:', error)
+      toast.error('씬 재생성에 실패했습니다.')
+    }
+  }, [])
+
+  /**
+   * 씬 편집 핸들러
+   */
+  const handleEditScene = useCallback((scene) => {
+    setEditingScene(scene)
+    openModal(scene)
+  }, [openModal])
+
+  /**
+   * 씬 상세 보기 핸들러
+   */
+  const handleViewScene = useCallback((scene) => {
+    setEditingScene(scene)
+    // 상세 모달 열기
+  }, [])
 
   /**
    * 스케줄러 보기 핸들러
    * SimpleSchedulePage(간단 스케줄러)로 이동하면서 현재 콘티 데이터 전달
    */
   const handleViewSchedule = useCallback(() => {
-    if (scenes && scenes.length > 0) {
-      // 간단 스케줄러 페이지로 이동하면서 콘티 데이터만 전달
+    if (project?.conteList && project.conteList.length > 0) {
+      // 간단 스케줄러 페이지로 이동하면서 씬 데이터 전달
       const currentPageState = {
-        conteData: scenes
+        conteData: project.conteList
       }
       
       // 간단 스케줄러 페이지로 이동하면서 현재 상태 전달
@@ -728,7 +1138,7 @@ const ProjectPage = () => {
     } else {
       toast.error('스케줄을 보려면 먼저 콘티를 생성해주세요.')
     }
-  }, [scenes, projectId, project, navigate])
+  }, [project, projectId, navigate])
 
   // 로딩 중일 때 로딩 화면 표시
   if (loading) {
@@ -778,17 +1188,19 @@ const ProjectPage = () => {
           콘티 생성
         </Button>
         
-        {/* 컷 생성 버튼 */}
-        <Button 
-          color="inherit" 
-          startIcon={<PlayArrow />}
-          onClick={handleGenerateCutsForAllScenes}
-          disabled={!scenes || scenes.length === 0}
-          title={!scenes || scenes.length === 0 ? '먼저 콘티를 생성해주세요' : '모든 씬에 컷 생성'}
-          sx={{ mr: 1 }}
-        >
-          컷 생성
-        </Button>
+        {/* 컷 생성 드롭다운 메뉴 */}
+        <Box sx={{ display: 'flex', gap: 1, mr: 1 }}>
+          <Button
+            color="inherit"
+            startIcon={<PlayArrow />}
+            onClick={handleGenerateCutsForAllScenes}
+            disabled={!project?.conteList || project.conteList.length === 0}
+            title={!project?.conteList || project.conteList.length === 0 ? '먼저 콘티를 생성해주세요' : '모든 씬에 컷 생성'}
+            variant="outlined"
+          >
+            모든 씬 컷 생성
+          </Button>
+        </Box>
       </CommonHeader>
 
       {/* 메인 컨텐츠 */}
@@ -800,13 +1212,25 @@ const ProjectPage = () => {
           </Typography>
           
           {/* 프로젝트 상태 정보 */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              상태: {project.status || 'draft'}
-            </Typography>
+          <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+            <Chip 
+              label={getProjectStatusLabel(project.status || 'draft')}
+              color={getProjectStatusColor(project.status || 'draft')}
+              size="small"
+            />
             <Typography variant="body2" color="text.secondary">
               생성일: {new Date(project.createdAt).toLocaleDateString()}
             </Typography>
+            {project?.conteList && project.conteList.length > 0 && (
+            <Typography variant="body2" color="text.secondary">
+                씬: {project.conteList.length}개
+            </Typography>
+            )}
+            {getCutGenerationStatus() !== 'no_cuts' && (
+              <Typography variant="body2" color="text.secondary">
+                컷 생성: {getCutGenerationProgress()}
+              </Typography>
+            )}
           </Box>
 
           {/* 시놉시스 섹션 */}
@@ -843,42 +1267,240 @@ const ProjectPage = () => {
           )}
         </Box>
 
-        {/* 타임라인 섹션 */}
+        {/* 뷰 토글 버튼 */}
+        <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+          <Button
+            variant={showSceneList ? "contained" : "outlined"}
+            startIcon={<List />}
+            onClick={() => {
+              setShowSceneList(true)
+              setShowTimeline(false)
+            }}
+          >
+            씬 리스트
+          </Button>
+          <Button
+            variant={showTimeline ? "contained" : "outlined"}
+            startIcon={<PlayArrow />}
+            onClick={() => {
+              setShowTimeline(true)
+              setShowSceneList(false)
+            }}
+            disabled={!project?.conteList || project.conteList.length === 0}
+          >
+            컷 타임라인
+          </Button>
+        </Box>
+
+        {/* 씬 리스트 섹션 */}
+        {showSceneList && (
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">
-              타임라인
+                생성된 콘티 리스트 ({project?.conteList?.length || 0}개)
             </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setShowTimeline(true)
+                  setShowSceneList(false)
+                }}
+                disabled={!project?.conteList || project.conteList.length === 0}
+              >
+                컷 타임라인 보기
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={handleGenerateCutsForAllScenes}
+                disabled={!project?.conteList || project.conteList.length === 0}
+              >
+                모든 씬에 컷 생성
+              </Button>
+            </Box>
           </Box>
           
-          {/* 디버깅 로그 추가 */}
-          {console.log('ProjectPage rendering TimelineViewer with:', {
-            scenesCount: scenes?.length || 0,
-            scenesType: typeof scenes,
-            isArray: Array.isArray(scenes),
-            timelineLoading,
-            selectedSceneId,
-            projectId
-          })}
-          
-          <CutTimelineViewer
-            scenes={scenes || []}
-            loading={timelineLoading || false}
-            selectedCutId={selectedCutId || null}
-            onCutClick={handleCutClick}
-            onCutEdit={handleCutEdit}
-            onCutInfo={handleCutInfo}
-            onCutsReorder={handleCutsReorder}
-            onGenerateConte={handleGenerateConte}
-            onGenerateCuts={handleGenerateCutsForAllScenes}
-            emptyMessage="컷이 없습니다. AI를 사용하여 콘티를 생성해보세요."
-            timeScale={100} // 1초당 100픽셀로 더 크게 증가
-            zoomLevel={1}
-            showTimeInfo={true}
-            baseScale={1}
-            onViewSchedule={handleViewSchedule}
-          />
-        </Box>
+            {project?.conteList && project.conteList.length > 0 ? (
+              <Grid container spacing={2}>
+                {project.conteList.map((scene, index) => (
+                  <Grid item xs={12} md={6} lg={4} key={scene.id || index}>
+                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography variant="h6" component="h3">
+                            씬 {scene.scene || index + 1}
+                          </Typography>
+                          <Chip 
+                            label={scene.type || 'live_action'} 
+                            size="small" 
+                            color={scene.type === 'generated_video' ? 'primary' : 'default'}
+                          />
+                        </Box>
+                        
+                        <Typography variant="h6" gutterBottom>
+                          {scene.title}
+                        </Typography>
+                        
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {scene.description?.substring(0, 100)}...
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                          <Chip label={`${scene.estimatedDuration || '5분'}`} size="small" />
+                          {scene.cuts && scene.cuts.length > 0 ? (
+                            <Chip 
+                              label={`${scene.cuts.length}개 컷`} 
+                              size="small" 
+                              color="success" 
+                              variant="outlined"
+                            />
+                          ) : (
+                            <Chip 
+                              label="컷 생성 필요" 
+                              size="small" 
+                              color="warning" 
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      </CardContent>
+                      
+                      <CardActions sx={{ justifyContent: 'space-between' }}>
+                        <Box>
+                          <Tooltip title="씬 편집">
+                            <IconButton size="small" onClick={() => handleEditScene(scene)}>
+                              <Edit />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="씬 상세 보기">
+                            <IconButton size="small" onClick={() => handleViewScene(scene)}>
+                              <Visibility />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleGenerateCutsForScene(scene)}
+                            disabled={scene.cuts && scene.cuts.length > 0}
+                            title={scene.cuts && scene.cuts.length > 0 ? '이미 컷이 생성되었습니다' : '이 씬에 컷 생성'}
+                          >
+                            컷 생성
+                          </Button>
+                          {scene.cuts && scene.cuts.length > 0 && (
+                            <Chip 
+                              label={`${scene.cuts.length}개 컷`} 
+                              size="small" 
+                              color="success" 
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  씬이 없습니다
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  AI를 사용하여 콘티를 생성해보세요.
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<PlayArrow />}
+                  onClick={handleGenerateConte}
+                  sx={{ mt: 2 }}
+                >
+                  콘티 생성
+                </Button>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* 타임라인 섹션 */}
+        {showTimeline && (
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                컷 타임라인
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setShowSceneList(true)
+                    setShowTimeline(false)
+                  }}
+                >
+                  씬 리스트로
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleViewSchedule}
+                >
+                  스케줄러 보기
+                </Button>
+              </Box>
+            </Box>
+            
+            {/* 컷이 있는 경우에만 타임라인 표시 */}
+            {cuts && cuts.length > 0 ? (
+              <CutTimelineViewer
+                scenes={project?.conteList || []}
+                loading={timelineLoading || false}
+                selectedCutId={selectedCutId || null}
+                onCutClick={handleCutClick}
+                onCutEdit={handleCutEdit}
+                onCutInfo={handleCutInfo}
+                onCutsReorder={handleCutsReorder}
+                onGenerateConte={handleGenerateConte}
+                onGenerateCuts={handleGenerateCutsForAllScenes}
+                emptyMessage="컷이 없습니다. 씬 리스트에서 컷을 생성해보세요."
+                timeScale={100}
+                zoomLevel={1}
+                showTimeInfo={true}
+                baseScale={1}
+                onViewSchedule={handleViewSchedule}
+              />
+            ) : (
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 8, 
+                bgcolor: 'background.paper', 
+                borderRadius: 2,
+                border: '2px dashed rgba(212, 175, 55, 0.3)'
+              }}>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  컷이 없습니다
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  씬 리스트에서 컷을 생성한 후 타임라인을 확인할 수 있습니다.
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={() => {
+                    setShowSceneList(true)
+                    setShowTimeline(false)
+                  }}
+                >
+                  씬 리스트로 이동
+                </Button>
+              </Box>
+            )}
+          </Box>
+        )}
 
 
       </Container>
@@ -904,10 +1526,21 @@ const ProjectPage = () => {
         onImageLoadError={null}
       />
 
+      {/* 컷 편집 모달 */}
+      <CutEditModal
+        open={editModalOpen && editingScene?.isCut}
+        onClose={handleEditModalClose}
+        cut={editingScene?.isCut ? editingScene : null}
+        onSave={handleSaveScene}
+        onRegenerateImage={handleRegenerateImage}
+        projectId={projectId}
+      />
+
+      {/* 씬 편집 모달 */}
       <ConteEditModal
-        open={modalOpen || editModalOpen}
-        onClose={modalOpen ? closeModal : handleEditModalClose}
-        conte={currentScene || editingScene}
+        open={editModalOpen && !editingScene?.isCut}
+        onClose={handleEditModalClose}
+        conte={!editingScene?.isCut ? editingScene : null}
         onSave={handleSaveScene}
         onRegenerateImage={handleRegenerateImage}
         onRegenerateConte={handleRegenerateScene}

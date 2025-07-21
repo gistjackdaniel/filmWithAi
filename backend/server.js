@@ -16,6 +16,12 @@ const {
 const RealtimeService = require('./services/realtimeService')
 const AnalyticsService = require('./services/analyticsService')
 const MonitoringService = require('./services/monitoringService')
+
+// MongoDB 모델 import
+const User = require('./models/User')
+const Project = require('./models/Project')
+const Conte = require('./models/Conte')
+const Cut = require('./models/Cut')
 require('dotenv').config()
 
 /**
@@ -100,6 +106,76 @@ if (!OPENAI_API_KEY) {
 }
 
 /**
+ * 씬의 dialogue를 2분 발화길이로 확장
+ */
+const expandDialogueTo2Minutes = async (originalDialogue, sceneData) => {
+  try {
+    if (!originalDialogue || originalDialogue.trim().length === 0) {
+      return '이 장면에서 자연스러운 대화가 이어집니다.'
+    }
+
+    const prompt = `
+다음 씬 정보를 바탕으로 2분 정도의 자연스러운 대화를 생성해주세요.
+
+**씬 정보:**
+- 제목: ${sceneData.title || ''}
+- 설명: ${sceneData.description || ''}
+- 장소: ${sceneData.keywords?.location || ''}
+- 등장인물: ${sceneData.keywords?.cast?.join(', ') || ''}
+- 분위기: ${sceneData.keywords?.mood || ''}
+- 시간대: ${sceneData.keywords?.timeOfDay || ''}
+
+**원본 대사:**
+${originalDialogue}
+
+**요구사항:**
+1. 원본 대사의 맥락과 분위기를 유지하면서 자연스럽게 확장
+2. 2분 정도의 발화길이 (약 120~160단어)
+3. 등장인물들의 자연스러운 대화
+4. 씬의 분위기와 일치하는 톤앤매너
+5. 한국어로 자연스럽게 작성
+
+**응답 형식:**
+대사만 반환해주세요. 설명이나 추가 텍스트는 포함하지 마세요.
+`
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: '당신은 영화 대본 작가입니다. 자연스럽고 감정이 풍부한 대화를 작성해주세요.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 600,
+        temperature: 0.8
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    )
+
+    const expandedDialogue = response.data.choices[0].message.content.trim()
+    console.log('✅ 대사 확장 완료:', expandedDialogue.substring(0, 100) + '...')
+    return expandedDialogue
+
+  } catch (error) {
+    console.error('❌ 대사 확장 실패:', error.message)
+    return originalDialogue
+  }
+}
+
+/**
  * LLM을 사용하여 씬 정보를 기반으로 컷들을 생성하는 함수
  * @param {Object} sceneData - 씬 데이터
  * @returns {Array} 생성된 컷 배열
@@ -121,20 +197,24 @@ const generateCutsFromScene = async (sceneData) => {
     
     const baseCutDuration = Math.floor(totalSeconds / numCuts) // 컷당 평균 지속시간
     
+    // 씬의 dialogue를 2분 발화길이로 확장
+    const originalDialogue = sceneData.dialogue || sceneData.description || ''
+    const expandedDialogue = await expandDialogueTo2Minutes(originalDialogue, sceneData)
+    
     // 씬에서 파싱 가능한 정보들
     const sceneInfo = {
       title: sceneData.title || '',
       description: sceneData.description || '',
-      keywords: sceneData.keywords || [],
-      weights: sceneData.weights || [],
-      timeOfDay: sceneData.keywords?.find(k => k.includes('timeOfDay'))?.split(':')[1]?.trim() || '낮',
-      location: sceneData.keywords?.find(k => k.includes('location'))?.split(':')[1]?.trim() || '',
-      characters: sceneData.keywords?.find(k => k.includes('characters'))?.split(':')[1]?.trim() || '',
-      mood: sceneData.keywords?.find(k => k.includes('mood'))?.split(':')[1]?.trim() || '',
-      lighting: sceneData.keywords?.find(k => k.includes('lighting'))?.split(':')[1]?.trim() || '자연광',
-      weather: sceneData.keywords?.find(k => k.includes('weather'))?.split(':')[1]?.trim() || '맑음',
-      equipment: sceneData.keywords?.find(k => k.includes('equipment'))?.split(':')[1]?.trim() || '',
-      dialogue: sceneData.description || '',
+      keywords: sceneData.keywords || {},
+      weights: sceneData.weights || {},
+      timeOfDay: sceneData.keywords?.timeOfDay || '낮',
+      location: sceneData.keywords?.location || '',
+      characters: sceneData.keywords?.cast?.join(', ') || '',
+      mood: sceneData.keywords?.mood || '',
+      lighting: sceneData.keywords?.lighting || '자연광',
+      weather: sceneData.keywords?.weather || '맑음',
+      equipment: sceneData.keywords?.equipment || '',
+      dialogue: expandedDialogue,
       narration: sceneData.description || ''
     }
     
@@ -195,6 +275,18 @@ const generateCutsFromScene = async (sceneData) => {
 - Zoom: 렌즈를 통해 확대/축소
 - Handheld: 손으로 들고 촬영하는 흔들리는 효과
 
+**컷별 대사 분배 규칙:**
+1. 씬의 전체 대사를 ${numCuts}개 컷으로 자연스럽게 분배하세요.
+2. 각 컷의 대사는 해당 컷의 분위기와 샷 구도에 맞아야 합니다.
+3. 대사가 없는 컷은 내레이션이나 묘사로 대체할 수 있습니다.
+4. 대사의 흐름이 자연스럽게 이어져야 합니다.
+
+**컷별 인력/장비 배치 규칙:**
+1. 기본 인력: 감독, 촬영감독, 카메라맨, 조명감독
+2. 복잡한 컷(액션, 특수효과)에는 추가 인력: 스턴트 코디네이터, 특수효과 감독
+3. 기본 장비: 카메라, 렌즈, 조명, 오디오
+4. 특수 컷에는 추가 장비: 드론, 짐벌, 특수 조명 등
+
 **컷 생성 패턴:**
 1. 각 컷은 평균 ${baseCutDuration}초 지속시간을 가져야 합니다 (전체 ${totalSeconds}초를 ${numCuts}개 컷으로 분할).
 2. 샷 사이즈는 WS → MS → CU → ECU → WS 순서로 변화하거나, 분위기에 맞게 선택해야 합니다.
@@ -205,8 +297,15 @@ const generateCutsFromScene = async (sceneData) => {
 7. 조명 세팅은 씬의 기본 조명을 기반으로 하되, 각 컷의 분위기에 맞게 조정해야 합니다.
    예: 감정적 장면은 부드러운 조명, 긴장감 있는 장면은 대비가 강한 조명
 
+**시간 계산 규칙:**
+- 각 컷의 duration은 반드시 "${baseCutDuration}초" 형식이어야 합니다
+- startTime은 이전 컷의 endTime과 같아야 합니다 (첫 번째 컷은 0)
+- endTime은 startTime + duration이어야 합니다
+- totalDuration은 duration과 같아야 합니다
+- 모든 시간 값은 반드시 유효한 숫자여야 합니다 (NaN 사용 금지)
+
 **응답 형식:**
-반드시 다음 JSON 형식으로만 응답해주세요:
+반드시 다음 JSON 형식으로만 응답해주세요. **모든 숫자 값은 반드시 유효한 숫자여야 합니다. NaN이나 undefined를 사용하지 마세요.**
 
 {
   "cuts": [
@@ -249,6 +348,21 @@ const generateCutsFromScene = async (sceneData) => {
         "lighting": ["자연광"],
         "props": []
       },
+      "requiredPersonnel": {
+        "director": "감독",
+        "cinematographer": "촬영감독",
+        "cameraOperator": "카메라맨",
+        "lightingDirector": "조명감독",
+        "additionalCrew": []
+      },
+      "requiredEquipment": {
+        "cameras": ["C1"],
+        "lenses": ["24mm"],
+        "lighting": ["자연광"],
+        "audio": ["마이크 1개"],
+        "grip": ["삼각대"],
+        "special": []
+      },
       "aiGenerated": false,
       "aiVideoUrl": "",
       "aiObjects": [],
@@ -264,6 +378,23 @@ const generateCutsFromScene = async (sceneData) => {
     }
   ]
 }
+
+**중요:**
+- 모든 duration 값은 반드시 숫자 + "초" 형식이어야 합니다 (예: "5초", "10초")
+- startTime, endTime, totalDuration은 반드시 유효한 숫자여야 합니다
+- NaN, undefined, null 값을 사용하지 마세요
+
+**올바른 예시:**
+- duration: "5초"
+- startTime: 0
+- endTime: 5
+- totalDuration: 5
+
+**잘못된 예시 (사용 금지):**
+- duration: "NaN초"
+- startTime: NaN
+- endTime: NaN
+- totalDuration: NaN
 
 JSON 이외의 텍스트는 포함하지 마세요.
 한국어로 자연스럽게 작성해주세요.
@@ -302,15 +433,76 @@ JSON 이외의 텍스트는 포함하지 마세요.
     // JSON 파싱
     let parsedCuts = []
     try {
-      const parsed = JSON.parse(content)
+      // 마크다운 코드 블록 제거
+      let cleanContent = content
+      
+      // ```json ... ``` 형태 제거
+      if (cleanContent.includes('```json')) {
+        cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '')
+      }
+      // ``` ... ``` 형태 제거
+      else if (cleanContent.includes('```')) {
+        cleanContent = cleanContent.replace(/```\s*/, '').replace(/```\s*$/, '')
+      }
+      
+      console.log('🔍 LLM 응답 정리 후:', cleanContent.substring(0, 200) + '...')
+      
+      const parsed = JSON.parse(cleanContent)
       if (parsed.cuts && Array.isArray(parsed.cuts)) {
-        parsedCuts = parsed.cuts
+        // NaN 값들을 적절한 기본값으로 변환
+        parsedCuts = parsed.cuts.map((cut, index) => {
+          // NaN 값들을 적절한 기본값으로 변환하는 함수
+          const cleanDuration = (duration) => {
+            if (typeof duration === 'string') {
+              // "NaN초", "5초" 등의 문자열 처리
+              const match = duration.match(/(\d+)초/)
+              return match ? parseInt(match[1]) : 5
+            }
+            if (typeof duration === 'number' && !isNaN(duration)) {
+              return duration
+            }
+            return 5 // 기본값 5초
+          }
+
+          const cleanNumber = (value) => {
+            if (typeof value === 'number' && !isNaN(value)) {
+              return value
+            }
+            return 0
+          }
+
+          // 각 컷의 지속시간을 씬 전체 지속시간에 맞게 조정
+          const cutDuration = cleanDuration(cut.duration || cut.estimatedDuration)
+          const startTime = index * baseCutDuration
+          const endTime = Math.min((index + 1) * baseCutDuration, totalSeconds)
+
+          // NaN 값이 있는 경우 기본값으로 대체
+          const safeCut = {
+            ...cut,
+            duration: `${cutDuration}초`,
+            estimatedDuration: cutDuration,
+            startTime: cleanNumber(cut.startTime) || startTime,
+            endTime: cleanNumber(cut.endTime) || endTime,
+            totalDuration: cleanNumber(cut.totalDuration) || cutDuration
+          }
+
+          // 추가 안전장치: 모든 숫자 필드 확인
+          if (isNaN(safeCut.startTime)) safeCut.startTime = startTime
+          if (isNaN(safeCut.endTime)) safeCut.endTime = endTime
+          if (isNaN(safeCut.totalDuration)) safeCut.totalDuration = cutDuration
+          if (isNaN(safeCut.estimatedDuration)) safeCut.estimatedDuration = cutDuration
+
+          return safeCut
+        })
+        
+        console.log('✅ LLM 응답 파싱 성공:', parsedCuts.length, '개 컷')
       } else {
         throw new Error('Invalid cuts array')
       }
     } catch (parseError) {
       console.error('❌ LLM 응답 파싱 실패:', parseError.message)
       console.log('원본 응답:', content)
+      console.log('정리된 응답:', cleanContent)
       
       // 파싱 실패 시 기본 컷 생성
       console.log('⚠️ 파싱 실패로 기본 컷 생성')
@@ -394,36 +586,41 @@ JSON 이외의 텍스트는 포함하지 마세요.
         // 컷 이미지 생성
         let cutImageUrl = null
         try {
-          const cutImagePrompt = `${sceneInfo.title} - ${cutNumber}번째 컷: ${cutDialogue}. ${shotSize} 샷, ${angleDirection} 앵글, ${sceneInfo.lighting} 조명, 시네마틱한 구도`
-          
-          const imageResponse = await axios.post(
-            'https://api.openai.com/v1/images/generations',
-            {
-              model: 'dall-e-3',
-              prompt: cutImagePrompt,
-              n: 1,
-              size: '1024x1024',
-              quality: 'standard',
-              style: 'natural'
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'Content-Type': 'application/json'
+          // 개발 환경에서는 임시 이미지 반환
+          if (process.env.NODE_ENV === 'development') {
+            cutImageUrl = `/uploads/images/dev_cut_placeholder.png`
+            console.log(`🥝🥝🥝 컷 ${cutNumber} 이미지 안 만듦 (개발 모드)`)
+          } else {
+            const cutImagePrompt = `${sceneInfo.title} - ${cutNumber}번째 컷: ${cutDialogue}. ${shotSize} 샷, ${angleDirection} 앵글, ${sceneInfo.lighting} 조명, 시네마틱한 구도`
+            
+            const imageResponse = await axios.post(
+              'https://api.openai.com/v1/images/generations',
+              {
+                model: 'dall-e-3',
+                prompt: cutImagePrompt,
+                n: 1,
+                size: '1024x1024',
+                quality: 'standard',
+                style: 'natural'
               },
-              timeout: 60000
-            }
-          )
-          
-          cutImageUrl = imageResponse.data.data[0].url
-          console.log(`✅ 컷 ${cutNumber} 이미지 생성 완료:`, cutImageUrl.substring(0, 50) + '...')
+              {
+                headers: {
+                  'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                timeout: 60000
+              }
+            )
+            
+            cutImageUrl = imageResponse.data.data[0].url
+            console.log(`✅ 컷 ${cutNumber} 이미지 생성 완료:`, cutImageUrl.substring(0, 50) + '...')
+          }
         } catch (imageError) {
           console.error(`❌ 컷 ${cutNumber} 이미지 생성 실패:`, imageError.message)
           // 이미지 생성 실패는 치명적이지 않으므로 계속 진행
         }
 
         parsedCuts.push({
-          cutId: `CUT_${sceneData.scene.toString().padStart(3, '0')}_${cutNumber.toString().padStart(2, '0')}`,
           cutNumber: cutNumber,
           duration: `${duration}초`,
           description: `${sceneInfo.title} - ${cutNumber}번째 컷`,
@@ -580,13 +777,132 @@ app.post('/api/cuts/generate', async (req, res) => {
       })
     }
 
-    console.log('✅ 컷 생성 완료:', { scene: sceneData.scene, cutCount: cuts.length })
+    // 컷들을 MongoDB에 저장
+    const savedCuts = []
+    for (const cut of cuts) {
+      try {
+        // projectId 확인 및 설정
+        const projectId = sceneData.projectId || req.params.projectId || req.body.projectId
+        if (!projectId) {
+          console.error('❌ projectId가 누락되었습니다:', { sceneData, reqParams: req.params, reqBody: req.body })
+          throw new Error('projectId가 필요합니다.')
+        }
+        
+        // 중복 컷 확인 (shotNumber와 conteId로 확인)
+        const existingCut = await Cut.findOne({ 
+          conteId: sceneData.conteId || sceneData.id || sceneData._id,
+          shotNumber: cut.cutNumber 
+        })
+        
+        if (existingCut) {
+          console.log('⚠️ 중복 컷 발견, 건너뜀:', { 
+            cutId: existingCut._id, 
+            cutIdField: existingCut.cutId,
+            scene: sceneData.scene,
+            shotNumber: cut.cutNumber 
+          })
+          savedCuts.push(existingCut)
+          continue
+        }
+        
+        // conteId 값 확인 및 로깅
+        const conteId = sceneData.conteId || sceneData.id || sceneData._id
+        console.log('🔍 컷 저장 전 conteId 확인:', {
+          sceneData: {
+            conteId: sceneData.conteId,
+            id: sceneData.id,
+            _id: sceneData._id
+          },
+          finalConteId: conteId,
+          scene: sceneData.scene,
+          cutNumber: cut.cutNumber
+        })
+        
+        // Cut 모델의 필수 필드들을 올바르게 매핑
+        const cutDoc = new Cut({
+          conteId: conteId, // 씬 ID를 conteId로 사용
+          projectId: projectId,
+          // cutId는 MongoDB에서 자동 생성됨
+          shotNumber: cut.cutNumber,
+          title: cut.description || cut.title,
+          description: cut.description,
+          shootingPlan: {
+            shotSize: cut.shotSize,
+            angleDirection: cut.angleDirection,
+            cameraMovement: cut.cameraMovement,
+            lensSpecs: cut.lensSpecs,
+            cameraSettings: {
+              aperture: 'f/2.8',
+              shutterSpeed: '1/60',
+              iso: '800'
+            },
+            composition: cut.description
+          },
+          cutType: cut.cutType,
+          dialogue: cut.dialogue || '',
+          narration: cut.narration || '',
+          characterMovement: {
+            characters: cut.characters || [],
+            blocking: cut.characterMovement || '',
+            cameraPosition: { x: 50, y: 50, z: 0 }
+          },
+          productionMethod: 'live_action',
+          estimatedDuration: parseInt(cut.duration) || 5,
+          shootingConditions: {
+            location: sceneData.keywords?.location || '',
+            timeOfDay: sceneData.keywords?.timeOfDay === '낮' ? '오후' : (sceneData.keywords?.timeOfDay || '오후'),
+            weather: cut.weather || '맑음',
+            lighting: cut.lighting || '자연광',
+            specialRequirements: []
+          },
+          requiredPersonnel: {
+            director: cut.requiredPersonnel?.director || '감독',
+            cinematographer: cut.requiredPersonnel?.cinematographer || '촬영감독',
+            cameraOperator: cut.requiredPersonnel?.cameraOperator || '카메라맨',
+            lightingDirector: cut.requiredPersonnel?.lightingDirector || '조명감독',
+            additionalCrew: cut.requiredPersonnel?.additionalCrew || []
+          },
+          requiredEquipment: {
+            cameras: cut.requiredEquipment?.cameras || [cut.equipment?.camera || 'C1'],
+            lenses: cut.requiredEquipment?.lenses || [cut.lensSpecs || '50mm'],
+            lighting: cut.requiredEquipment?.lighting || [cut.lighting || '자연광'],
+            audio: cut.requiredEquipment?.audio || ['마이크 1개'],
+            grip: cut.requiredEquipment?.grip || ['삼각대'],
+            special: cut.requiredEquipment?.special || []
+          },
+          order: cut.cutNumber,
+          status: 'planned',
+          metadata: {
+            complexity: '보통',
+            priority: 1,
+            tags: ['AI생성'],
+            notes: ''
+          },
+          // 개발용 임시 이미지 URL 추가
+          output: {
+            imageUrl: '/uploads/images/dev_placeholder.png'
+          },
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        
+        const savedCut = await cutDoc.save()
+        savedCuts.push(savedCut)
+        console.log('✅ 컷 저장 완료:', { cutId: savedCut._id, scene: sceneData.scene })
+      } catch (saveError) {
+        console.error('❌ 컷 저장 오류:', saveError.message)
+        // 저장 실패해도 계속 진행
+        savedCuts.push(cut)
+      }
+    }
+
+    console.log('✅ 컷 생성 및 저장 완료:', { scene: sceneData.scene, cutCount: savedCuts.length })
 
     res.json({
       success: true,
-      cuts: cuts,
+      cuts: savedCuts,
       sceneId: sceneData.scene,
-      totalCuts: cuts.length,
+      totalCuts: savedCuts.length,
       generatedAt: new Date().toISOString()
     })
 
@@ -622,6 +938,20 @@ app.post('/api/cut-image/generate', async (req, res) => {
       angleDirection,
       lightingSetup 
     })
+
+    // 개발 환경에서는 임시 이미지 반환
+    if (process.env.NODE_ENV === 'development') {
+      const imageUrl = `/uploads/images/dev_cut_placeholder.png`
+      console.log('🥝🥝🥝 컷 이미지 안 만듦 (개발 모드)')
+      return res.json({
+        success: true,
+        imageUrl: imageUrl,
+        prompt: '[개발용 임시 컷 이미지]',
+        generatedAt: new Date().toISOString(),
+        model: 'dev-placeholder',
+        isFreeTier: true
+      })
+    }
 
     // 컷 이미지 생성 프롬프트 구성
     const imagePrompt = `${cutDescription}. ${shotSize} 샷, ${angleDirection} 앵글, ${lightingSetup?.mainLight || '조명'} 조명, ${style} 스타일, 시네마틱한 구도, 고품질 이미지`

@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const Project = require('../models/Project');
 const Conte = require('../models/Conte');
+const Cut = require('../models/Cut');
 
 const router = express.Router();
 
@@ -192,6 +193,85 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 /**
+ * 프로젝트 상태 업데이트
+ * PUT /api/projects/:projectId/status
+ */
+router.put('/:projectId/status', authenticateToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { status } = req.body;
+
+    console.log('📝 프로젝트 상태 업데이트 요청:', { 
+      projectId, 
+      newStatus: status,
+      userId: req.user._id 
+    });
+
+    // 유효한 상태값 검증
+    const validStatuses = [
+      'draft', 
+      'story_generated', 
+      'conte_generated', 
+      'cut_generating', 
+      'cut_generated', 
+      'in_progress', 
+      'completed'
+    ];
+
+    if (!validStatuses.includes(status)) {
+      console.error('❌ 프로젝트 상태 업데이트 실패: 유효하지 않은 상태값', { status });
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 상태값입니다.'
+      });
+    }
+
+    // 프로젝트 조회 및 권한 확인
+    const project = await Project.findOne({ 
+      _id: projectId, 
+      userId: req.user._id 
+    });
+
+    if (!project) {
+      console.error('❌ 프로젝트 상태 업데이트 실패: 프로젝트를 찾을 수 없음', { projectId });
+      return res.status(404).json({
+        success: false,
+        message: '프로젝트를 찾을 수 없습니다.'
+      });
+    }
+
+    // 상태 업데이트
+    project.status = status;
+    project.updatedAt = new Date();
+    await project.save();
+
+    console.log('✅ 프로젝트 상태 업데이트 완료:', { 
+      projectId, 
+      oldStatus: project.status, 
+      newStatus: status 
+    });
+
+    res.json({
+      success: true,
+      message: '프로젝트 상태가 업데이트되었습니다.',
+      project: {
+        _id: project._id,
+        projectTitle: project.projectTitle,
+        status: project.status,
+        updatedAt: project.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ 프로젝트 상태 업데이트 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '프로젝트 상태 업데이트 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+/**
  * 사용자의 프로젝트 목록 조회
  * GET /api/projects
  */
@@ -326,6 +406,38 @@ router.get('/:id', authenticateToken, async (req, res) => {
       if (project) {
         // 콘티 목록 별도 조회
         const contes = await Conte.findByProjectId(id);
+        
+        // 각 콘티에 대해 컷 데이터를 별도로 조회
+        for (let conte of contes) {
+          console.log('🔍 콘티 컷 조회:', {
+            conteId: conte._id,
+            scene: conte.scene,
+            title: conte.title
+          })
+          
+          const cuts = await Cut.find({ conteId: conte._id }).sort({ order: 1 });
+          
+          console.log('🔍 컷 조회 결과:', {
+            conteId: conte._id,
+            cutsFound: cuts.length,
+            cuts: cuts.map(cut => ({
+              id: cut._id,
+              cutId: cut.cutId,
+              shotNumber: cut.shotNumber,
+              title: cut.title,
+              description: cut.description,
+              cutType: cut.cutType,
+              estimatedDuration: cut.estimatedDuration,
+              imageUrl: cut.output?.imageUrl,
+              hasOutput: !!cut.output,
+              outputKeys: cut.output ? Object.keys(cut.output) : [],
+              conteId: cut.conteId
+            }))
+          })
+          
+          conte.cuts = cuts;
+        }
+        
         project.contes = contes;
       }
     } else {
@@ -409,7 +521,63 @@ router.get('/:id', authenticateToken, async (req, res) => {
           lastModified: conte.lastModified,
           modifiedBy: conte.modifiedBy,
           createdAt: conte.createdAt,
-          updatedAt: conte.updatedAt
+          updatedAt: conte.updatedAt,
+          // 컷 데이터 포함
+          cuts: conte.cuts ? conte.cuts.map(cut => ({
+            id: cut._id,
+            cutId: cut.cutId,
+            cutNumber: cut.cutNumber,
+            shotNumber: cut.shotNumber,
+            title: cut.title,
+            description: cut.description,
+            shotSize: cut.shotSize,
+            angleDirection: cut.angleDirection,
+            cameraMovement: cut.cameraMovement,
+            lensSpecs: cut.lensSpecs,
+            cutType: cut.cutType,
+            lighting: cut.lighting,
+            lightingSetup: cut.lightingSetup,
+            weather: cut.weather,
+            visualEffects: cut.visualEffects,
+            characters: cut.characters,
+            dialogue: cut.dialogue,
+            narration: cut.narration,
+            characterMovement: cut.characterMovement,
+            equipment: cut.equipment,
+            requiredPersonnel: cut.requiredPersonnel,
+            requiredEquipment: cut.requiredEquipment,
+            aiGenerated: cut.aiGenerated,
+            aiVideoUrl: cut.aiVideoUrl,
+            aiObjects: cut.aiObjects,
+            premiereMetadata: cut.premiereMetadata,
+            startTime: cut.startTime,
+            endTime: cut.endTime,
+            totalDuration: cut.totalDuration,
+            estimatedDuration: cut.estimatedDuration,
+            duration: cut.duration,
+            // 이미지 URL 포함
+            imageUrl: cut.output?.imageUrl || null,
+            order: cut.order,
+            status: cut.status,
+            createdAt: cut.createdAt,
+            updatedAt: cut.updatedAt,
+            // 추가 상세 정보들
+            shootingPlan: cut.shootingPlan,
+            productionMethod: cut.productionMethod,
+            shootingConditions: cut.shootingConditions,
+            metadata: cut.metadata,
+            canEdit: cut.canEdit,
+            lastModified: cut.lastModified,
+            modifiedBy: cut.modifiedBy,
+            // VFX/CG 관련 필드들
+            vfxEffects: cut.vfxEffects,
+            soundEffects: cut.soundEffects,
+            cutPurpose: cut.cutPurpose,
+            composition: cut.composition,
+            cutDialogue: cut.cutDialogue,
+            directorNotes: cut.directorNotes,
+            timeOfDay: cut.timeOfDay
+          })) : []
         })) : []
       }
     });
@@ -419,6 +587,113 @@ router.get('/:id', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '프로젝트 조회 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+/**
+ * 프로젝트의 모든 컷 조회
+ * GET /api/projects/:projectId/cuts
+ */
+router.get('/:projectId/cuts', authenticateToken, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    console.log('🔍 프로젝트 컷 조회:', { 
+      projectId, 
+      userId: req.user._id 
+    });
+
+    // 프로젝트 권한 확인
+    const project = await Project.findOne({
+      _id: projectId,
+      userId: req.user._id,
+      isDeleted: false
+    });
+
+    if (!project) {
+      console.error('❌ 프로젝트 컷 조회 실패: 프로젝트를 찾을 수 없음', { projectId });
+      return res.status(404).json({
+        success: false,
+        message: '프로젝트를 찾을 수 없습니다.'
+      });
+    }
+
+    // 프로젝트의 모든 컷 조회
+    const cuts = await Cut.find({ projectId: projectId }).sort({ order: 1 });
+
+    console.log('✅ 프로젝트 컷 조회 완료:', { 
+      projectId, 
+      cutsCount: cuts.length 
+    });
+
+    res.status(200).json({
+      success: true,
+      data: cuts.map(cut => ({
+        _id: cut._id,
+        cutId: cut.cutId,
+        cutNumber: cut.cutNumber,
+        shotNumber: cut.shotNumber,
+        title: cut.title,
+        description: cut.description,
+        shotSize: cut.shotSize,
+        angleDirection: cut.angleDirection,
+        cameraMovement: cut.cameraMovement,
+        lensSpecs: cut.lensSpecs,
+        cutType: cut.cutType,
+        lighting: cut.lighting,
+        lightingSetup: cut.lightingSetup,
+        weather: cut.weather,
+        visualEffects: cut.visualEffects,
+        characters: cut.characters,
+        dialogue: cut.dialogue,
+        narration: cut.narration,
+        characterMovement: cut.characterMovement,
+        equipment: cut.equipment,
+        requiredPersonnel: cut.requiredPersonnel,
+        requiredEquipment: cut.requiredEquipment,
+        aiGenerated: cut.aiGenerated,
+        aiVideoUrl: cut.aiVideoUrl,
+        aiObjects: cut.aiObjects,
+        premiereMetadata: cut.premiereMetadata,
+        startTime: cut.startTime,
+        endTime: cut.endTime,
+        totalDuration: cut.totalDuration,
+        estimatedDuration: cut.estimatedDuration,
+        duration: cut.duration,
+        imageUrl: cut.output?.imageUrl || null,
+        order: cut.order,
+        status: cut.status,
+        createdAt: cut.createdAt,
+        updatedAt: cut.updatedAt,
+        // 씬 정보 추가
+        sceneId: cut.conteId,
+        sceneNumber: cut.sceneNumber,
+        sceneTitle: cut.sceneTitle,
+        // 추가 상세 정보들
+        shootingPlan: cut.shootingPlan,
+        productionMethod: cut.productionMethod,
+        shootingConditions: cut.shootingConditions,
+        metadata: cut.metadata,
+        canEdit: cut.canEdit,
+        lastModified: cut.lastModified,
+        modifiedBy: cut.modifiedBy,
+        // VFX/CG 관련 필드들
+        vfxEffects: cut.vfxEffects,
+        soundEffects: cut.soundEffects,
+        cutPurpose: cut.cutPurpose,
+        composition: cut.composition,
+        cutDialogue: cut.cutDialogue,
+        directorNotes: cut.directorNotes,
+        timeOfDay: cut.timeOfDay
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ 프로젝트 컷 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '프로젝트 컷 조회 중 오류가 발생했습니다.'
     });
   }
 });
@@ -657,6 +932,128 @@ router.put('/:id/favorite', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '즐겨찾기 상태 변경 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+/**
+ * 특정 컷 상세 조회
+ * GET /api/projects/:projectId/cuts/:cutId
+ */
+router.get('/:projectId/cuts/:cutId', authenticateToken, async (req, res) => {
+  try {
+    const { projectId, cutId } = req.params;
+
+    console.log('🔍 컷 상세 조회:', { 
+      projectId, 
+      cutId,
+      userId: req.user._id
+    });
+
+    // 컷 조회 (프로젝트 권한 확인)
+    const cut = await Cut.findOne({
+      _id: cutId,
+      projectId: projectId
+    }).populate('conteId', 'scene title');
+
+    if (!cut) {
+      return res.status(404).json({
+        success: false,
+        message: '컷을 찾을 수 없습니다.'
+      });
+    }
+
+    // 프로젝트 권한 확인
+    const project = await Project.findOne({
+      _id: projectId,
+      userId: req.user._id,
+      isDeleted: false
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: '프로젝트를 찾을 수 없습니다.'
+      });
+    }
+
+    console.log('✅ 컷 상세 조회 완료:', { 
+      cutId: cut._id,
+      title: cut.title,
+      scene: cut.conteId?.scene
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        cut: {
+          id: cut._id,
+          cutId: cut.cutId,
+          cutNumber: cut.cutNumber,
+          shotNumber: cut.shotNumber,
+          title: cut.title,
+          description: cut.description,
+          // shootingPlan에서 가져오는 필드들
+          shotSize: cut.shootingPlan?.shotSize || '',
+          angleDirection: cut.shootingPlan?.angleDirection || '',
+          cameraMovement: cut.shootingPlan?.cameraMovement || '',
+          lensSpecs: cut.shootingPlan?.lensSpecs || '',
+          composition: cut.shootingPlan?.composition || '',
+          cutType: cut.cutType,
+          // shootingConditions에서 가져오는 필드들
+          lighting: cut.shootingConditions?.lighting || '',
+          lightingSetup: cut.shootingConditions?.lightingSetup || {},
+          weather: cut.shootingConditions?.weather || '',
+          timeOfDay: cut.shootingConditions?.timeOfDay || '',
+          // 기본 필드들
+          visualEffects: cut.visualEffects,
+          characters: cut.characters,
+          dialogue: cut.dialogue,
+          narration: cut.narration,
+          characterMovement: cut.characterMovement,
+          equipment: cut.equipment,
+          requiredPersonnel: cut.requiredPersonnel,
+          requiredEquipment: cut.requiredEquipment,
+          aiGenerated: cut.aiGenerated,
+          aiVideoUrl: cut.aiVideoUrl,
+          aiObjects: cut.aiObjects,
+          premiereMetadata: cut.premiereMetadata,
+          startTime: cut.startTime,
+          endTime: cut.endTime,
+          totalDuration: cut.totalDuration,
+          estimatedDuration: cut.estimatedDuration,
+          duration: cut.duration,
+          imageUrl: cut.output?.imageUrl || null,
+          order: cut.order,
+          status: cut.status,
+          createdAt: cut.createdAt,
+          updatedAt: cut.updatedAt,
+          // 추가 상세 정보들
+          shootingPlan: cut.shootingPlan,
+          productionMethod: cut.productionMethod,
+          shootingConditions: cut.shootingConditions,
+          metadata: cut.metadata,
+          canEdit: cut.canEdit,
+          lastModified: cut.lastModified,
+          modifiedBy: cut.modifiedBy,
+          // VFX/CG 관련 필드들
+          vfxEffects: cut.vfxEffects || '',
+          soundEffects: cut.soundEffects || '',
+          cutPurpose: cut.cutPurpose || '',
+          cutDialogue: cut.cutDialogue || cut.dialogue || '',
+          directorNotes: cut.directorNotes || '',
+          // 씬 정보
+          scene: cut.conteId?.scene,
+          sceneTitle: cut.conteId?.title
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('컷 상세 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '컷 상세 조회 중 오류가 발생했습니다.'
     });
   }
 });

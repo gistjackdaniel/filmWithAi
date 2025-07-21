@@ -857,14 +857,29 @@ const ConteGenerationPage = () => {
   /**
    * 타임라인 보기 핸들러
    */
-  const handleViewTimeline = () => {
-    // 콘티 데이터를 로컬 스토리지에 저장하고 실제 프로젝트 ID로 타임라인 페이지로 이동
-    if (generatedConte && generatedConte.length > 0) {
-      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
-      // useParams로 받은 projectId를 사용하여 이동
-      navigate(`/project/${projectId}`)
-    } else {
+  const handleViewTimeline = async () => {
+    if (!generatedConte || generatedConte.length === 0) {
       toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
+      return
+    }
+
+    try {
+      console.log('🎬 타임라인 보기 시작 - 컷 생성 및 타임라인 표시')
+      
+      // 로딩 상태 표시
+      toast.loading('컷을 생성하고 타임라인을 준비하고 있습니다...', { id: 'timeline-loading' })
+      
+      // 콘티 데이터를 로컬 스토리지에 저장
+      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      
+      // 프로젝트 페이지로 이동 (컷 생성은 ProjectPage에서 처리)
+      navigate(`/project/${projectId}?mode=timeline&generateCuts=true`)
+      
+      toast.success('타임라인으로 이동합니다!', { id: 'timeline-loading' })
+      
+    } catch (error) {
+      console.error('❌ 타임라인 보기 실패:', error)
+      toast.error('타임라인 보기에 실패했습니다.', { id: 'timeline-loading' })
     }
   }
 

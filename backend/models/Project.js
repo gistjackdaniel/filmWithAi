@@ -38,10 +38,10 @@ const projectSchema = new mongoose.Schema({
     maxlength: 10000
   },
   
-  // 프로젝트 상태
+  // 프로젝트 상태 (6단계로 간략화)
   status: {
     type: String,
-    enum: ['draft', 'story_ready', 'conte_ready', 'production_ready'],
+    enum: ['draft', 'story_ready', 'conte_ready', 'cut_generating', 'cut_generated', 'production_ready'],
     default: 'draft'
   },
   
@@ -213,23 +213,23 @@ projectSchema.methods.updateStatus = function(newStatus) {
   return this.save();
 };
 
-// 인스턴스 메서드: 콘티 수에 따른 상태 자동 업데이트
+// 인스턴스 메서드: 콘티 수에 따른 상태 자동 업데이트 (6단계로 간략화)
 projectSchema.methods.updateStatusByConteCount = async function() {
   const Conte = require('./Conte');
   const conteCount = await Conte.countDocuments({ projectId: this._id });
   
   // 콘티가 있고 현재 상태가 conte_ready보다 낮은 경우에만 conte_ready로 업데이트
-  if (conteCount > 0 && this.status !== 'conte_ready' && this.status !== 'production_ready') {
+  if (conteCount > 0 && this.status !== 'conte_ready' && this.status !== 'cut_generating' && this.status !== 'cut_generated' && this.status !== 'production_ready') {
     this.status = 'conte_ready';
     console.log('✅ 프로젝트 상태를 conte_ready로 업데이트');
   } 
-  // 콘티가 없고 스토리가 있는 경우 story_ready로 업데이트 (단, 이미 conte_ready 이상인 경우는 유지)
-  else if (conteCount === 0 && this.story && this.story.length > 0 && this.status !== 'conte_ready' && this.status !== 'production_ready') {
+  // 콘티가 없고 스토리가 있는 경우 story_ready로 업데이트
+  else if (conteCount === 0 && this.story && this.story.length > 0 && this.status !== 'story_ready' && this.status !== 'conte_ready' && this.status !== 'cut_generating' && this.status !== 'cut_generated' && this.status !== 'production_ready') {
     this.status = 'story_ready';
     console.log('✅ 프로젝트 상태를 story_ready로 업데이트');
   }
-  // 시놉시스만 있고 스토리가 없는 경우 draft로 업데이트 (단, 이미 story_ready 이상인 경우는 유지)
-  else if (conteCount === 0 && (!this.story || this.story.length === 0) && this.synopsis && this.synopsis.length > 0 && this.status !== 'story_ready' && this.status !== 'conte_ready' && this.status !== 'production_ready') {
+  // 시놉시스만 있고 스토리가 없는 경우 draft로 업데이트
+  else if (conteCount === 0 && (!this.story || this.story.length === 0) && this.synopsis && this.synopsis.length > 0 && this.status !== 'draft' && this.status !== 'story_ready' && this.status !== 'conte_ready' && this.status !== 'cut_generating' && this.status !== 'cut_generated' && this.status !== 'production_ready') {
     this.status = 'draft';
     console.log('✅ 프로젝트 상태를 draft로 업데이트');
   }
@@ -237,13 +237,13 @@ projectSchema.methods.updateStatusByConteCount = async function() {
   return this.save();
 };
 
-// 인스턴스 메서드: 콘티 생성 시에만 호출되는 상태 업데이트 (기존 상태 유지)
+// 인스턴스 메서드: 콘티 생성 시에만 호출되는 상태 업데이트 (6단계로 간략화)
 projectSchema.methods.updateStatusOnConteCreation = async function() {
   const Conte = require('./Conte');
   const conteCount = await Conte.countDocuments({ projectId: this._id });
   
   // 콘티가 생성되었고 현재 상태가 conte_ready보다 낮은 경우에만 conte_ready로 업데이트
-  if (conteCount > 0 && this.status !== 'conte_ready' && this.status !== 'production_ready') {
+  if (conteCount > 0 && this.status !== 'conte_ready' && this.status !== 'cut_generating' && this.status !== 'cut_generated' && this.status !== 'production_ready') {
     this.status = 'conte_ready';
     console.log('✅ 콘티 생성으로 인한 프로젝트 상태 업데이트: conte_ready');
     return this.save();

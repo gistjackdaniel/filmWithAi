@@ -19,7 +19,7 @@ import {
   VideoLibrary,
   CameraAlt
 } from '@mui/icons-material'
-import { CaptionCardType } from '../../../types/timeline'
+import { SceneType } from '../../../types/conte'
 
 /**
  * 타임라인 필터링 컴포넌트
@@ -181,13 +181,13 @@ const TimelineFilters = ({
             }}
           >
             <MenuItem value="">모든 타입</MenuItem>
-            <MenuItem value={CaptionCardType.GENERATED_VIDEO}>
+            <MenuItem value={SceneType.GENERATED_VIDEO}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <VideoLibrary fontSize="small" />
                 AI 비디오
               </Box>
             </MenuItem>
-            <MenuItem value={CaptionCardType.LIVE_ACTION}>
+            <MenuItem value={SceneType.LIVE_ACTION}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CameraAlt fontSize="small" />
                 실사 촬영

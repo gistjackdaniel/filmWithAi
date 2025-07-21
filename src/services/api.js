@@ -7,7 +7,7 @@ import axios from 'axios'
  */
 const api = axios.create({
   baseURL: 'http://localhost:5001/api', // 백엔드 서버 URL
-  timeout: 10000, // 요청 타임아웃 (10초)
+  timeout: 60000, // 요청 타임아웃 (60초) - LLM 처리 시간 고려
   headers: {
     'Content-Type': 'application/json', // JSON 데이터 전송
   },
@@ -109,7 +109,7 @@ export const aiAPI = {
  */
 export const cutAPI = {
   // 씬에서 컷 생성
-  generateCuts: (sceneData) => api.post('/cuts/generate', { sceneData }),
+  generateCuts: (sceneData) => api.post('/cuts/generate', { sceneData }, { timeout: 120000 }), // 2분 타임아웃
   
   // 컷 목록 조회
   getCuts: (projectId, conteId, params = {}) => api.get(`/projects/${projectId}/contes/${conteId}/cuts`, { params }),

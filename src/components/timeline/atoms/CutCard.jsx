@@ -22,7 +22,7 @@ import toast from 'react-hot-toast'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CaptionCardType } from '../../../types/timeline'
+import { SceneType } from '../../../types/conte'
 import { 
   formatTimeFromSeconds, 
   formatTimeShort, 
@@ -225,7 +225,35 @@ const CutCard = React.memo(({
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onClick && onClick(cut)}
+      onClick={(event) => {
+        if (onClick) {
+          // Shift 키가 눌린 상태에서 클릭하면 씬 편집 모드로 처리
+          if (event.shiftKey) {
+            console.log('🎬 Shift + 클릭: 씬 편집 모드')
+            // 씬 정보로 변환하여 전달
+            const sceneData = {
+              ...cut,
+              scene: cut.sceneNumber || cut.sceneId,
+              title: cut.sceneTitle || cut.title,
+              description: cut.description || '',
+              type: 'live_action',
+              estimatedDuration: cut.estimatedDuration || cut.duration || 5,
+              imageUrl: cut.imageUrl || null,
+              isCut: false, // 씬 편집 모드 표시
+              originalCut: cut // 원본 컷 정보 보존
+            }
+            onClick(sceneData)
+          } else {
+            console.log('🎬 일반 클릭: 컷 편집 모드')
+            // 컷 편집 모드로 처리
+            const cutData = {
+              ...cut,
+              isCut: true // 컷 편집 모드 표시
+            }
+            onClick(cutData)
+          }
+        }
+      }}
       onMouseEnter={() => onMouseEnter && onMouseEnter()}
       onMouseLeave={() => onMouseLeave && onMouseLeave()}
       sx={{
@@ -315,7 +343,7 @@ const CutCard = React.memo(({
           justifyContent: 'center'
         }}>
           <img 
-            src={cut.imageUrl} 
+            src={cut.imageUrl.startsWith('/') ? `http://localhost:5001${cut.imageUrl}` : cut.imageUrl} 
             alt={`컷 ${cut.shotNumber} 이미지`}
             style={{
               width: '100%',
@@ -328,7 +356,37 @@ const CutCard = React.memo(({
                 shotNumber: cut.shotNumber,
                 imageUrl: cut.imageUrl
               })
-              e.target.style.display = 'none'
+              
+              // 이미지 로딩 실패 시 대체 이미지 표시
+              // 여러 fallback 옵션 시도
+              if (e.target.src.includes('dev_placeholder.png')) {
+                // 이미 placeholder를 시도했는데도 실패하면 빈 이미지로 처리
+                e.target.style.display = 'none'
+                e.target.parentElement.style.backgroundColor = 'rgba(160, 163, 177, 0.3)'
+                e.target.parentElement.innerHTML = `
+                  <div style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    height: 100%;
+                    color: var(--color-text-secondary);
+                    font-size: 12px;
+                    text-align: center;
+                    padding: 8px;
+                  ">
+                    <div>
+                      <div style="font-size: 24px; margin-bottom: 4px;">🎬</div>
+                      <div>컷 ${cut.shotNumber}</div>
+                      <div style="font-size: 10px; opacity: 0.7;">이미지 없음</div>
+                    </div>
+                  </div>
+                `
+              } else {
+                // 첫 번째 시도 실패 시 placeholder 이미지로 재시도
+                e.target.src = 'http://localhost:5001/uploads/images/dev_placeholder.png'
+                e.target.onerror = null // 무한 루프 방지
+              }
             }}
           />
         </Box>

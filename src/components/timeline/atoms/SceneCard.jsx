@@ -19,7 +19,7 @@ import toast from 'react-hot-toast'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CaptionCardType } from '../../../types/timeline'
+import { SceneType } from '../../../types/conte'
 import { 
   formatTimeFromSeconds, 
   formatTimeShort, 
@@ -101,7 +101,7 @@ const SceneCard = React.memo(({
   // 씬 타입에 따른 아이콘과 색상 결정
   const getSceneTypeInfo = (type) => {
     switch (type) {
-      case CaptionCardType.GENERATED_VIDEO:
+      case SceneType.GENERATED_VIDEO:
         return {
           icon: <PlayArrow />,
           label: 'AI 비디오',
@@ -109,7 +109,7 @@ const SceneCard = React.memo(({
           bgColor: 'rgba(46, 204, 113, 0.1)',
           borderColor: 'rgba(46, 204, 113, 0.3)'
         }
-      case CaptionCardType.LIVE_ACTION:
+      case SceneType.LIVE_ACTION:
         return {
           icon: <CameraAlt />,
           label: '실사 촬영',
@@ -366,12 +366,12 @@ const SceneCard = React.memo(({
           height: 80, 
           borderRadius: 1,
           overflow: 'hidden',
-          border: scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action' 
+          border: scene.type === SceneType.LIVE_ACTION || scene.type === 'live_action' 
             ? '1px solid rgba(212, 175, 55, 0.3)' 
             : '1px solid rgba(46, 204, 113, 0.3)',
           position: 'relative',
           mb: 1,
-          backgroundColor: scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action'
+          backgroundColor: scene.type === SceneType.LIVE_ACTION || scene.type === 'live_action'
             ? 'rgba(212, 175, 55, 0.1)'
             : 'rgba(46, 204, 113, 0.1)',
           display: 'flex',
@@ -422,7 +422,7 @@ const SceneCard = React.memo(({
             }
             
             // 이미지 URL이 없는 경우 플레이스홀더 표시
-            const isLiveAction = scene.type === CaptionCardType.LIVE_ACTION || scene.type === 'live_action'
+            const isLiveAction = scene.type === SceneType.LIVE_ACTION || scene.type === 'live_action'
             const placeholderColor = isLiveAction ? 'rgba(212, 175, 55, 0.2)' : 'rgba(46, 204, 113, 0.2)'
             const placeholderHoverColor = isLiveAction ? 'rgba(212, 175, 55, 0.3)' : 'rgba(46, 204, 113, 0.3)'
             const placeholderIcon = isLiveAction ? <CameraAlt /> : <PlayArrow />

@@ -20,7 +20,7 @@ import TimelineNavigation from '../molecules/TimelineNavigation'
 import TimelineFilters from '../molecules/TimelineFilters'
 import CutCard from '../atoms/CutCard'
 import TimeRuler from '../atoms/TimeRuler'
-import { CaptionCardType } from '../../../types/timeline'
+import { SceneType } from '../../../types/conte'
 import { 
   calculateTimeScale,
   calculateTotalDuration,

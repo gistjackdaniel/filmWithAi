@@ -20,7 +20,7 @@ import TimelineNavigation from '../molecules/TimelineNavigation'
 import TimelineFilters from '../molecules/TimelineFilters'
 import CutCard from '../atoms/CutCard'
 import TimeRuler from '../atoms/TimeRuler'
-import { CaptionCardType } from '../../../types/timeline'
+import { SceneType } from '../../../types/conte'
 import { 
   calculateTimeScale,
   calculateTotalDuration,
@@ -63,16 +63,57 @@ const CutTimelineViewer = (props) => {
   console.log('🔍 CutTimelineViewer received props:', props)
   console.log('🔍 CutTimelineViewer received scenes:', scenes)
   
-  // 모든 컷을 평면화하여 타임라인에 표시
+  // 각 씬의 컷 데이터 확인
+  scenes.forEach((scene, index) => {
+    console.log(`🔍 Scene ${index}:`, {
+      id: scene.id,
+      title: scene.title,
+      cuts: scene.cuts,
+      cutsLength: scene.cuts?.length || 0
+    })
+  })
+  
+  // 컷만 평면화하여 타임라인에 표시 (씬별 캡션카드 제거)
   const allCuts = useMemo(() => {
-    if (!scenes || !Array.isArray(scenes)) return []
+    console.log('🔍 CutTimelineViewer allCuts 계산 시작')
+    console.log('  - scenes 타입:', typeof scenes)
+    console.log('  - scenes가 배열인가:', Array.isArray(scenes))
+    console.log('  - scenes 길이:', scenes?.length || 0)
+    
+    if (!scenes || !Array.isArray(scenes)) {
+      console.log('❌ CutTimelineViewer 유효하지 않은 scenes 데이터')
+      return []
+    }
     
     const cuts = []
     let globalCutIndex = 0
     
     scenes.forEach((scene, sceneIndex) => {
+      console.log(`🔍 CutTimelineViewer 씬 ${sceneIndex + 1} 처리:`, {
+        id: scene.id,
+        title: scene.title,
+        scene: scene.scene,
+        cuts: scene.cuts,
+        cutsType: typeof scene.cuts,
+        cutsIsArray: Array.isArray(scene.cuts),
+        cutsLength: scene.cuts?.length || 0
+      })
+      
       if (scene.cuts && Array.isArray(scene.cuts)) {
+        console.log(`✅ CutTimelineViewer 씬 ${sceneIndex + 1}에 컷 ${scene.cuts.length}개 발견`)
+        
         scene.cuts.forEach((cut, cutIndex) => {
+          console.log(`🔍 CutTimelineViewer 컷 ${cutIndex + 1} 상세 정보:`, {
+            id: cut.id,
+            cutId: cut.cutId,
+            shotNumber: cut.shotNumber,
+            title: cut.title,
+            description: cut.description,
+            cutType: cut.cutType,
+            estimatedDuration: cut.estimatedDuration,
+            imageUrl: cut.imageUrl
+          })
+          
           cuts.push({
             ...cut,
             sceneId: scene.id,
@@ -85,25 +126,22 @@ const CutTimelineViewer = (props) => {
           globalCutIndex++
         })
       } else {
-        // 컷이 없는 경우 기본 컷 생성
-        cuts.push({
-          id: `default_cut_${scene.id}`,
-          title: `${scene.title} - 기본 컷`,
-          description: scene.description || '',
-          shotNumber: 1,
-          estimatedDuration: 5,
-          sceneId: scene.id,
-          sceneIndex: sceneIndex,
-          sceneTitle: scene.title,
-          sceneNumber: scene.scene,
-          globalIndex: globalCutIndex,
-          isLastCutInScene: true
-        })
-        globalCutIndex++
+        console.log(`⚠️ CutTimelineViewer 씬 ${sceneIndex + 1}에 컷 데이터 없음`)
       }
+      // 컷이 없는 씬은 타임라인에 표시하지 않음
     })
     
-    console.log('🔍 CutTimelineViewer allCuts:', cuts)
+    console.log('🔍 CutTimelineViewer allCuts 최종 결과:', {
+      totalCuts: cuts.length,
+      cuts: cuts.map(cut => ({
+        id: cut.id,
+        cutId: cut.cutId,
+        shotNumber: cut.shotNumber,
+        title: cut.title,
+        sceneNumber: cut.sceneNumber
+      }))
+    })
+    
     return cuts
   }, [scenes])
   
@@ -364,7 +402,7 @@ const CutTimelineViewer = (props) => {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={allCuts.map(cut => cut.id)}
+              items={allCuts.map((cut, index) => `cut-${cut.id || cut.cutId || index}`)}
               strategy={horizontalListSortingStrategy}
             >
               <Box sx={{
@@ -375,7 +413,7 @@ const CutTimelineViewer = (props) => {
                 position: 'relative'
               }}>
                 {allCuts.map((cut, index) => (
-                  <Box key={cut.id} sx={{ position: 'relative' }}>
+                  <Box key={`cut-${cut.id || cut.cutId || index}`} sx={{ position: 'relative' }}>
                     <CutCard
                       cut={cut}
                       onClick={() => handleCutClick(cut)}

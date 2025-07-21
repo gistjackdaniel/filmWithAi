@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react'
 import { Box, Typography, Chip } from '@mui/material'
-import { CaptionCardType } from '../../../types/timeline'
+import { SceneType } from '../../../types/conte'
 
 /**
  * 접근성이 개선된 씬 카드 컴포넌트
@@ -19,9 +19,9 @@ const AccessibleSceneCard = forwardRef(({
   // 씬 타입별 아이콘과 라벨
   const getTypeInfo = (type) => {
     switch (type) {
-      case CaptionCardType.GENERATED_VIDEO:
+      case SceneType.GENERATED_VIDEO:
         return { icon: '🎬', label: 'AI 비디오 생성' }
-      case CaptionCardType.LIVE_ACTION:
+      case SceneType.LIVE_ACTION:
         return { icon: '🎥', label: '실사 촬영' }
       default:
         return { icon: '📹', label: '기타' }
@@ -192,7 +192,7 @@ const AccessibleSceneCard = forwardRef(({
           size="small"
           icon={<span role="img" aria-label={typeInfo.label}>{typeInfo.icon}</span>}
           sx={{
-            backgroundColor: scene.type === CaptionCardType.GENERATED_VIDEO 
+            backgroundColor: scene.type === SceneType.GENERATED_VIDEO 
               ? 'var(--color-success-bg)' 
               : 'var(--color-accent-bg)',
             color: 'var(--color-text-primary)',

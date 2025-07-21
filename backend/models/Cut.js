@@ -22,6 +22,13 @@ const cutSchema = new mongoose.Schema({
     index: true
   },
   
+  // 컷 ID (고유 식별자)
+  cutId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: () => new mongoose.Types.ObjectId(),
+    required: true
+  },
+  
   // 컷 기본 정보
   shotNumber: {
     type: Number,
@@ -105,6 +112,49 @@ const cutSchema = new mongoose.Schema({
     type: String,
     enum: ['EWS', 'WS', 'MS', 'CU', 'ECU'], // Extreme Wide Shot, Wide Shot, Medium Shot, Close Up, Extreme Close Up
     default: 'MS'
+  },
+  
+  // VFX/CG 관련 필드들
+  vfxEffects: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 500
+  },
+  
+  soundEffects: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 500
+  },
+  
+  cutPurpose: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 200
+  },
+  
+  composition: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 500
+  },
+  
+  cutDialogue: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 1000
+  },
+  
+  directorNotes: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 1000
   },
   
   // 대사 및 내레이션
@@ -339,8 +389,8 @@ const cutSchema = new mongoose.Schema({
       trim: true
     },
     
-    // 썸네일 이미지
-    thumbnailUrl: {
+    // 컷 이미지 URL
+    imageUrl: {
       type: String,
       default: null,
       trim: true

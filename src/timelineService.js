@@ -41,169 +41,257 @@ timelineAPI.interceptors.response.use(
 
 /**
  * 타임라인 서비스 클래스
- * 프로젝트 콘티 데이터 관리 및 API 연동
+ * 컷 데이터 관리 및 API 연동
  */
 class TimelineService {
+  constructor() {
+    this.wsConnections = new Map()
+  }
+
   /**
-   * 프로젝트의 콘티 데이터를 가져옵니다
+   * 프로젝트의 모든 컷 데이터를 가져옵니다
    * @param {string} projectId - 프로젝트 ID
-   * @returns {Promise<Object>} 콘티 데이터
+   * @returns {Promise<Object>} 컷 데이터
+   */
+  async getProjectCuts(projectId) {
+    try {
+      console.log('timelineService getProjectCuts started for projectId:', projectId)
+      
+      // 캐시 확인
+      const cacheKey = `project_cuts_${projectId}`
+      const cached = this.getCachedData(cacheKey)
+      if (cached) {
+        console.log('timelineService using cached cuts data for projectId:', projectId)
+        return { success: true, data: cached }
+      }
+      
+      const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
+      console.log('timelineService API response:', response.data)
+      
+      if (response.data && response.data.success && response.data.data?.contes) {
+        const contes = response.data.data.contes
+        
+        // 모든 컷을 하나의 배열로 수집
+        const allCuts = []
+        contes.forEach(conte => {
+          if (conte.cuts && Array.isArray(conte.cuts)) {
+            conte.cuts.forEach(cut => {
+              allCuts.push({
+                ...cut,
+                sceneId: conte._id,
+                sceneNumber: conte.scene,
+                sceneTitle: conte.title
+              })
+            })
+          }
+        })
+        
+        console.log('timelineService all cuts loaded:', allCuts.length)
+        
+        // 캐시에 저장
+        this.setCachedData(cacheKey, allCuts)
+        
+        return { success: true, data: allCuts }
+      } else {
+        console.error('timelineService getProjectCuts failed:', response.data)
+        return { success: false, error: response.data?.message || '컷 데이터를 불러올 수 없습니다.' }
+      }
+    } catch (error) {
+      console.error('timelineService getProjectCuts error:', error)
+      return { success: false, error: this.handleError(error) }
+    }
+  }
+
+  /**
+   * 프로젝트의 모든 씬 데이터를 가져옵니다 (스케줄러용)
+   * @param {string} projectId - 프로젝트 ID
+   * @returns {Promise<Object>} 씬 데이터
    */
   async getProjectContes(projectId) {
     try {
       console.log('timelineService getProjectContes started for projectId:', projectId)
-      const response = await timelineAPI.get(`/projects/${projectId}`)
+      
+      // 캐시 확인
+      const cacheKey = `project_scenes_${projectId}`
+      const cached = this.getCachedData(cacheKey)
+      if (cached) {
+        console.log('timelineService using cached scenes data for projectId:', projectId)
+        return { success: true, data: cached }
+      }
+      
+      const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
       console.log('timelineService API response:', response.data)
       
-      const conteList = response.data.data?.conteList || []
-      console.log('timelineService conteList extracted:', conteList, 'count:', conteList.length)
-      
-      return {
-        success: true,
-        data: conteList,
-        error: null
+      if (response.data && response.data.success && response.data.data?.contes) {
+        const contes = response.data.data.contes
+        
+        // 씬 데이터 변환
+        const scenes = contes.map(conte => ({
+          id: conte._id,
+          scene: conte.scene,
+          title: conte.title,
+          description: conte.description,
+          estimatedDuration: conte.estimatedDuration,
+          duration: this.parseDurationToSeconds(conte.estimatedDuration || 30),
+          imageUrl: conte.imageUrl,
+          cuts: conte.cuts || [],
+          createdAt: conte.createdAt,
+          updatedAt: conte.updatedAt
+        }))
+        
+        console.log('timelineService all scenes loaded:', scenes.length)
+        
+        // 캐시에 저장
+        this.setCachedData(cacheKey, scenes)
+        
+        return { success: true, data: scenes }
+      } else {
+        console.error('timelineService getProjectContes failed:', response.data)
+        return { success: false, error: response.data?.message || '씬 데이터를 불러올 수 없습니다.' }
       }
     } catch (error) {
-      console.error('콘티 데이터 가져오기 실패:', error)
-      return {
-        success: false,
-        data: null,
-        error: this.handleError(error)
-      }
+      console.error('timelineService getProjectContes error:', error)
+      return { success: false, error: this.handleError(error) }
     }
   }
 
   /**
-   * 특정 씬의 상세 정보를 가져옵니다
+   * 특정 컷의 상세 정보를 가져옵니다
    * @param {string} projectId - 프로젝트 ID
-   * @param {string} sceneId - 씬 ID
-   * @returns {Promise<Object>} 씬 상세 데이터
+   * @param {string} cutId - 컷 ID
+   * @returns {Promise<Object>} 컷 상세 데이터
    */
-  async getSceneDetails(projectId, sceneId) {
+  async getCutDetails(projectId, cutId) {
     try {
-      const response = await timelineAPI.get(`/projects/${projectId}`)
-      const project = response.data.project
-      const scene = project?.conteList?.find(scene => scene.id === sceneId || scene.scene === sceneId)
+      console.log('timelineService getCutDetails started for projectId:', projectId, 'cutId:', cutId)
       
-      if (!scene) {
-        return {
-          success: false,
-          data: null,
-          error: '씬을 찾을 수 없습니다.'
-        }
-      }
+      const response = await timelineAPI.get(`/projects/${projectId}/cuts/${cutId}`)
+      console.log('timelineService getCutDetails API response:', response.data)
       
-      return {
-        success: true,
-        data: scene,
-        error: null
+      if (response.data && response.data.success && response.data.data) {
+        const cutDetails = response.data.data
+        console.log('timelineService cut details loaded:', cutDetails)
+        return { success: true, data: cutDetails }
+      } else {
+        console.error('timelineService getCutDetails failed:', response.data)
+        return { success: false, error: response.data?.message || '컷 상세 정보를 불러올 수 없습니다.' }
       }
     } catch (error) {
-      console.error('씬 상세 정보 가져오기 실패:', error)
-      return {
-        success: false,
-        data: null,
-        error: this.handleError(error)
-      }
+      console.error('timelineService getCutDetails error:', error)
+      return { success: false, error: this.handleError(error) }
     }
   }
 
   /**
-   * 씬 정보를 업데이트합니다
+   * 컷 정보를 업데이트합니다
    * @param {string} projectId - 프로젝트 ID
-   * @param {string} sceneId - 씬 ID
-   * @param {Object} sceneData - 업데이트할 씬 데이터
+   * @param {string} cutId - 컷 ID
+   * @param {Object} cutData - 업데이트할 컷 데이터
    * @returns {Promise<Object>} 업데이트 결과
    */
-  async updateScene(projectId, sceneId, sceneData) {
+  async updateCut(projectId, cutId, cutData) {
     try {
-      const response = await timelineAPI.put(`/projects/${projectId}/scenes/${sceneId}`, sceneData)
-      return {
-        success: true,
-        data: response.data,
-        error: null
+      console.log('timelineService updateCut started:', { projectId, cutId, cutData })
+      
+      const response = await timelineAPI.put(`/projects/${projectId}/cuts/${cutId}`, cutData)
+      console.log('timelineService updateCut API response:', response.data)
+      
+      if (response.data && response.data.success) {
+        // 캐시 삭제
+        this.clearCache(`project_cuts_${projectId}`)
+        
+        return { success: true, data: response.data.data }
+      } else {
+        return { success: false, error: response.data?.message || '컷 업데이트에 실패했습니다.' }
       }
     } catch (error) {
-      console.error('씬 업데이트 실패:', error)
-      return {
-        success: false,
-        data: null,
-        error: this.handleError(error)
-      }
+      console.error('timelineService updateCut error:', error)
+      return { success: false, error: this.handleError(error) }
     }
   }
 
   /**
-   * 씬을 삭제합니다
+   * 컷을 삭제합니다
    * @param {string} projectId - 프로젝트 ID
-   * @param {string} sceneId - 씬 ID
+   * @param {string} cutId - 컷 ID
    * @returns {Promise<Object>} 삭제 결과
    */
-  async deleteScene(projectId, sceneId) {
+  async deleteCut(projectId, cutId) {
     try {
-      await timelineAPI.delete(`/projects/${projectId}/scenes/${sceneId}`)
-      return {
-        success: true,
-        data: null,
-        error: null
+      console.log('timelineService deleteCut started:', { projectId, cutId })
+      
+      const response = await timelineAPI.delete(`/projects/${projectId}/cuts/${cutId}`)
+      console.log('timelineService deleteCut API response:', response.data)
+      
+      if (response.data && response.data.success) {
+        // 캐시 삭제
+        this.clearCache(`project_cuts_${projectId}`)
+        
+        return { success: true }
+      } else {
+        return { success: false, error: response.data?.message || '컷 삭제에 실패했습니다.' }
       }
     } catch (error) {
-      console.error('씬 삭제 실패:', error)
-      return {
-        success: false,
-        data: null,
-        error: this.handleError(error)
-      }
+      console.error('timelineService deleteCut error:', error)
+      return { success: false, error: this.handleError(error) }
     }
   }
 
   /**
-   * 새로운 씬을 생성합니다
+   * 새로운 컷을 생성합니다
    * @param {string} projectId - 프로젝트 ID
-   * @param {Object} sceneData - 씬 데이터
+   * @param {string} sceneId - 씬 ID
+   * @param {Object} cutData - 컷 데이터
    * @returns {Promise<Object>} 생성 결과
    */
-  async createScene(projectId, sceneData) {
+  async createCut(projectId, sceneId, cutData) {
     try {
-      const response = await timelineAPI.post(`/projects/${projectId}/scenes`, sceneData)
-      return {
-        success: true,
-        data: response.data,
-        error: null
+      console.log('timelineService createCut started:', { projectId, sceneId, cutData })
+      
+      const response = await timelineAPI.post(`/projects/${projectId}/contes/${sceneId}/cuts`, cutData)
+      console.log('timelineService createCut API response:', response.data)
+      
+      if (response.data && response.data.success) {
+        // 캐시 삭제
+        this.clearCache(`project_cuts_${projectId}`)
+        
+        return { success: true, data: response.data.data }
+      } else {
+        return { success: false, error: response.data?.message || '컷 생성에 실패했습니다.' }
       }
     } catch (error) {
-      console.error('씬 생성 실패:', error)
-      return {
-        success: false,
-        data: null,
-        error: this.handleError(error)
-      }
+      console.error('timelineService createCut error:', error)
+      return { success: false, error: this.handleError(error) }
     }
   }
 
   /**
-   * 씬 순서를 변경합니다
+   * 컷 순서를 변경합니다
    * @param {string} projectId - 프로젝트 ID
-   * @param {Array} sceneOrder - 새로운 씬 순서 배열
+   * @param {string} sceneId - 씬 ID
+   * @param {Array} cutOrder - 새로운 컷 순서 배열
    * @returns {Promise<Object>} 순서 변경 결과
    */
-  async reorderScenes(projectId, sceneOrder) {
+  async reorderCuts(projectId, sceneId, cutOrder) {
     try {
-      const response = await timelineAPI.put(`/projects/${projectId}/contes/reorder`, {
-        conteList: sceneOrder
+      console.log('timelineService reorderCuts started:', { projectId, sceneId, cutOrder })
+      
+      const response = await timelineAPI.put(`/projects/${projectId}/contes/${sceneId}/cuts/reorder`, {
+        cutOrder
       })
-      return {
-        success: true,
-        data: response.data,
-        error: null
+      console.log('timelineService reorderCuts API response:', response.data)
+      
+      if (response.data && response.data.success) {
+        // 캐시 삭제
+        this.clearCache(`project_cuts_${projectId}`)
+        
+        return { success: true, data: response.data.data }
+      } else {
+        return { success: false, error: response.data?.message || '컷 순서 변경에 실패했습니다.' }
       }
     } catch (error) {
-      console.error('씬 순서 변경 실패:', error)
-      return {
-        success: false,
-        data: null,
-        error: this.handleError(error)
-      }
+      console.error('timelineService reorderCuts error:', error)
+      return { success: false, error: this.handleError(error) }
     }
   }
 
@@ -215,7 +303,7 @@ class TimelineService {
    */
   connectRealtimeUpdates(projectId, onUpdate) {
     // WebSocket URL을 올바른 경로로 수정
-    const wsUrl = `ws://localhost:5001/api/timeline/projects/${projectId}`
+    const wsUrl = `ws://localhost:5001/ws/timeline/projects/${projectId}`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
@@ -240,10 +328,20 @@ class TimelineService {
 
     ws.onerror = (error) => {
       console.error('❌ WebSocket 에러:', error)
+      // 에러 발생 시 연결을 닫아서 무한 재연결 방지
+      ws.close()
     }
 
     ws.onclose = (event) => {
       console.log('🔌 타임라인 실시간 연결 종료:', event.code, event.reason)
+      // 정상적인 종료가 아닌 경우에만 재연결 시도
+      if (event.code !== 1000) {
+        console.log('⚠️ 비정상 종료로 인한 재연결 시도 중...')
+        // 3초 후 재연결 시도
+        setTimeout(() => {
+          this.connectRealtimeUpdates(projectId, onUpdate)
+        }, 3000)
+      }
     }
 
     return ws
@@ -333,6 +431,35 @@ class TimelineService {
     } catch (error) {
       console.error('캐시 삭제 실패:', error)
     }
+  }
+
+  /**
+   * 시간 문자열을 초 단위로 변환합니다.
+   * @param {string} duration - 시간 문자열 (예: "1h 30m", "2h", "30m")
+   * @returns {number} 초 단위 시간
+   */
+  parseDurationToSeconds(duration) {
+    if (!duration) return 0;
+    const parts = duration.match(/(\d+)([hms])/g);
+    let totalSeconds = 0;
+    if (parts) {
+      parts.forEach(part => {
+        const value = parseInt(part.slice(0, -1), 10);
+        const unit = part.slice(-1);
+        switch (unit) {
+          case 'h':
+            totalSeconds += value * 3600;
+            break;
+          case 'm':
+            totalSeconds += value * 60;
+            break;
+          case 's':
+            totalSeconds += value;
+            break;
+        }
+      });
+    }
+    return totalSeconds;
   }
 }
 

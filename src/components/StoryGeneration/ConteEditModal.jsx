@@ -49,7 +49,7 @@ import {
 } from '@mui/icons-material'
 import { generateSceneImage, regenerateConteWithRetry } from '../../services/storyGenerationApi'
 import toast from 'react-hot-toast'
-import { CaptionCardType } from '../../types/timeline'
+import { SceneType } from '../../types/conte'
 
 /**
  * 콘티 편집 모달 컴포넌트
@@ -82,7 +82,7 @@ const ConteEditModal = ({
   // 씬 타입에 따른 아이콘과 색상
   const getSceneTypeInfo = (type) => {
     switch (type) {
-      case CaptionCardType.GENERATED_VIDEO:
+      case SceneType.GENERATED_VIDEO:
       case 'generated_video':
         return {
           icon: <PlayArrow />,
@@ -90,7 +90,7 @@ const ConteEditModal = ({
           color: 'success',
           bgColor: 'rgba(46, 204, 113, 0.1)'
         }
-      case CaptionCardType.LIVE_ACTION:
+      case SceneType.LIVE_ACTION:
       case 'live_action':
         return {
           icon: <CameraAlt />,
@@ -718,18 +718,30 @@ const ConteEditModal = ({
           alignItems: 'center'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h5" component="h2">
-              씬 {conte?.scene || 'N/A'}: {conte?.title || '제목 없음'}
-          </Typography>
+            <Typography variant="h5" component="h2">
+              {editedConte?.isCut ? (
+                `컷 ${editedConte?.cutNumber || editedConte?.shotNumber || 'N/A'}: ${editedConte?.title || '제목 없음'}`
+              ) : (
+                `씬 ${conte?.scene || 'N/A'}: ${conte?.title || '제목 없음'}`
+              )}
+            </Typography>
             {typeInfo && (
               <Chip
                 icon={typeInfo.icon}
-                label={typeInfo.label}
+                label={editedConte?.isCut ? '컷 편집' : typeInfo.label}
                 color={typeInfo.color}
                 sx={{
                   backgroundColor: typeInfo.bgColor,
                   color: 'var(--color-text-primary)'
                 }}
+              />
+            )}
+            {editedConte?.isCut && (
+              <Chip
+                label={`씬 ${editedConte?.sceneNumber || editedConte?.scene || 'N/A'}`}
+                color="secondary"
+                variant="outlined"
+                size="small"
               />
             )}
           </Box>
@@ -920,6 +932,162 @@ const ConteEditModal = ({
                 </AccordionDetails>
               </Accordion>
             </Grid>
+
+            {/* 컷 정보 (컷 편집 시에만 표시) */}
+            {editedConte?.isCut && (
+              <Grid item xs={12}>
+                <Accordion defaultExpanded>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="h6">컷 정보</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="컷 번호"
+                          value={editedConte?.cutNumber || editedConte?.shotNumber || ''}
+                          onChange={(e) => handleFieldChange('cutNumber', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="샷 사이즈"
+                          value={editedConte?.shotSize || ''}
+                          onChange={(e) => handleFieldChange('shotSize', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="앵글 방향"
+                          value={editedConte?.angleDirection || ''}
+                          onChange={(e) => handleFieldChange('angleDirection', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="카메라 움직임"
+                          value={editedConte?.cameraMovement || ''}
+                          onChange={(e) => handleFieldChange('cameraMovement', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="컷 타입"
+                          value={editedConte?.cutType || ''}
+                          onChange={(e) => handleFieldChange('cutType', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="지속시간 (초)"
+                          value={editedConte?.duration || editedConte?.estimatedDuration || ''}
+                          onChange={(e) => handleFieldChange('duration', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={3}
+                          label="컷 설명"
+                          value={editedConte?.description || ''}
+                          onChange={(e) => handleFieldChange('description', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      
+                      {/* VFX/CG 정보 */}
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="VFX/CG 효과"
+                          placeholder="예: 슬로우모션, 합성, 디지털 이펙트"
+                          value={editedConte?.vfxEffects || ''}
+                          onChange={(e) => handleFieldChange('vfxEffects', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      
+                      {/* 사운드 정보 */}
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="사운드 (SFX/BGM)"
+                          placeholder="효과음, 음악, 대사 위치"
+                          value={editedConte?.soundEffects || ''}
+                          onChange={(e) => handleFieldChange('soundEffects', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      
+                      {/* 컷 목적 */}
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="컷 목적"
+                          placeholder="감정 강조, 정보 전달 등"
+                          value={editedConte?.cutPurpose || ''}
+                          onChange={(e) => handleFieldChange('cutPurpose', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      
+                      {/* 구도/인물 위치 */}
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="구도/인물 위치"
+                          placeholder="인물 배치, 시선 방향 등"
+                          value={editedConte?.composition || ''}
+                          onChange={(e) => handleFieldChange('composition', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      
+                      {/* 대사 및 나레이션 */}
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={3}
+                          label="대사 및 나레이션"
+                          placeholder="컷에서 사용되는 대사나 나레이션 (선택사항)"
+                          value={editedConte?.cutDialogue || ''}
+                          onChange={(e) => handleFieldChange('cutDialogue', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                      
+                      {/* 연출 노트 */}
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={3}
+                          label="연출 노트"
+                          placeholder="감독의 연출 지시사항이나 특별한 요구사항"
+                          value={editedConte?.directorNotes || ''}
+                          onChange={(e) => handleFieldChange('directorNotes', e.target.value)}
+                          variant="outlined"
+                        />
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+              </Grid>
+            )}
 
             {/* 장면 설정 */}
             <Grid item xs={12}>
@@ -1301,7 +1469,7 @@ const ConteEditModal = ({
             >
               {isRegeneratingConte ? '재생성 중...' : '콘티 재생성'}
             </Button>
-            {editedConte?.type && editedConte.type === CaptionCardType.GENERATED_VIDEO && onRegenerate && (
+            {editedConte?.type && editedConte.type === SceneType.GENERATED_VIDEO && onRegenerate && (
               <Button
                 onClick={() => onRegenerate(editedConte)}
                 variant="outlined"
