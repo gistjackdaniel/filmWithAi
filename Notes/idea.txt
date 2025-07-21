@@ -1,0 +1,51 @@
+1. RealLocation, Group의 정의
+
+RealLocation은 하나의 건물 내에서 상대적인 실제 장소를 의미하는거야. 예를 들면 103호 강의실, 3층 복도가 "RealLocation"이 되겠지.
+Group은 하나의 건물 단위를 나타내. "서울과학고등학교" 같은 것이 되겠지.
+
+realLocation은 3개의 attribute로 구성되어있어. ProjectId, 이름, groupId.
+ProjectId는 속한 프로젝트의 id. 이름은 realLocation의 장소 이름, "103호 강의실" 같은거지. groupId은 자신이 속한 group의 objectId야.
+
+group은 3개의 attribute로 구성되어있어. ProjectId, 이름, 주소.
+ProjectId는 속한 프로젝트의 id. 이름은 건물의 이름, "서울과학고등학교" 같은거지. 주소는 건물의 주소야. string으로 저장하지.
+ㅈㅈ
+각 씬(backend에서는 conte)에는 keyword.realLocationId라는 필드를 추가해야 돼. 씬이 위치한 realLocation의 Id를 저장하는거야.
+
+처음 conte를 만들 때는 각 씬마다 장소와 같은 이름의 realLocation을 생성해. 이미 그런 realLocation이 있다면 그 realLocation을 적용하지.
+그리고 conte의 realLocation은 장소와 같은 이름의 realLocation으로 설정하자.
+
+모든 realLocation가 groupId를 가질 필요는 없어. 비어있을 수 있지.
+마찬가지로 모든 씬(backend에서는 conte)가 realLocationId를 가질 필요는 없어.
+
+2. realLocation / group의 crud
+
+realLocation, group의 crud에 관한 창을 만드려고 해. 스케쥴을 만드는 창 내부에 "위치 관리 버튼"을 만드려고 해. 
+대략적인 아이디어를 설명해줄게.
+2개의 세부 탭으로 나뉘어져있어. group 관리 탭, realLocation 관리 탭.
+group 관리 탭에는 여러 group들이 나열되어있어. 
+    (api: group의 목록을 불러오는 기능)
+한 group을 클릭하면 그룹에 대한 상세 정보를 수정할 수 있는 팝업이 뜨는거야. 
+주소를 수정할 수 있고, 그룹에 속하는 realLocation을 추가/제거할 수 있어.
+    (api: group에 속한 realLocation 조회 기능)
+    (api: group의 주소 수정 기능)
+    (* 그룹에 속하는 realLocation 추가/제거는 realLocation의 api를 사용하면 된다)
+그룹을 삭제, 생성할 수도 있어야겠지
+    (api: group 생성/삭제 기능, 삭제할 때는 참조하는 realLocation을 찾아서 group을 null로 바꾸기)
+
+
+realLocation 관리 탭에는 여러 realLocation이 있어.
+    (api: realLocation 목록을 불러오는 기능)
+한 realLocation을 클릭하면 상세 정보를 수정할 수 있는 팝업이 떠. 
+속한 그룹 수정, 이름 변경, 이 realLocation에서 촬영하는 scene(backend에서는 conte) 추가/제거할 수 있어.
+    (api: realLocation에서 촬영하는 scene 조회 기능)
+    (api: realLocation의 group/이름 수정하는 기능)
+    (* realLocation에서 촬영하는 scene을 추가/제거하는 기능은 conte의 api를 사용하면 된다)
+realLocation을 생성/삭제할 수 있어야 돼.
+    (api: realLocation 생성/삭제 기능, 삭제할 때는 참조하는 conte를 찾아서 realLocation을 null로 바꾸기)
+
+realLocation이 어떠한 group에도 안 속하면 null로 남겨놓을거야.
+
+realLocation이 속한 group을 바꿀 때는 기존 그룹에서 빠지고, 새 그룹으로 옮겨. (→ 한 번에 하나의 그룹만 소속 가능)
+
+realLocation / group을 삭제하면 해당 realLocation/group을 참조하던 scene(backend에서는 conte)/realLocation은 realLocation/group을 null로 남겨놓을거야. 
+나중에 frontend에서 보여줄 때는 "미분류"로 보이겠지

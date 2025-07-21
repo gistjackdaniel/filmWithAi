@@ -40,6 +40,7 @@ import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal';
 import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토리 생성 스토어 추가
 import { getProject } from '../services/projectApi';
 import CommonHeader from '../components/CommonHeader';
+import LocationManagerModal from '../components/LocationManagerModal';
 
 /**
  * 간단한 스케줄표 페이지
@@ -59,6 +60,7 @@ const SimpleSchedulePage = () => {
   // 콘티 상세 모달 상태 추가
   const [selectedConte, setSelectedConte] = useState(null); // 선택된 콘티 정보
   const [conteModalOpen, setConteModalOpen] = useState(false); // 모달 열림 여부
+  const [locationManagerOpen, setLocationManagerOpen] = useState(false);
 
   // URL 파라미터 확인하여 즐겨찾기 모드인지 확인
   const isFavoriteView = new URLSearchParams(location.search).get('view') === 'favorite';
@@ -1267,16 +1269,15 @@ const SimpleSchedulePage = () => {
     : [];
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-      {/* 공통 헤더 */}
-      <CommonHeader 
-        title="촬영 스케줄"
-        showBackButton={true}
-        onBack={handleBack}
-      />
-      
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* 헤더 */}
+    <Box sx={{ background: '#181820', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="lg">
+        {/* 공통 헤더 */}
+        <CommonHeader 
+          title="촬영 스케줄"
+          showBackButton={true}
+          onBack={handleBack}
+        />
+        
         <Box sx={{ mb: 4 }}>
         
         <Typography variant="h4" component="h1" gutterBottom>
@@ -1428,47 +1429,52 @@ const SimpleSchedulePage = () => {
           )}
 
           {/* 상단 Chip 요약 정보 (SchedulerPage와 동일하게 MUI color prop 사용) */}
-          <Grid item xs={12} md={10} lg={8}>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
-              {/* 데이터 소스 표시 */}
-              <Chip
-                icon={finalProjectId || isFavoriteView ? <Star /> : <Videocam />}
-                label={`데이터: ${finalProjectId 
-                  ? `프로젝트 ${finalProjectId.substring(0, 8)}...` 
-                  : (isFavoriteView 
-                      ? (selectedProject 
-                          ? `즐겨찾기 - ${selectedProject.projectTitle}` 
-                          : '즐겨찾기 프로젝트')
-                      : (getConteData().length > 0 ? '실제 콘티' : '더미 데이터')
-                    )
-                }`}
-                color={finalProjectId || isFavoriteView ? "warning" : (getConteData().length > 0 ? "success" : "warning")}
+          <Grid item xs={12} md={10} lg={8} sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                {/* 기존 Chip들 */}
+                <Chip
+                  icon={<Star />}
+                  label={`$${isFavoriteView
+                    ? (selectedProject
+                        ? `즐겨찾기 - ${selectedProject.projectTitle}`
+                        : '즐겨찾기 프로젝트')
+                    : (getConteData().length > 0 ? '실제 콘티' : '더미 데이터')
+                  }`}
+                  color={finalProjectId || isFavoriteView ? "warning" : (getConteData().length > 0 ? "success" : "warning")}
+                  variant="outlined"
+                />
+                <Chip
+                  icon={<Schedule />}
+                  label={`총 ${scheduleData.days?.length || 0}일`}
+                  color="primary"
+                />
+                <Chip
+                  icon={<CameraAlt />}
+                  label={`총 ${scheduleData.days?.reduce((total, day) => total + (day.scenes?.length || 0), 0)}개 씬`}
+                  color="secondary"
+                />
+                <Chip
+                  icon={<LocationOn />}
+                  label={`총 ${formatDuration(scheduleData.days?.reduce((total, day) => total + (day.estimatedDuration || 0), 0))} (실제 촬영)`}
+                  color="success"
+                />
+                <Chip
+                  icon={<Build />}
+                  label={`최적화 점수: ${scheduleData.optimizationScore?.efficiency ?? 'NaN'}%`}
+                  color="info"
+                />
+              </Box>
+              {/* 위치 관리 버튼을 Chip들과 같은 높이에 오른쪽에 배치 */}
+              <Button
                 variant="outlined"
-              />
-              {/* 총 일수: color="primary" */}
-              <Chip
-                icon={<Schedule />}
-                label={`총 ${scheduleData.days?.length || 0}일`}
                 color="primary"
-              />
-              {/* 총 씬: color="secondary" */}
-              <Chip
-                icon={<CameraAlt />}
-                label={`총 ${scheduleData.days?.reduce((total, day) => total + (day.scenes?.length || 0), 0)}개 씬`}
-                color="secondary"
-              />
-              {/* 총 촬영시간: color="success" */}
-              <Chip
-                icon={<LocationOn />}
-                label={`총 ${formatDuration(scheduleData.days?.reduce((total, day) => total + (day.estimatedDuration || 0), 0))} (실제 촬영)`}
-                color="success"
-              />
-              {/* 최적화 점수: color="info" */}
-              <Chip
-                icon={<Build />}
-                label={`최적화 점수: ${scheduleData.optimizationScore?.efficiency ?? 'NaN'}%`}
-                color="info"
-              />
+                startIcon={<LocationOn />}
+                onClick={() => setLocationManagerOpen(true)}
+                sx={{ height: 40 }}
+              >
+                위치 관리
+              </Button>
             </Box>
           </Grid>
 
@@ -1646,6 +1652,12 @@ const SimpleSchedulePage = () => {
         onImageRetry={null} // SimpleSchedulePage에서는 이미지 재시도 기능 비활성화
         imageLoadErrors={{}}
         onImageLoadError={null}
+      />
+      {/* 위치 관리 버튼과 같은 줄에 모달 연결 */}
+      <LocationManagerModal
+        open={locationManagerOpen}
+        onClose={() => setLocationManagerOpen(false)}
+        projectId={finalProjectId}
       />
     </Container>
     </Box>
