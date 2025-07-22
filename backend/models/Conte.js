@@ -203,7 +203,13 @@ const conteSchema = new mongoose.Schema({
     specialRequirements: [{
       type: String,
       trim: true
-    }]
+    }],
+    // 추가: 실제 장소 참조
+    realLocationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'RealLocation',
+      default: null
+    }
   },
   
   // 스케줄링을 위한 상세 정보

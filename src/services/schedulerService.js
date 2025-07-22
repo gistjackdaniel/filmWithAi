@@ -1858,4 +1858,252 @@ const extractCameraFromConte = (conte) => {
   
   console.log('✅ 추출된 카메라 정보:', cameraInfo);
   return cameraInfo;
-} 
+}
+
+/**
+ * 프로젝트 촬영 스케쥴을 생성한다 (새 알고리즘)
+ * @param {Array} contes - 씬(콘티) 목록
+ * @param {Array} realLocations - 실제 장소 목록
+ * @param {Array} groups - 그룹(건물) 목록
+ * @param {string} projectId - 프로젝트 ID
+ * @returns {Object} schedule - 스케쥴 결과(날짜별 씬 배치, 안내문 등 포함)
+ */
+export async function scheduleShooting(contes, realLocations, groups, projectId) {
+  let messages = [];
+  let updatedContes = [...contes];
+  let updatedRealLocations = [...realLocations];
+  let updatedGroups = [...groups];
+
+  // 1. 빈 realLocation 자동 할당
+  let emptyRealLocation = updatedRealLocations.find(loc => loc.name === '빈 realLocation' && loc.projectId === projectId);
+  if (!emptyRealLocation) {
+    emptyRealLocation = {
+      _id: 'empty_realLocation',
+      projectId,
+      name: '빈 realLocation',
+      groupId: null
+    };
+    updatedRealLocations.push(emptyRealLocation);
+  }
+  let contesWithNoLocation = updatedContes.filter(c => !c.keywords?.realLocationId);
+  if (contesWithNoLocation.length > 0) {
+    updatedContes = updatedContes.map(c =>
+      c.keywords?.realLocationId
+        ? c
+        : { ...c, keywords: { ...c.keywords, realLocationId: emptyRealLocation._id } }
+    );
+    messages.push('촬영 위치가 지정되지 않은 씬이 있습니다. "빈 realLocation"이 자동 할당되었습니다. 촬영 위치를 채워주세요.');
+  }
+
+  // 2. 빈 group 자동 할당
+  let emptyGroup = updatedGroups.find(g => g.name === '빈 group' && g.projectId === projectId);
+  if (!emptyGroup) {
+    emptyGroup = {
+      _id: 'empty_group',
+      projectId,
+      name: '빈 group',
+      address: ''
+    };
+    updatedGroups.push(emptyGroup);
+  }
+  let realLocationsWithNoGroup = updatedRealLocations.filter(loc => !loc.groupId);
+  if (realLocationsWithNoGroup.length > 0) {
+    updatedRealLocations = updatedRealLocations.map(loc =>
+      loc.groupId
+        ? loc
+        : { ...loc, groupId: emptyGroup._id }
+    );
+    messages.push('그룹이 없는 장소가 있습니다. "빈 group"이 자동 할당되었습니다. 그룹을 할당해주세요.');
+  }
+
+  // [낮/밤 분리 로직 추가]
+  const isDay = (conte) => {
+    const t = conte.keywords?.timeOfDay;
+    return t === '아침' || t === '오후' || t === '낮';
+  };
+  const isNight = (conte) => {
+    const t = conte.keywords?.timeOfDay;
+    return t === '저녁' || t === '밤' || t === '새벽';
+  };
+  const dayContes = contes.filter(isDay);
+  const nightContes = contes.filter(isNight);
+
+  // 2, 3단계: realLocation별 → 씬 리스트로 묶기 → 그룹별 구간을 하루 6/3시간(360/180분) 이내로 분배
+  const dayDays = splitContesByLocationAndTime(dayContes, 360, updatedRealLocations);
+  const nightDays = splitContesByLocationAndTime(nightContes, 180, updatedRealLocations);
+
+  const maxLen = Math.max(dayDays.length, nightDays.length);
+
+  // 4단계: days 배열의 각 날에 대해 타임라인 생성
+  const scheduledDays = [];
+  for(let i = 0; i < maxLen; i++) {
+    const day = dayDays[i] || { sections: [], totalMinutes: 0 };
+    const night = nightDays[i] || { sections: [], totalMinutes: 0 };
+    const dayScenes = day.sections.map((section, idx) => {
+      return {type: '촬영', duration: section.totalMinutes, scene: section};
+    });
+    const nightScenes = night.sections.map((section, idx) => {
+      return {type: '촬영', duration: section.totalMinutes, scene: section};
+    });
+    const nightTimeline = [];
+    for(let j = 0; j < nightScenes.length; j++) {
+        if( j === 0 || nightScenes[j].scene.keywords?.realLocationId !== nightScenes[j-1].scene.keywords?.realLocationId) {
+            nightTimeline.push({type: ( j === 0 ? '밤 세팅' : '장소 이동 및 세팅'), duration: 60});
+            nightTimeline.push({type: '리허설', duration: 30});
+        }
+        nightTimeline.push({type: '촬영', duration: nightScenes[j].duration, scene: nightScenes[j].scene});
+    }
+    let dayTimeline = [];
+    for(let j = 0; j < dayScenes.length; j++) {
+        if(j === 0 || dayScenes[j].scene.keywords?.realLocationId !== dayScenes[j-1].scene.keywords?.realLocationId) {
+            dayTimeline.push({type: (j === 0 ? '세팅' : '장소 이동 및 세팅'), duration: 60});
+            dayTimeline.push({type: '리허설', duration: 30});
+        }
+        dayTimeline.push({type: '촬영', duration: dayScenes[j].duration, scene: dayScenes[j].scene});
+    }
+    let currentTime = 0;
+    let lunchIdx = undefined;
+    for(let j = dayTimeline.length - 1; j >= 0; j--) {
+        if(currentTime >= 5 * 60 && dayTimeline[j].type === '촬영') {
+            lunchIdx = j;
+            break;
+        }
+        currentTime += dayTimeline[j].duration;
+    }
+    if(lunchIdx !== undefined) {
+        dayTimeline = [...dayTimeline.slice(0, lunchIdx + 1), {type: '점심', duration: 60}, ...dayTimeline.slice(lunchIdx + 1)];
+    }
+
+
+    const timeline = [
+        {type: '집합', duration: 0}, 
+        {type: '이동', duration: 60},
+        ...dayTimeline, 
+        {type: '저녁', duration: 60}, 
+        ...nightTimeline,
+        {type: '철수', duration: 0}
+    ];
+    currentTime = 7 * 60;
+    let deltaTime = 0;
+    let scheduledDay = timeline.map((block, idx) => {
+      const ret = (idx === 0 || idx === timeline.length - 1) ? {
+        ...block,
+        time: toTimeStr(currentTime),
+      } : {
+        ...block,
+        time: toTimeStr(currentTime) + " ~ " + toTimeStr(currentTime + block.duration),
+      };
+      if(block.type === '저녁') deltaTime = 18 * 60 - currentTime;
+      currentTime += block.duration;
+      return ret;
+    });
+    currentTime = 7 * 60 + deltaTime;
+    scheduledDay = timeline.map((block, idx) => {
+        const ret = (idx === 0 || idx === timeline.length - 1) ? {
+          ...block,
+          time: toTimeStr(currentTime),
+        } : {
+          ...block,
+          time: toTimeStr(currentTime) + " ~ " + toTimeStr(currentTime + block.duration),
+        };
+        currentTime += block.duration;
+        return ret;
+    });
+    scheduledDays.push(scheduledDay);
+ }
+
+  // 유틸: 분→HH:MM, HH:MM→분
+  function toTimeStr(mins) {
+    let h = Math.floor(mins / 60);
+    const m = mins % 60;
+    let prefix = '';
+    if (h >= 24) {
+      prefix = '익일 ';
+      h -= 24;
+    }
+    return `${prefix}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  function timeToMinutes(str) {
+    const [h, m] = str.split(':').map(Number);
+    return h * 60 + m;
+  }
+  // 이후 단계에서 scheduledDays 사용
+  const returnScheduledDays = [];
+  for(let i = 0; i < scheduledDays.length; i++) {
+    const day = scheduledDays[i];
+    const sections = [];
+    let totalTime = 0;
+    day.map((block, idx) => {
+        if(block.type === '촬영') {
+            sections.push(block.scene);
+        }
+        totalTime += block.duration;
+    });
+    returnScheduledDays.push({
+        sections: sections,
+        timeline: day,
+        totalMinutes: totalTime,
+    });
+  }
+
+  // 최종 결과 리턴
+  return {
+    days: returnScheduledDays,
+    messages,
+  };
+}
+
+/**
+ * contes를 realLocationId 기준으로 정렬한 뒤, maxTime(분) 단위로 Day 배열로 분할
+ * @param {Conte[]} contes - 콘티(씬) 목록
+ * @param {number} maxTime - 한 Day의 최대 촬영 시간(분)
+ * @returns {Array<{ contes: Conte[], totalMinutes: number }>} Day 배열
+ */
+export function splitContesByLocationAndTime(contes, maxTime, realLocations) {
+  // 1. realLocationId 기준으로 정렬
+  const sorted = [...contes].sort((a, b) => {
+    const groupA = realLocations.find(loc => loc._id === a.keywords?.realLocationId)?.groupId;
+    const groupB = realLocations.find(loc => loc._id === b.keywords?.realLocationId)?.groupId;
+    const locA = a.keywords?.realLocationId || '';
+    const locB = b.keywords?.realLocationId || '';
+    if(groupA === groupB) {
+        if (locA < locB) return -1;
+        if (locA > locB) return 1;
+        return 0;
+    }
+    if(groupA < groupB) return -1;
+    if(groupA > groupB) return 1;
+    if (locA < locB) return -1;
+    if (locA > locB) return 1;
+    return 0;
+  });
+
+  // 2. maxTime 단위로 Day 분배
+  const days = [];
+  let currentDay = { sections: [], totalMinutes: 0 };
+  for (const conte of sorted) {
+    // estimatedDuration이 '3분' 등 문자열일 수 있으므로 숫자만 추출
+    let min = 0;
+    const est = conte.estimatedDuration;
+    if (typeof est === 'string') {
+      const match = est.match(/\d+/);
+      min = match ? Number(match[0]) : 0;
+    } else if (typeof est === 'number') {
+      min = est;
+    }
+    // 실제 촬영시간(분)으로 변환 (예: 60배 등, 필요시 조정)
+    const actualMin = min * 60;
+    // Day에 추가
+    if (currentDay.totalMinutes + actualMin > maxTime && currentDay.sections.length > 0) {
+      days.push(currentDay);
+      currentDay = { sections: [], totalMinutes: 0 };
+    }
+    currentDay.sections.push({
+        ...conte,
+        totalMinutes: actualMin
+    });
+    currentDay.totalMinutes += actualMin;
+  }
+  if (currentDay.sections.length > 0) days.push(currentDay);
+  return days;
+}

@@ -191,6 +191,29 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
       }
     }
 
+    // === RealLocation 자동 생성/연결 로직 시작 ===
+    const RealLocation = require('../models/RealLocation');
+    let realLocationId = null;
+    // 장소명 추출: keywords.location 또는 locationName 등
+    const locationName = (validatedKeywords.location || req.body.locationName || null);
+    if (locationName) {
+      let realLocation;
+      try {
+        realLocation = await RealLocation.create({ projectId, name: locationName });
+        console.log('✅ RealLocation 새로 생성:', realLocation._id, locationName);
+      } catch (err) {
+        if (err.code === 11000) { // duplicate key error
+          realLocation = await RealLocation.findOne({ projectId, name: locationName });
+          console.log('⚠️ 동시성 중복: 기존 RealLocation 사용:', realLocation._id, locationName);
+        } else {
+          throw err;
+        }
+      }
+      realLocationId = realLocation._id;
+    }
+    validatedKeywords.realLocationId = realLocationId;
+    // === RealLocation 자동 생성/연결 로직 끝 ===
+
     // 새 콘티 생성
     const conte = new Conte({
       projectId,
@@ -290,51 +313,56 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
 router.get('/:projectId/contes', authenticateToken, checkProjectAccess, async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { type, status } = req.query;
+    const { type, status, realLocationId } = req.query;
     const options = { type, status };
 
-    const contes = await Conte.findByProjectId(projectId, options);
+    let contes;
+    if (realLocationId) {
+      // realLocationId로 필터링
+      contes = await Conte.find({ projectId, 'keywords.realLocationId': realLocationId });
+    } else {
+      contes = await Conte.findByProjectId(projectId, options);
+    }
 
-            res.status(200).json({
-          success: true,
-          data: {
-            contes: contes.map(conte => ({
-              id: conte._id,
-              scene: conte.scene,
-              title: conte.title,
-              description: conte.description,
-              dialogue: conte.dialogue,
-              cameraAngle: conte.cameraAngle,
-              cameraWork: conte.cameraWork,
-              characterLayout: conte.characterLayout,
-              props: conte.props,
-              weather: conte.weather,
-              lighting: conte.lighting,
-              visualDescription: conte.visualDescription,
-              transition: conte.transition,
-              lensSpecs: conte.lensSpecs,
-              visualEffects: conte.visualEffects,
-              type: conte.type,
-              estimatedDuration: conte.estimatedDuration,
-              keywords: conte.keywords,
-              weights: conte.weights,
-              order: conte.order,
-              status: conte.status,
-              canEdit: conte.canEdit,
-              imageUrl: conte.imageUrl,
-              imagePrompt: conte.imagePrompt,
-              imageGeneratedAt: conte.imageGeneratedAt,
-              imageModel: conte.imageModel,
-              isFreeTier: conte.isFreeTier,
-              // 스케줄링 관련 필드들 추가
-              requiredPersonnel: conte.requiredPersonnel,
-              requiredEquipment: conte.requiredEquipment,
-              camera: conte.camera,
-              createdAt: conte.createdAt,
-              updatedAt: conte.updatedAt
-            }))
-          }
-        });
+    res.status(200).json({
+      success: true,
+      data: {
+        contes: contes.map(conte => ({
+          id: conte._id,
+          scene: conte.scene,
+          title: conte.title,
+          description: conte.description,
+          dialogue: conte.dialogue,
+          cameraAngle: conte.cameraAngle,
+          cameraWork: conte.cameraWork,
+          characterLayout: conte.characterLayout,
+          props: conte.props,
+          weather: conte.weather,
+          lighting: conte.lighting,
+          visualDescription: conte.visualDescription,
+          transition: conte.transition,
+          lensSpecs: conte.lensSpecs,
+          visualEffects: conte.visualEffects,
+          type: conte.type,
+          estimatedDuration: conte.estimatedDuration,
+          keywords: conte.keywords,
+          weights: conte.weights,
+          order: conte.order,
+          status: conte.status,
+          canEdit: conte.canEdit,
+          imageUrl: conte.imageUrl,
+          imagePrompt: conte.imagePrompt,
+          imageGeneratedAt: conte.imageGeneratedAt,
+          imageModel: conte.imageModel,
+          isFreeTier: conte.isFreeTier,
+          requiredPersonnel: conte.requiredPersonnel,
+          requiredEquipment: conte.requiredEquipment,
+          camera: conte.camera,
+          createdAt: conte.createdAt,
+          updatedAt: conte.updatedAt
+        }))
+      }
+    });
 
   } catch (error) {
     console.error('콘티 목록 조회 오류:', error);
@@ -451,14 +479,17 @@ router.put('/:projectId/contes/:conteId', authenticateToken, checkProjectAccess,
       });
     }
 
-    // 업데이트할 필드 설정
+    // object 타입 필드 배열로 관리
+    const objectFields = ['keywords', 'weights', 'scheduling'];
     Object.keys(updateData).forEach(key => {
-      if (conte.schema.paths[key]) {
+      if (objectFields.includes(key) && typeof updateData[key] === 'object') {
+        conte[key] = updateData[key];
+        conte.markModified(key);
+      } else if (conte.schema.paths[key]) {
         conte[key] = updateData[key];
       }
     });
 
-    // 수정 정보 업데이트
     conte.lastModified = new Date();
     conte.modifiedBy = req.user.name;
 

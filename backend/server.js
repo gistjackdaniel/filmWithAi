@@ -929,6 +929,9 @@ const projectRoutes = require('./routes/projects'); // 프로젝트 관리 라�
 const conteRoutes = require('./routes/contes'); // 콘티 관리 라우트
 const cutRoutes = require('./routes/cuts'); // 컷 관리 라우트
 const timelineRoutes = require('./routes/timeline'); // 타임라인 WebSocket 라우트
+const realLocationsRouter = require('./routes/realLocations');
+const groupsRouter = require('./routes/groups');
+const schedulesRouter = require('./routes/schedules');
 
 app.use('/api/auth', authRoutes); // /api/auth/* 경로를 auth 라우터로 연결
 app.use('/api/users', userRoutes); // /api/users/* 경로를 user 라우터로 연결
@@ -936,6 +939,9 @@ app.use('/api/projects', projectRoutes); // /api/projects/* 경로를 project �
 app.use('/api/projects', conteRoutes); // /api/projects/*/contes/* 경로를 conte 라우터로 연결
 app.use('/api/projects', cutRoutes); // /api/projects/*/contes/*/cuts/* 경로를 cut 라우터로 연결
 app.use('/api/timeline', timelineRoutes.router); // /api/timeline/* 경로를 timeline 라우터로 연결
+app.use('/api/projects', realLocationsRouter);
+app.use('/api/projects', groupsRouter);
+app.use('/api/projects', schedulesRouter);
 
 /**
  * 씬에서 컷 생성 API
