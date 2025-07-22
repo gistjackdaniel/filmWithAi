@@ -41,6 +41,9 @@ import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토�
 import { getProject } from '../services/projectApi';
 import CommonHeader from '../components/CommonHeader';
 import LocationManagerModal from '../components/LocationManagerModal';
+import { realLocationAPI } from '../services/api';
+import api from '../services/api';
+import { scheduleShooting } from '../services/schedulerService';
 
 /**
  * 간단한 스케줄표 페이지
@@ -997,6 +1000,7 @@ const SimpleSchedulePage = () => {
     const start = dayjs(range[0]);
     return days.map((day, idx) => ({
       ...day,
+      day: day.day ?? idx + 1,
       date: start.add(idx, 'day').format('YYYY-MM-DD')
     }));
   }
@@ -1020,7 +1024,6 @@ const SimpleSchedulePage = () => {
         } : '없음'
       });
       
-      // 콘티 데이터가 없는 경우 처리
       if (!conteData || conteData.length === 0) {
         if (isFavoriteView) {
           setError('즐겨찾기된 프로젝트에 콘티 데이터가 없습니다.');
@@ -1029,8 +1032,6 @@ const SimpleSchedulePage = () => {
         }
         return;
       }
-      
-      // 각 콘티의 keywords 정보 상세 로깅
       conteData.forEach((conte, index) => {
         console.log(`📋 콘티 ${index + 1} 상세 정보:`, {
           id: conte.id,
@@ -1044,15 +1045,29 @@ const SimpleSchedulePage = () => {
         });
       });
       
-      const schedule = await generateOptimalSchedule(conteData)
-      
-      console.log('✅ 스케줄 생성 완료:', {
-        totalDays: schedule.totalDays,
-        totalScenes: schedule.totalScenes,
-        estimatedDuration: schedule.estimatedTotalDuration
-      });
-      
-      setScheduleData(schedule)
+      // realLocations, groups 동시 fetch
+      const [realLocRes, groupRes] = await Promise.all([
+        realLocationAPI.getRealLocations(finalProjectId),
+        api.get(`/projects/${finalProjectId}/groups`)
+      ]);
+      const realLocations = realLocRes.data.data || [];
+      const groups = groupRes.data.data || [];
+
+      // 스케줄 생성
+      const scheduleResult = await scheduleShooting(conteData, realLocations, groups, finalProjectId);
+      setScheduleData(scheduleResult);
+      console.log('✅ 스케줄 생성 완료:', scheduleResult);
+
+      // DB 저장
+      try {
+        await api.post(`/projects/${finalProjectId}/schedules`, {
+          days: scheduleResult.days,
+          createdAt: new Date()
+        });
+        console.log('✅ 스케줄 DB 저장 완료');
+      } catch (err) {
+        console.error('❌ 스케줄 DB 저장 실패:', err);
+      }
     } catch (error) {
       console.error('❌ 스케줄 생성 실패:', error)
       setError(error.message || '스케줄 생성에 실패했습니다.')
@@ -1125,11 +1140,12 @@ const SimpleSchedulePage = () => {
    * @returns {Array} 시간대별로 그룹핑된 씬 데이터
    */
   function groupScenesByTimeBlock(days) {
+    // days가 undefined/null이면 빈 배열로 대체
+    if (!Array.isArray(days)) return [];
+    // 각 day의 scenes가 undefined/null이면 빈 배열로 대체
+    const allScenes = days.flatMap(day => Array.isArray(day.scenes) ? day.scenes.map(scene => ({ ...scene, day })) : []);
     // 결과: [{ time: '09:00~10:00', scenes: [scene, ...], location, cast, note }]
     const result = [];
-
-    // 모든 씬을 시간 순서대로 평탄화
-    const allScenes = days.flatMap(day => day.scenes.map(scene => ({ ...scene, day })));
 
     // 씬별로 정확한 시간 정보 사용
     for (let i = 0; i < allScenes.length; i++) {
@@ -1268,16 +1284,69 @@ const SimpleSchedulePage = () => {
     ? assignDatesToDays(scheduleData.days, dateRange)
     : [];
 
+  const [realLocations, setRealLocations] = useState([]);
+  const [realLocationMap, setRealLocationMap] = useState({});
+
+  // 모든 realLocation 불러오기 및 id→이름 매핑
+  useEffect(() => {
+    if (finalProjectId) {
+      realLocationAPI.getRealLocations(finalProjectId).then(res => {
+        const list = res.data.data || [];
+        setRealLocations(list);
+        const map = {};
+        list.forEach(loc => { map[loc._id] = loc.name; });
+        setRealLocationMap(map);
+      });
+    }
+  }, [finalProjectId]);
+
+  // 콘티 데이터 새로고침 함수 (기존 loadConteData를 재사용)
+  const reloadConteData = async () => {
+    if (finalProjectId) {
+      setIsLoadingConteData(true);
+      const projectData = await getProjectConteData(finalProjectId);
+      setConteData(projectData);
+      setIsLoadingConteData(false);
+    }
+  };
+
+  // 위치 관리 팝업 닫힘 핸들러
+  const handleLocationManagerClose = () => {
+    setLocationManagerOpen(false);
+    reloadConteData(); // 닫을 때마다 콘티 데이터 새로고침
+  };
+
+  // 씬 개수와 촬영 시간 계산
+  /*const totalScenes = scheduleData.days?.reduce(
+    (total, day) => total + (day.timeline?.filter(block => block.type === '촬영').length || 0),
+    0
+  );
+  */
+  const totalScenes = 0; // debug
+  /*
+  const totalShootingMinutes = scheduleData.days?.reduce(
+    (total, day) =>
+      total +
+      (day.timeline
+        ? day.timeline
+            .filter(block => block.type === '촬영')
+            .reduce((sum, block) => sum + (block.duration || block.estimatedDuration || 0), 0)
+        : 0),
+    0
+  );
+  */
+   const totalShootingMinutes = 0; // debug
+
   return (
     <Box sx={{ background: '#181820', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="lg">
-        {/* 공통 헤더 */}
-        <CommonHeader 
-          title="촬영 스케줄"
-          showBackButton={true}
-          onBack={handleBack}
-        />
-        
+      {/* 공통 헤더 */}
+      <CommonHeader 
+        title="촬영 스케줄"
+        showBackButton={true}
+        onBack={handleBack}
+      />
+      
         <Box sx={{ mb: 4 }}>
         
         <Typography variant="h4" component="h1" gutterBottom>
@@ -1391,7 +1460,7 @@ const SimpleSchedulePage = () => {
       {scheduleData && !isLoading && (
         <Grid container spacing={3} justifyContent="center" alignItems="flex-start"> {/* 중앙 정렬 */}
           {/* 날짜 범위 선택 UI (DatePicker 2개) */}
-          <Grid item xs={12} md={10} lg={8}>
+          <Grid item xs={12} md={12} lg={12}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
@@ -1420,7 +1489,7 @@ const SimpleSchedulePage = () => {
 
           {/* 촬영 기간 경고 */}
           {actualDateRange.length > 0 && actualDateRange.length < scheduleData.totalDays && (
-            <Grid item xs={12} md={10} lg={8}>
+            <Grid item xs={12} md={12} lg={12}>
               <Alert severity="warning" sx={{ mb: 3 }}>
                 ⚠️ 설정된 촬영 기간({actualDateRange.length}일)이 스케줄 일수({scheduleData.totalDays}일)보다 적습니다.
                 종료일을 늘려주세요.
@@ -1429,41 +1498,41 @@ const SimpleSchedulePage = () => {
           )}
 
           {/* 상단 Chip 요약 정보 (SchedulerPage와 동일하게 MUI color prop 사용) */}
-          <Grid item xs={12} md={10} lg={8} sx={{ mb: 2 }}>
+          <Grid item xs={12} md={12} lg={12} sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                 {/* 기존 Chip들 */}
-                <Chip
+              <Chip
                   icon={<Star />}
                   label={`$${isFavoriteView
-                    ? (selectedProject
-                        ? `즐겨찾기 - ${selectedProject.projectTitle}`
-                        : '즐겨찾기 프로젝트')
-                    : (getConteData().length > 0 ? '실제 콘티' : '더미 데이터')
-                  }`}
-                  color={finalProjectId || isFavoriteView ? "warning" : (getConteData().length > 0 ? "success" : "warning")}
-                  variant="outlined"
-                />
-                <Chip
-                  icon={<Schedule />}
-                  label={`총 ${scheduleData.days?.length || 0}일`}
-                  color="primary"
-                />
-                <Chip
-                  icon={<CameraAlt />}
-                  label={`총 ${scheduleData.days?.reduce((total, day) => total + (day.scenes?.length || 0), 0)}개 씬`}
-                  color="secondary"
-                />
-                <Chip
-                  icon={<LocationOn />}
-                  label={`총 ${formatDuration(scheduleData.days?.reduce((total, day) => total + (day.estimatedDuration || 0), 0))} (실제 촬영)`}
-                  color="success"
-                />
-                <Chip
-                  icon={<Build />}
-                  label={`최적화 점수: ${scheduleData.optimizationScore?.efficiency ?? 'NaN'}%`}
-                  color="info"
-                />
+                      ? (selectedProject 
+                          ? `즐겨찾기 - ${selectedProject.projectTitle}` 
+                          : '즐겨찾기 프로젝트')
+                      : (getConteData().length > 0 ? '실제 콘티' : '더미 데이터')
+                }`}
+                color={finalProjectId || isFavoriteView ? "warning" : (getConteData().length > 0 ? "success" : "warning")}
+                variant="outlined"
+              />
+              <Chip
+                icon={<Schedule />}
+                label={`총 ${scheduleData.days?.length || 0}일`}
+                color="primary"
+              />
+              <Chip
+                icon={<CameraAlt />}
+                  label={`총 ${totalScenes}개 씬`}
+                color="secondary"
+              />
+              <Chip
+                icon={<LocationOn />}
+                  label={`총 ${formatDuration(totalShootingMinutes)} (실제 촬영)`}
+                color="success"
+              />
+              <Chip
+                icon={<Build />}
+                label={`최적화 점수: ${scheduleData.optimizationScore?.efficiency ?? 'NaN'}%`}
+                color="info"
+              />
               </Box>
               {/* 위치 관리 버튼을 Chip들과 같은 높이에 오른쪽에 배치 */}
               <Button
@@ -1479,7 +1548,7 @@ const SimpleSchedulePage = () => {
           </Grid>
 
           {/* 상단 Day별 탭 UI */}
-          <Grid item xs={12} md={10} lg={8}> {/* 중아너비 제한 */}
+          <Grid item xs={12} md={12} lg={12}> {/* 중아너비 제한 */}
             <Tabs
               value={selectedDay}
               onChange={(e, newValue) => setSelectedDay(newValue)}
@@ -1497,7 +1566,7 @@ const SimpleSchedulePage = () => {
 
           {/* 선택된 Day만 렌더링 */}
           {daysWithDates[selectedDay] && (
-            <Grid item xs={12} md={10} lg={8}> {/* 중아너비 제한 */}
+            <Grid item xs={12} md={12} lg={12}> {/* 중아너비 제한 */}
               <Card key={selectedDay} sx={{ mb: 4, mx: 'auto' }}> {/* 카드 중앙 정렬 */}
                 <CardContent>
                   {/* 일차 및 날짜/장소 정보 */}
@@ -1511,128 +1580,44 @@ const SimpleSchedulePage = () => {
                           <TableCell><strong>시간</strong></TableCell>
                           <TableCell><strong>씬</strong></TableCell>
                           <TableCell><strong>장소</strong></TableCell>
+                          <TableCell><strong>촬영 위치</strong></TableCell>
                           <TableCell><strong>카메라</strong></TableCell>
                           <TableCell><strong>주요 인물</strong></TableCell>
-                          <TableCell><strong>필요 인력</strong></TableCell> {/* crew만 */}
-                          <TableCell><strong>필요 장비</strong></TableCell> {/* equipment만 */}
+                          <TableCell><strong>필요 인력</strong></TableCell>
+                          <TableCell><strong>필요 장비</strong></TableCell>
                           <TableCell><strong>비고</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {/* 씬별로 시간대 그룹핑 후, 각 씬 뒤에 쉬는시간 행을 추가 */}
-                        {groupScenesByTimeBlock([daysWithDates[selectedDay]]).map((block, idx, arr) => {
-                          // block/scenes 정보 로그
-                          console.log(`🟨 [렌더링] Day${selectedDay+1} block${idx+1}:`, block);
-                          // 현재 씬의 종료시간을 쉬는시간 시작으로 사용
-                          const sceneEndTime = block.scenes[0]?.sceneEndTime || '미정';
-                          const breakStart = sceneEndTime;
-                          const breakEnd = sceneEndTime !== '미정' ? addMinutesToTime(sceneEndTime, BREAK_TIME_MINUTES) : '미정';
-                          
-                          // 상세 정보 추출 (API 응답의 실제 필드에서 가져오기)
-                          const rawCameraInfo = block.scenes[0]?.camera || '기본 카메라';
-                          const requiredPersonnel = block.scenes[0]?.requiredPersonnel || '정보 없음';
-                          const requiredEquipment = block.scenes[0]?.requiredEquipment || '정보 없음';
-                          
-                          // 카메라 정보 파싱 함수: "C1C3" -> "C1, C3"
-                          const parseCameraInfo = (cameraStr) => {
-                            if (!cameraStr || typeof cameraStr !== 'string') return cameraStr;
-                            
-                            // "C1C3" 형태를 "C1, C3"로 변환
-                            const cameraMatch = cameraStr.match(/(C\d+)/g);
-                            if (cameraMatch && cameraMatch.length > 1) {
-                              return cameraMatch.join(', ');
-                            }
-                            
-                            return cameraStr;
-                          };
-                          
-                          const cameraInfo = parseCameraInfo(rawCameraInfo);
-                          
-                          // 주요 인물: cast만
-                          const cast = block.scenes[0]?.keywords?.cast || [];
-                          
-                          return (
-                            <React.Fragment key={idx}>
-                              {/* 씬 정보 행 */}
-                              <TableRow>
-                                {/* 시간 정보 및 촬영시간 */}
-                                <TableCell>
-                                  <Box>
-                                    <Typography variant="body2" fontWeight="bold">{block.time}</Typography>
-                                    {block.actualShootingDuration && (
-                                      <Typography variant="caption" color="text.secondary">
-                                        촬영: {formatDuration(block.actualShootingDuration)}
-                                      </Typography>
-                                    )}
-                                  </Box>
-                                </TableCell>
-                                {/* 씬 번호(Chip) */}
-                                <TableCell>
-                                  {block.scenes.map((scene, i) => (
-                                    <Chip
-                                      key={i}
-                                      label={`씬 ${scene.scene}`}
-                                      color="primary"
-                                      variant="outlined"
-                                      sx={{ mr: 0.5, mb: 0.5, cursor: 'pointer' }}
-                                      onClick={() => handleSceneClick(scene)}
-                                    />
-                                  ))}
-                                </TableCell>
-                                {/* 장소 정보 */}
-                                <TableCell>{block.location}</TableCell>
-                                {/* 카메라 정보: API 응답의 camera 필드 사용 */}
-                                <TableCell>
-                                  <Typography variant="body2">
-                                    {cameraInfo}
-                                  </Typography>
-                                </TableCell>
-                                {/* 주요 인물(Chip, cast만) */}
-                                <TableCell>
-                                  {Array.isArray(cast) && cast.length > 0
-                                    ? cast.map((actor, i) => (
-                                        <Chip
-                                          key={i}
-                                          label={actor}
-                                          color="secondary"
-                                          size="small"
-                                          sx={{ mr: 0.5, mb: 0.5 }}
-                                        />
-                                      ))
-                                    : (typeof cast === 'string' ? cast : '-')}
-                                </TableCell>
-                                {/* 필요 인력: API 응답의 requiredPersonnel 필드 사용 */}
-                                <TableCell>
-                                  <Typography variant="body2">
-                                    {requiredPersonnel}
-                                  </Typography>
-                                </TableCell>
-                                {/* 필요 장비: API 응답의 requiredEquipment 필드 사용 */}
-                                <TableCell>
-                                  <Typography variant="body2">
-                                    {requiredEquipment}
-                                  </Typography>
-                                </TableCell>
-                                {/* 비고(노트) */}
-                                <TableCell>{block.note}</TableCell>
+                        {daysWithDates[selectedDay]?.timeline?.map((block, idx) => (
+                          block.type !== '촬영' ? (
+                            <TableRow key={idx}>
+                              <TableCell>{block.time || block.type}</TableCell>
+                              <TableCell colSpan={8} align="center">{block.type}</TableCell>
                               </TableRow>
-                              {/* 쉬는시간 행: 마지막 씬이 아니면 추가 */}
-                              {idx < arr.length - 1 && (
-                                <TableRow>
-                                  {/* 쉬는시간도 00:00~00:00 형식으로 표기 */}
-                                  <TableCell>
-                                    <Typography color="warning.main">
-                                      {breakStart}~{breakEnd}
-                                    </Typography>
-                                  </TableCell>
-                                  <TableCell colSpan={7} align="center">
-                                    <Typography color="warning.main">쉬는시간</Typography>
-                                  </TableCell>
+                          ) : (
+                            <TableRow key={idx}>
+                              {/* 시간 */}
+                              <TableCell>{block.time || '-'}</TableCell>
+                              {/* 씬 */}
+                              <TableCell>{block.scene ? (block.scene.title || '-') : (block.type || '-')}</TableCell>
+                              {/* 장소 */}
+                              <TableCell>{block.scene ? (block.scene.keywords?.location || '-') : '-'}</TableCell>
+                              {/* 촬영 위치 */}
+                              <TableCell>{block.scene ? (realLocationMap[block.scene.keywords?.realLocationId] || '-') : '-'}</TableCell>
+                              {/* 카메라 */}
+                              <TableCell>{block.scene ? (block.scene.requiredEquipment || '-') : '-'}</TableCell>
+                              {/* 주요 인물 */}
+                              <TableCell>{block.scene ? (Array.isArray(block.scene.keywords?.cast) ? block.scene.keywords.cast.join(', ') : (block.scene.keywords?.cast || '-')) : '-'}</TableCell>
+                              {/* 필요 인력 */}
+                              <TableCell>{block.scene ? (block.scene.requiredPersonnel || '-') : '-'}</TableCell>
+                              {/* 필요 장비 */}
+                              <TableCell>{block.scene ? (block.scene.keywords?.equipment || '-') : '-'}</TableCell>
+                              {/* 비고 */}
+                              <TableCell>{block.scene ? (block.scene.note || '-') : '-'}</TableCell>
                                 </TableRow>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
+                          )
+                        ))}
                       </TableBody>
                     </Table>
                   </TableContainer>
@@ -1656,7 +1641,7 @@ const SimpleSchedulePage = () => {
       {/* 위치 관리 버튼과 같은 줄에 모달 연결 */}
       <LocationManagerModal
         open={locationManagerOpen}
-        onClose={() => setLocationManagerOpen(false)}
+        onClose={handleLocationManagerClose}
         projectId={finalProjectId}
       />
     </Container>

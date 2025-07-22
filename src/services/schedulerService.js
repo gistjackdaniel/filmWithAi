@@ -1858,4 +1858,200 @@ const extractCameraFromConte = (conte) => {
   
   console.log('✅ 추출된 카메라 정보:', cameraInfo);
   return cameraInfo;
-} 
+}
+
+/**
+ * 프로젝트 촬영 스케쥴을 생성한다 (새 알고리즘)
+ * @param {Array} contes - 씬(콘티) 목록
+ * @param {Array} realLocations - 실제 장소 목록
+ * @param {Array} groups - 그룹(건물) 목록
+ * @param {string} projectId - 프로젝트 ID
+ * @returns {Object} schedule - 스케쥴 결과(날짜별 씬 배치, 안내문 등 포함)
+ */
+export async function scheduleShooting(contes, realLocations, groups, projectId) {
+  let messages = [];
+  let updatedContes = [...contes];
+  let updatedRealLocations = [...realLocations];
+  let updatedGroups = [...groups];
+
+  // 1. 빈 realLocation 자동 할당
+  let emptyRealLocation = updatedRealLocations.find(loc => loc.name === '빈 realLocation' && loc.projectId === projectId);
+  if (!emptyRealLocation) {
+    emptyRealLocation = {
+      _id: 'empty_realLocation',
+      projectId,
+      name: '빈 realLocation',
+      groupId: null
+    };
+    updatedRealLocations.push(emptyRealLocation);
+  }
+  let contesWithNoLocation = updatedContes.filter(c => !c.keywords?.realLocationId);
+  if (contesWithNoLocation.length > 0) {
+    updatedContes = updatedContes.map(c =>
+      c.keywords?.realLocationId
+        ? c
+        : { ...c, keywords: { ...c.keywords, realLocationId: emptyRealLocation._id } }
+    );
+    messages.push('촬영 위치가 지정되지 않은 씬이 있습니다. "빈 realLocation"이 자동 할당되었습니다. 촬영 위치를 채워주세요.');
+  }
+
+  // 2. 빈 group 자동 할당
+  let emptyGroup = updatedGroups.find(g => g.name === '빈 group' && g.projectId === projectId);
+  if (!emptyGroup) {
+    emptyGroup = {
+      _id: 'empty_group',
+      projectId,
+      name: '빈 group',
+      address: ''
+    };
+    updatedGroups.push(emptyGroup);
+  }
+  let realLocationsWithNoGroup = updatedRealLocations.filter(loc => !loc.groupId);
+  if (realLocationsWithNoGroup.length > 0) {
+    updatedRealLocations = updatedRealLocations.map(loc =>
+      loc.groupId
+        ? loc
+        : { ...loc, groupId: emptyGroup._id }
+    );
+    messages.push('그룹이 없는 장소가 있습니다. "빈 group"이 자동 할당되었습니다. 그룹을 할당해주세요.');
+  }
+
+  // 2단계: 그룹별 → realLocation별 → 씬 리스트로 묶기
+  // groupedScenes: { [groupId]: { [realLocationId]: [씬, ...] } }
+  const groupedScenes = {};
+  for (const group of updatedGroups) {
+    groupedScenes[group._id] = {};
+    const groupLocations = updatedRealLocations.filter(loc => loc.groupId === group._id);
+    for (const loc of groupLocations) {
+      groupedScenes[group._id][loc._id] = updatedContes.filter(c => c.keywords?.realLocationId === loc._id);
+    }
+  }
+  // 이후 단계에서 groupedScenes 사용
+
+  // 3단계: 그룹별 구간을 하루 8시간(480분) 이내로 분배
+  // 각 구간: { groupId, groupName, realLocationId, realLocationName, scenes: [...] }
+  const allSections = [];
+  for (const groupId in groupedScenes) {
+    for (const realLocationId in groupedScenes[groupId]) {
+      const scenes = groupedScenes[groupId][realLocationId];
+      if (scenes.length === 0) continue;
+      const group = updatedGroups.find(g => g._id === groupId);
+      const realLocation = updatedRealLocations.find(l => l._id === realLocationId);
+      allSections.push({
+        groupId,
+        groupName: group?.name || '',
+        realLocationId,
+        realLocationName: realLocation?.name || '',
+        scenes
+      });
+    }
+  }
+  // 구간을 순서대로 하루 8시간(480분) 이내로 분배
+  const days = [];
+  let currentDay = { sections: [], totalMinutes: 30 }; // 첫 세팅시간 30분
+  for (const section of allSections) {
+    for (let i = 0; i < section.scenes.length; i++) {
+      let sectionMinutes = 0;
+      const est = section.scenes[i].estimatedDuration;
+      let min = 0;
+      if (typeof est === 'string') {
+        const match = est.match(/([\d.]+)분/);
+        min = match ? parseFloat(match[1]) : 0;
+      } else if (typeof est === 'number') {
+        min = est;
+      }
+      min = min * 60;
+      sectionMinutes += min;
+    // 하루 8시간(480분) 초과 시 다음 날로 넘김
+      if (sectionMinutes + currentDay.totalMinutes > 480 && currentDay.sections.length > 0) {  
+        days.push(currentDay);
+        currentDay = { sections: [], totalMinutes: 30 };
+      }
+      currentDay.sections.push({ ...section.scenes[i], sectionMinutes });
+      currentDay.totalMinutes += sectionMinutes;
+    }
+  }
+  if (currentDay.sections.length > 0) days.push(currentDay);
+  // 이후 단계에서 days 사용
+
+  // 4단계: days 배열의 각 날에 대해 타임라인 생성
+  const scheduledDays = days.map((day, dayIdx) => {
+    let timeline = [];
+    let currentTime = 6 * 60; // 6:00 집합 (분)
+    timeline.push({ type: '집합', time: '06:00', duration: 60 });
+    currentTime += 60; // 7:00 출발
+    timeline.push({ type: '이동', time: '07:00', duration: 60 });
+    currentTime += 60; // 8:00 도착
+    // 리허설(전체 촬영시간의 1/5, 10의 배수)
+    let rehearsalMinutes = Math.round(day.totalMinutes / 5 / 10) * 10;
+    if (rehearsalMinutes < 10) rehearsalMinutes = 10;
+    const rehearsalStart = currentTime;
+    timeline.push({ type: '리허설', time: toTimeStr(rehearsalStart), duration: rehearsalMinutes });
+    currentTime += rehearsalMinutes;
+    // 씬별 촬영(세팅시간 30분 포함)
+    let sceneBlocks = [];
+    let setupTime = false;
+    for (const scene of day.sections) {
+      if(!setupTime) {
+        sceneBlocks.push({ type: '세팅', time: toTimeStr(currentTime), duration: 30 });
+        currentTime += 30;
+        setupTime = true;
+      }
+      let min = 0;
+      const est = scene.estimatedDuration;
+      if (typeof est === 'string') {
+        const match = est.match(/\d+/);
+        min = match ? Number(match[0]) : 0;
+      } else if (typeof est === 'number') {
+        min = est;
+      }
+      // 촬영시간은 실제 시간의 60배
+      min = min * 60;
+      sceneBlocks.push({ type: '촬영', time: toTimeStr(currentTime), duration: min, scene: scene });
+      currentTime += min;
+    }
+    // 점심시간: 11시 이후 가장 빠른 씬 시작 "전" 1시간
+    let lunchIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) >= 11 * 60);
+    if (lunchIdx >= 0 && sceneBlocks.length > 0) {
+      const lunchStart = timeToMinutes(sceneBlocks[lunchIdx].time);
+      timeline = [...timeline, ...sceneBlocks.slice(0, lunchIdx)];
+      timeline.push({ type: '점심', time: toTimeStr(lunchStart), duration: 60 });
+      currentTime = lunchStart + 60;
+      // 점심 이후 씬들의 시작시간 보정
+      sceneBlocks = sceneBlocks.slice(lunchIdx).map(b => ({ ...b, time: toTimeStr(timeToMinutes(b.time) + 60) }));
+    }
+    // 저녁시간: 점심시간 + 6시간 이후 가장 빠른 씬 종료 뒤 1시간
+    let dinnerIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) >= currentTime + 6 * 60);
+    if (dinnerIdx >= 0 && dinnerIdx != sceneBlocks.length - 1 && sceneBlocks.length > 0) {
+      const dinnerStart = timeToMinutes(sceneBlocks[dinnerIdx].time) + sceneBlocks[dinnerIdx].duration;
+      timeline = [...timeline, ...sceneBlocks.slice(0, dinnerIdx + 1)];
+      timeline.push({ type: '저녁', time: toTimeStr(dinnerStart), duration: 60 });
+      currentTime = dinnerStart + 60;
+      // 저녁 이후 씬들의 시작시간 보정
+      sceneBlocks = sceneBlocks.slice(dinnerIdx + 1).map(b => ({ ...b, time: toTimeStr(timeToMinutes(b.time) + 60) }));
+    }
+    // 남은 씬들
+    timeline = [...timeline, ...sceneBlocks];
+    return {
+      ...day,
+      timeline
+    };
+  });
+  // 유틸: 분→HH:MM, HH:MM→분
+  function toTimeStr(mins) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  function timeToMinutes(str) {
+    const [h, m] = str.split(':').map(Number);
+    return h * 60 + m;
+  }
+  // 이후 단계에서 scheduledDays 사용
+
+  // 최종 결과 리턴
+  return {
+    days: scheduledDays,
+    messages,
+  };
+}

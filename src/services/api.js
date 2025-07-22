@@ -133,6 +133,10 @@ export const cutAPI = {
   getCutsBySpacetime: (projectId, conteId, spacetime) => api.get(`/projects/${projectId}/contes/${conteId}/cuts/spacetime/${spacetime}`)
 }
 
+export const realLocationAPI = {
+  getRealLocations: (projectId, params = {}) => api.get(`/projects/${projectId}/realLocations`, { params })
+};
+
 // ===== 요청 인터셉터 =====
 // 모든 API 요청이 전송되기 전에 실행되는 미들웨어
 api.interceptors.request.use(
