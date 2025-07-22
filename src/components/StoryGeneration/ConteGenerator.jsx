@@ -213,7 +213,10 @@ const ConteGenerator = ({
 
       console.log('🎬 캡션 카드 생성 시작:', { 
         storyLength: story.length, 
-        settings: conteSettings 
+        settings: conteSettings,
+        maxScenes: conteSettings.maxScenes,
+        projectId,
+        story: story.slice(0, 50) + (story.length > 50 ? '...' : '')
       })
 
       // AI 캡션 카드 생성 API 호출 (crew/equipment/cameras 안내문 포함)

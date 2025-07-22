@@ -1475,6 +1475,8 @@ app.post('/api/image/generate', async (req, res) => {
         model: 'dev-placeholder',
         isFreeTier: true
       });
+    } else {
+        console.log('🥝🥝🥝 AI 이미지 만듦');
     }
     const { sceneDescription, style = 'cinematic', genre = '일반', size = '1024x1024' } = req.body
 

@@ -451,13 +451,12 @@ const TimelineViewer = (props) => {
   }, [stableSafeScenesRef, filters])
 
   // 안전한 필터링된 씬들 참조
-  const safeFilteredScenes = useMemo(() => {
-    if (!filteredScenes || !Array.isArray(filteredScenes)) {
-      console.warn('TimelineViewer: filteredScenes is not an array', filteredScenes)
-      return []
-    }
-    return filteredScenes.filter(scene => scene && scene.id) // 유효한 씬만 필터링
-  }, [filteredScenes])
+  const safeFilteredScenes = filteredScenes
+    .map(scene => ({
+      ...scene,
+      id: scene.id || scene.cutId // id가 없으면 cutId를 id로 사용
+    }))
+    .filter(scene => scene && scene.id);
 
   // 안전한 씬 ID 배열
   const safeSceneIds = useMemo(() => {
