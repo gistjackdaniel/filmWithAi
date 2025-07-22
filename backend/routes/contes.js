@@ -197,12 +197,17 @@ router.post('/:projectId/contes', authenticateToken, checkProjectAccess, async (
     // 장소명 추출: keywords.location 또는 locationName 등
     const locationName = (validatedKeywords.location || req.body.locationName || null);
     if (locationName) {
-      let realLocation = await RealLocation.findOne({ projectId, name: locationName });
-      if (!realLocation) {
+      let realLocation;
+      try {
         realLocation = await RealLocation.create({ projectId, name: locationName });
         console.log('✅ RealLocation 새로 생성:', realLocation._id, locationName);
-      } else {
-        console.log('✅ 기존 RealLocation 사용:', realLocation._id, locationName);
+      } catch (err) {
+        if (err.code === 11000) { // duplicate key error
+          realLocation = await RealLocation.findOne({ projectId, name: locationName });
+          console.log('⚠️ 동시성 중복: 기존 RealLocation 사용:', realLocation._id, locationName);
+        } else {
+          throw err;
+        }
       }
       realLocationId = realLocation._id;
     }

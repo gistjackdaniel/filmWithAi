@@ -1962,7 +1962,7 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
       }
       min = min * 60;
       sectionMinutes += min;
-    // 하루 8시간(480분) 초과 시 다음 날로 넘김
+      // 하루 8시간(480분) 초과 시 다음 날로 넘김
       if (sectionMinutes + currentDay.totalMinutes > 480 && currentDay.sections.length > 0) {  
         days.push(currentDay);
         currentDay = { sections: [], totalMinutes: 30 };
@@ -1977,9 +1977,8 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
   // 4단계: days 배열의 각 날에 대해 타임라인 생성
   const scheduledDays = days.map((day, dayIdx) => {
     let timeline = [];
-    let currentTime = 6 * 60; // 6:00 집합 (분)
-    timeline.push({ type: '집합', time: '06:00', duration: 60 });
-    currentTime += 60; // 7:00 출발
+    let currentTime = 7 * 60; // 7:00 집합 (분)
+    timeline.push({ type: '집합', time: '07:00', duration: 0 });
     timeline.push({ type: '이동', time: '07:00', duration: 60 });
     currentTime += 60; // 8:00 도착
     // 리허설(전체 촬영시간의 1/5, 10의 배수)
@@ -1990,12 +1989,11 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
     currentTime += rehearsalMinutes;
     // 씬별 촬영(세팅시간 30분 포함)
     let sceneBlocks = [];
-    let setupTime = false;
     for (const scene of day.sections) {
-      if(!setupTime) {
-        sceneBlocks.push({ type: '세팅', time: toTimeStr(currentTime), duration: 30 });
+      if(sceneBlocks.length === 0) sceneBlocks.push({ type: '세팅', time: toTimeStr(currentTime), duration: 30 }), currentTime += 30;
+      else if(sceneBlocks[sceneBlocks.length - 1].scene.keywords?.realLocationId !== scene.keywords?.realLocationId) {
+        sceneBlocks.push({ type: '장소 이동 및 세팅', time: toTimeStr(currentTime), duration: 30 });
         currentTime += 30;
-        setupTime = true;
       }
       let min = 0;
       const est = scene.estimatedDuration;
@@ -2011,14 +2009,14 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
       currentTime += min;
     }
     // 점심시간: 11시 이후 가장 빠른 씬 시작 "전" 1시간
-    let lunchIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) >= 11 * 60);
-    if (lunchIdx >= 0 && sceneBlocks.length > 0) {
-      const lunchStart = timeToMinutes(sceneBlocks[lunchIdx].time);
-      timeline = [...timeline, ...sceneBlocks.slice(0, lunchIdx)];
+    let lunchIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) + b.duration >= 11 * 60);
+    if (lunchIdx >= 0 && lunchIdx != sceneBlocks.length - 1) {
+      const lunchStart = timeToMinutes(sceneBlocks[lunchIdx].time) + sceneBlocks[lunchIdx].duration;
+      timeline = [...timeline, ...sceneBlocks.slice(0, lunchIdx+1)];
       timeline.push({ type: '점심', time: toTimeStr(lunchStart), duration: 60 });
       currentTime = lunchStart + 60;
       // 점심 이후 씬들의 시작시간 보정
-      sceneBlocks = sceneBlocks.slice(lunchIdx).map(b => ({ ...b, time: toTimeStr(timeToMinutes(b.time) + 60) }));
+      sceneBlocks = sceneBlocks.slice(lunchIdx+1).map(b => ({ ...b, time: toTimeStr(timeToMinutes(b.time) + 60) }));
     }
     // 저녁시간: 점심시간 + 6시간 이후 가장 빠른 씬 종료 뒤 1시간
     let dinnerIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) >= currentTime + 6 * 60);
@@ -2032,6 +2030,15 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
     }
     // 남은 씬들
     timeline = [...timeline, ...sceneBlocks];
+    
+    timeline.push({ type: '종료', time: toTimeStr(timeToMinutes(timeline[timeline.length - 1].time) + timeline[timeline.length - 1].duration), duration: 0 });
+    // 시간을 구간으로 나타냄
+    timeline = timeline.map((block, idx) => (
+        (idx === 0 || idx === timeline.length - 1) ? block : {
+        ...block,
+        time: block.time + " ~ " + toTimeStr(timeToMinutes(block.time) + block.duration),
+        duration: 0
+      }));
     return {
       ...day,
       timeline

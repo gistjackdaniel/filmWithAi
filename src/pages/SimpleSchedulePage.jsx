@@ -1317,14 +1317,11 @@ const SimpleSchedulePage = () => {
   };
 
   // 씬 개수와 촬영 시간 계산
-  /*const totalScenes = scheduleData.days?.reduce(
+  const totalScenes = (scheduleData?.days ?? []).reduce(
     (total, day) => total + (day.timeline?.filter(block => block.type === '촬영').length || 0),
     0
   );
-  */
-  const totalScenes = 0; // debug
-  /*
-  const totalShootingMinutes = scheduleData.days?.reduce(
+  const totalShootingMinutes = (scheduleData?.days ?? []).reduce(
     (total, day) =>
       total +
       (day.timeline
@@ -1334,8 +1331,6 @@ const SimpleSchedulePage = () => {
         : 0),
     0
   );
-  */
-   const totalShootingMinutes = 0; // debug
 
   return (
     <Box sx={{ background: '#181820', minHeight: '100vh', py: 4 }}>
@@ -1499,8 +1494,8 @@ const SimpleSchedulePage = () => {
 
           {/* 상단 Chip 요약 정보 (SchedulerPage와 동일하게 MUI color prop 사용) */}
           <Grid item xs={12} md={12} lg={12} sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
                 {/* 기존 Chip들 */}
               <Chip
                   icon={<Star />}
@@ -1527,11 +1522,6 @@ const SimpleSchedulePage = () => {
                 icon={<LocationOn />}
                   label={`총 ${formatDuration(totalShootingMinutes)} (실제 촬영)`}
                 color="success"
-              />
-              <Chip
-                icon={<Build />}
-                label={`최적화 점수: ${scheduleData.optimizationScore?.efficiency ?? 'NaN'}%`}
-                color="info"
               />
               </Box>
               {/* 위치 관리 버튼을 Chip들과 같은 높이에 오른쪽에 배치 */}
@@ -1577,15 +1567,14 @@ const SimpleSchedulePage = () => {
                     <Table>
                       <TableHead>
                         <TableRow sx={{ backgroundColor: '#2F2F37' }}>
-                          <TableCell><strong>시간</strong></TableCell>
-                          <TableCell><strong>씬</strong></TableCell>
-                          <TableCell><strong>장소</strong></TableCell>
-                          <TableCell><strong>촬영 위치</strong></TableCell>
-                          <TableCell><strong>카메라</strong></TableCell>
-                          <TableCell><strong>주요 인물</strong></TableCell>
-                          <TableCell><strong>필요 인력</strong></TableCell>
-                          <TableCell><strong>필요 장비</strong></TableCell>
-                          <TableCell><strong>비고</strong></TableCell>
+                          <TableCell align="center"><strong>시간</strong></TableCell>
+                          <TableCell align="center"><strong>씬</strong></TableCell>
+                          <TableCell align="center"><strong>촬영 위치</strong></TableCell>
+                          <TableCell align="center"><strong>카메라</strong></TableCell>
+                          <TableCell align="center"><strong>주요 인물</strong></TableCell>
+                          <TableCell align="center"><strong>필요 인력</strong></TableCell>
+                          <TableCell align="center"><strong>필요 장비</strong></TableCell>
+                          <TableCell align="center"><strong>비고</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1601,8 +1590,6 @@ const SimpleSchedulePage = () => {
                               <TableCell>{block.time || '-'}</TableCell>
                               {/* 씬 */}
                               <TableCell>{block.scene ? (block.scene.title || '-') : (block.type || '-')}</TableCell>
-                              {/* 장소 */}
-                              <TableCell>{block.scene ? (block.scene.keywords?.location || '-') : '-'}</TableCell>
                               {/* 촬영 위치 */}
                               <TableCell>{block.scene ? (realLocationMap[block.scene.keywords?.realLocationId] || '-') : '-'}</TableCell>
                               {/* 카메라 */}
