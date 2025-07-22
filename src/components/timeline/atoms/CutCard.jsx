@@ -179,28 +179,27 @@ const CutCard = React.memo(({
   
   // 외부에서 너비가 전달되지 않은 경우에만 내부 계산 수행
   if (width === null) {
-    const baseWidth = 100 // 기본 너비를 100px로 축소
-    const minWidth = Math.max(calculateMinSceneWidth(zoomLevel, 30), 60) // 최소 너비를 60px로 축소
+    const minWidth = 60 // 최소 너비
     
-    // 시간 기반 너비 계산 개선
-    if (timeScale > 0 && cutDuration > 0) {
-      // 시간을 픽셀로 변환 (1초당 픽셀 수)
+    // 시간 기반 너비 계산 - TimeRuler와 동기화 (여백 없음)
+    if (cutDuration > 0 && timeScale > 0) {
+      // TimeRuler와 동일한 계산 공식 사용 (연속 배치)
       const pixelsPerSecond = 1 / timeScale // timeScale이 작을수록 더 많은 픽셀 필요
       const timeBasedWidth = cutDuration * pixelsPerSecond
       
-      // 최소 너비와 최대 너비 제한 - 줌 레벨에 따라 동적 조정
-      const maxWidth = Math.max(400, (1 / timeScale) * 100) // 줌 레벨에 따라 최대 너비 조정
+      // 최소 너비와 최대 너비 제한 (여백 없이 연속 배치)
+      const maxWidth = Math.max(400, cutDuration * 20) // 최대 1초당 20px
       cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
       
       // 디버깅 로그
-      console.log(`CutCard 내부 계산 컷 ${cut.shotNumber}: duration=${cutDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
+      console.log(`CutCard 동적 계산 컷 ${cut.shotNumber}: duration=${cutDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
     } else if (cutDuration > 0) {
       // timeScale이 0이지만 duration이 있는 경우 기본 계산
-      const estimatedWidth = Math.max(cutDuration * 3, minWidth) // 1초당 3픽셀로 조정
-      cardWidth = Math.min(estimatedWidth, 150) // 최대 150픽셀로 축소
+      const basePixelsPerSecond = 10
+      const timeBasedWidth = cutDuration * basePixelsPerSecond
+      cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, 150))
       
-      // 디버깅 로그
-      console.log(`CutCard 내부 계산 컷 ${cut.shotNumber}: duration=${cutDuration}s, fallback width=${cardWidth}px`)
+      console.log(`CutCard 기본 계산 컷 ${cut.shotNumber}: duration=${cutDuration}s, fallback width=${cardWidth}px`)
     }
   } else {
     // 외부에서 전달된 너비 사용 시 로그
@@ -332,21 +331,22 @@ const CutCard = React.memo(({
         onMouseLeave={() => onMouseLeave && onMouseLeave()}
         sx={{
           width: cardWidth,
-          height: 150,
+          height: 80,
           backgroundColor: 'var(--color-card-bg)',
-          borderRadius: '8px',
+          borderRadius: '4px',
           border: `2px solid ${selected ? 'var(--color-accent)' : typeInfo.borderColor}`,
-          p: 2,
+          p: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: 1,
+          gap: 0.5,
           cursor: 'pointer',
           transition: 'all 0.2s ease-in-out',
           position: 'relative',
           overflow: 'hidden',
+          marginRight: 0, // 연속 배치를 위해 여백 제거
           '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            transform: 'translateY(-1px)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
             borderColor: 'var(--color-accent)'
           },
           ...(isMultiSelected && {
@@ -359,10 +359,10 @@ const CutCard = React.memo(({
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
-        alignItems: 'flex-start',
-        mb: 1
+        alignItems: 'center',
+        mb: 0.5
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
           <Box sx={{ 
             color: 'var(--color-accent)',
             display: 'flex',
@@ -371,9 +371,9 @@ const CutCard = React.memo(({
             {typeInfo.icon}
           </Box>
           <Typography
-            variant="subtitle2"
+            variant="caption"
             sx={{
-              font: 'var(--font-body-2)',
+              font: 'var(--font-caption)',
               color: 'var(--color-text-primary)',
               fontWeight: 600,
               lineHeight: 1.2
@@ -390,12 +390,12 @@ const CutCard = React.memo(({
           size="small"
           color={typeInfo.color}
           sx={{
-            height: 20,
-            fontSize: '0.7rem',
+            height: 16,
+            fontSize: '0.6rem',
             backgroundColor: typeInfo.bgColor,
             color: 'var(--color-text-primary)',
             '& .MuiChip-icon': {
-              fontSize: '0.8rem'
+              fontSize: '0.7rem'
             }
           }}
         />
@@ -405,12 +405,12 @@ const CutCard = React.memo(({
       {cut.imageUrl && (
         <Box sx={{ 
           width: '100%', 
-          height: 60, 
-          borderRadius: 1,
+          height: 40, 
+          borderRadius: 0.5,
           overflow: 'hidden',
           border: '1px solid rgba(212, 175, 55, 0.3)',
           position: 'relative',
-          mb: 1,
+          mb: 0.5,
           backgroundColor: 'rgba(212, 175, 55, 0.1)',
           display: 'flex',
           alignItems: 'center',
@@ -445,14 +445,13 @@ const CutCard = React.memo(({
                     width: 100%;
                     height: 100%;
                     color: var(--color-text-secondary);
-                    font-size: 12px;
+                    font-size: 10px;
                     text-align: center;
-                    padding: 8px;
+                    padding: 4px;
                   ">
                     <div>
-                      <div style="font-size: 24px; margin-bottom: 4px;">🎬</div>
+                      <div style="font-size: 16px; margin-bottom: 2px;">🎬</div>
                       <div>컷 ${cut.shotNumber}</div>
-                      <div style="font-size: 10px; opacity: 0.7;">이미지 없음</div>
                     </div>
                   </div>
                 `
@@ -468,60 +467,22 @@ const CutCard = React.memo(({
 
       {/* 컷 제목 */}
       <Typography
-        variant="body2"
+        variant="caption"
         sx={{
-          font: 'var(--font-body-2)',
+          font: 'var(--font-caption)',
           color: 'var(--color-text-primary)',
           fontWeight: 500,
-          lineHeight: 1.3,
-          mb: 1,
+          lineHeight: 1.2,
+          mb: 0.5,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           display: '-webkit-box',
-          WebkitLineClamp: 2,
+          WebkitLineClamp: 1,
           WebkitBoxOrient: 'vertical'
         }}
       >
         {cut.title || `컷 ${cut.shotNumber}`}
       </Typography>
-
-      {/* 컷 설명 */}
-      {cut.description && (
-        <Typography
-          variant="caption"
-          sx={{
-            font: 'var(--font-caption)',
-            color: 'var(--color-text-secondary)',
-            lineHeight: 1.2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            mb: 1
-          }}
-        >
-          {cut.description}
-        </Typography>
-      )}
-
-      {/* 조명 세팅 정보 */}
-      {cut.lightingSetup && (
-        <Box sx={{ mt: 1, mb: 1 }}>
-          <Typography
-            variant="caption"
-            sx={{
-              font: 'var(--font-caption)',
-              color: 'var(--color-text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5
-            }}
-          >
-            💡 {cut.lightingSetup.mainLight || '조명'}
-          </Typography>
-        </Box>
-      )}
 
       {/* 컷 정보 행 */}
       <Box sx={{ 
@@ -533,7 +494,7 @@ const CutCard = React.memo(({
         {/* 시간 정보 */}
         {showTimeInfo && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <AccessTime sx={{ fontSize: 14, color: 'var(--color-text-secondary)' }} />
+            <AccessTime sx={{ fontSize: 12, color: 'var(--color-text-secondary)' }} />
             <Typography
               variant="caption"
               sx={{
@@ -568,8 +529,8 @@ const CutCard = React.memo(({
       {/* 액션 버튼들 (호버 시 표시) */}
       <Box sx={{
         position: 'absolute',
-        top: 8,
-        right: 8,
+        top: 4,
+        right: 4,
         display: 'flex',
         gap: 0.5,
         opacity: 0,
@@ -594,7 +555,7 @@ const CutCard = React.memo(({
                 }
               }}
             >
-              <Edit sx={{ fontSize: 14 }} />
+              <Edit sx={{ fontSize: 12 }} />
             </IconButton>
           </Tooltip>
         )}
@@ -615,7 +576,7 @@ const CutCard = React.memo(({
                 }
               }}
             >
-              <Info sx={{ fontSize: 14 }} />
+              <Info sx={{ fontSize: 12 }} />
             </IconButton>
           </Tooltip>
         )}
@@ -625,14 +586,14 @@ const CutCard = React.memo(({
       {isDraggable && (
         <Box sx={{
           position: 'absolute',
-          top: 8,
-          left: 8,
+          top: 4,
+          left: 4,
           opacity: 0.5,
           '&:hover': {
             opacity: 1
           }
         }}>
-          <DragIndicator sx={{ fontSize: 16, color: 'var(--color-text-secondary)' }} />
+          <DragIndicator sx={{ fontSize: 12, color: 'var(--color-text-secondary)' }} />
         </Box>
       )}
 
@@ -645,7 +606,7 @@ const CutCard = React.memo(({
           right: 0,
           bottom: 0,
           border: '2px solid var(--color-accent)',
-          borderRadius: '8px',
+          borderRadius: '4px',
           pointerEvents: 'none'
         }} />
       )}

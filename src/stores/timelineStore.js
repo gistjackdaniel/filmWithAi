@@ -593,14 +593,14 @@ const useTimelineStore = create((set, get) => ({
           get().addCut(data.cut)
         } else if (data.type === 'scene_updated') {
           get().updateScene(data.sceneId, data.updates)
-        } else if (data.type === 'scene_deleted') {
+      } else if (data.type === 'scene_deleted') {
           get().deleteScene(data.sceneId)
-        } else if (data.type === 'scene_created') {
+      } else if (data.type === 'scene_created') {
           get().addScene(data.scene)
-        }
-      })
-      
-      set({ websocketConnection: ws })
+      }
+    })
+
+    set({ websocketConnection: ws })
       console.log('✅ timelineStore WebSocket 연결 설정 완료')
     } catch (error) {
       console.error('❌ timelineStore WebSocket 연결 실패:', error)
