@@ -1916,149 +1916,194 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
     messages.push('그룹이 없는 장소가 있습니다. "빈 group"이 자동 할당되었습니다. 그룹을 할당해주세요.');
   }
 
-  // 2단계: 그룹별 → realLocation별 → 씬 리스트로 묶기
-  // groupedScenes: { [groupId]: { [realLocationId]: [씬, ...] } }
-  const groupedScenes = {};
-  for (const group of updatedGroups) {
-    groupedScenes[group._id] = {};
-    const groupLocations = updatedRealLocations.filter(loc => loc.groupId === group._id);
-    for (const loc of groupLocations) {
-      groupedScenes[group._id][loc._id] = updatedContes.filter(c => c.keywords?.realLocationId === loc._id);
-    }
-  }
-  // 이후 단계에서 groupedScenes 사용
+  // [낮/밤 분리 로직 추가]
+  const isDay = (conte) => {
+    const t = conte.keywords?.timeOfDay;
+    return t === '아침' || t === '오후' || t === '낮';
+  };
+  const isNight = (conte) => {
+    const t = conte.keywords?.timeOfDay;
+    return t === '저녁' || t === '밤' || t === '새벽';
+  };
+  const dayContes = contes.filter(isDay);
+  const nightContes = contes.filter(isNight);
 
-  // 3단계: 그룹별 구간을 하루 8시간(480분) 이내로 분배
-  // 각 구간: { groupId, groupName, realLocationId, realLocationName, scenes: [...] }
-  const allSections = [];
-  for (const groupId in groupedScenes) {
-    for (const realLocationId in groupedScenes[groupId]) {
-      const scenes = groupedScenes[groupId][realLocationId];
-      if (scenes.length === 0) continue;
-      const group = updatedGroups.find(g => g._id === groupId);
-      const realLocation = updatedRealLocations.find(l => l._id === realLocationId);
-      allSections.push({
-        groupId,
-        groupName: group?.name || '',
-        realLocationId,
-        realLocationName: realLocation?.name || '',
-        scenes
-      });
-    }
-  }
-  // 구간을 순서대로 하루 8시간(480분) 이내로 분배
-  const days = [];
-  let currentDay = { sections: [], totalMinutes: 30 }; // 첫 세팅시간 30분
-  for (const section of allSections) {
-    for (let i = 0; i < section.scenes.length; i++) {
-      let sectionMinutes = 0;
-      const est = section.scenes[i].estimatedDuration;
-      let min = 0;
-      if (typeof est === 'string') {
-        const match = est.match(/([\d.]+)분/);
-        min = match ? parseFloat(match[1]) : 0;
-      } else if (typeof est === 'number') {
-        min = est;
-      }
-      min = min * 60;
-      sectionMinutes += min;
-      // 하루 8시간(480분) 초과 시 다음 날로 넘김
-      if (sectionMinutes + currentDay.totalMinutes > 480 && currentDay.sections.length > 0) {  
-        days.push(currentDay);
-        currentDay = { sections: [], totalMinutes: 30 };
-      }
-      currentDay.sections.push({ ...section.scenes[i], sectionMinutes });
-      currentDay.totalMinutes += sectionMinutes;
-    }
-  }
-  if (currentDay.sections.length > 0) days.push(currentDay);
-  // 이후 단계에서 days 사용
+  // 2, 3단계: realLocation별 → 씬 리스트로 묶기 → 그룹별 구간을 하루 6/3시간(360/180분) 이내로 분배
+  const dayDays = splitContesByLocationAndTime(dayContes, 360, updatedRealLocations);
+  const nightDays = splitContesByLocationAndTime(nightContes, 180, updatedRealLocations);
+
+  const maxLen = Math.max(dayDays.length, nightDays.length);
 
   // 4단계: days 배열의 각 날에 대해 타임라인 생성
-  const scheduledDays = days.map((day, dayIdx) => {
-    let timeline = [];
-    let currentTime = 7 * 60; // 7:00 집합 (분)
-    timeline.push({ type: '집합', time: '07:00', duration: 0 });
-    timeline.push({ type: '이동', time: '07:00', duration: 60 });
-    currentTime += 60; // 8:00 도착
-    // 리허설(전체 촬영시간의 1/5, 10의 배수)
-    let rehearsalMinutes = Math.round(day.totalMinutes / 5 / 10) * 10;
-    if (rehearsalMinutes < 10) rehearsalMinutes = 10;
-    const rehearsalStart = currentTime;
-    timeline.push({ type: '리허설', time: toTimeStr(rehearsalStart), duration: rehearsalMinutes });
-    currentTime += rehearsalMinutes;
-    // 씬별 촬영(세팅시간 30분 포함)
-    let sceneBlocks = [];
-    for (const scene of day.sections) {
-      if(sceneBlocks.length === 0) sceneBlocks.push({ type: '세팅', time: toTimeStr(currentTime), duration: 30 }), currentTime += 30;
-      else if(sceneBlocks[sceneBlocks.length - 1].scene.keywords?.realLocationId !== scene.keywords?.realLocationId) {
-        sceneBlocks.push({ type: '장소 이동 및 세팅', time: toTimeStr(currentTime), duration: 30 });
-        currentTime += 30;
-      }
-      let min = 0;
-      const est = scene.estimatedDuration;
-      if (typeof est === 'string') {
-        const match = est.match(/\d+/);
-        min = match ? Number(match[0]) : 0;
-      } else if (typeof est === 'number') {
-        min = est;
-      }
-      // 촬영시간은 실제 시간의 60배
-      min = min * 60;
-      sceneBlocks.push({ type: '촬영', time: toTimeStr(currentTime), duration: min, scene: scene });
-      currentTime += min;
+  const scheduledDays = [];
+  for(let i = 0; i < maxLen; i++) {
+    const day = dayDays[i] || { sections: [], totalMinutes: 0 };
+    const night = nightDays[i] || { sections: [], totalMinutes: 0 };
+    const dayScenes = day.sections.map((section, idx) => {
+      return {type: '촬영', duration: section.totalMinutes, scene: section};
+    });
+    const nightScenes = night.sections.map((section, idx) => {
+      return {type: '촬영', duration: section.totalMinutes, scene: section};
+    });
+    const nightTimeline = [];
+    for(let j = 0; j < nightScenes.length; j++) {
+        if( j === 0 || nightScenes[j].scene.keywords?.realLocationId !== nightScenes[j-1].scene.keywords?.realLocationId) {
+            nightTimeline.push({type: ( j === 0 ? '밤 세팅' : '장소 이동 및 세팅'), duration: 60});
+            nightTimeline.push({type: '리허설', duration: 30});
+        }
+        nightTimeline.push({type: '촬영', duration: nightScenes[j].duration, scene: nightScenes[j].scene});
     }
-    // 점심시간: 11시 이후 가장 빠른 씬 시작 "전" 1시간
-    let lunchIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) + b.duration >= 11 * 60);
-    if (lunchIdx >= 0 && lunchIdx != sceneBlocks.length - 1) {
-      const lunchStart = timeToMinutes(sceneBlocks[lunchIdx].time) + sceneBlocks[lunchIdx].duration;
-      timeline = [...timeline, ...sceneBlocks.slice(0, lunchIdx+1)];
-      timeline.push({ type: '점심', time: toTimeStr(lunchStart), duration: 60 });
-      currentTime = lunchStart + 60;
-      // 점심 이후 씬들의 시작시간 보정
-      sceneBlocks = sceneBlocks.slice(lunchIdx+1).map(b => ({ ...b, time: toTimeStr(timeToMinutes(b.time) + 60) }));
+    let dayTimeline = [];
+    for(let j = 0; j < dayScenes.length; j++) {
+        if(j === 0 || dayScenes[j].scene.keywords?.realLocationId !== dayScenes[j-1].scene.keywords?.realLocationId) {
+            dayTimeline.push({type: (j === 0 ? '세팅' : '장소 이동 및 세팅'), duration: 60});
+            dayTimeline.push({type: '리허설', duration: 30});
+        }
+        dayTimeline.push({type: '촬영', duration: dayScenes[j].duration, scene: dayScenes[j].scene});
     }
-    // 저녁시간: 점심시간 + 6시간 이후 가장 빠른 씬 종료 뒤 1시간
-    let dinnerIdx = sceneBlocks.findIndex(b => b.type === '촬영' && timeToMinutes(b.time) >= currentTime + 6 * 60);
-    if (dinnerIdx >= 0 && dinnerIdx != sceneBlocks.length - 1 && sceneBlocks.length > 0) {
-      const dinnerStart = timeToMinutes(sceneBlocks[dinnerIdx].time) + sceneBlocks[dinnerIdx].duration;
-      timeline = [...timeline, ...sceneBlocks.slice(0, dinnerIdx + 1)];
-      timeline.push({ type: '저녁', time: toTimeStr(dinnerStart), duration: 60 });
-      currentTime = dinnerStart + 60;
-      // 저녁 이후 씬들의 시작시간 보정
-      sceneBlocks = sceneBlocks.slice(dinnerIdx + 1).map(b => ({ ...b, time: toTimeStr(timeToMinutes(b.time) + 60) }));
+    let currentTime = 0;
+    let lunchIdx = undefined;
+    for(let j = dayTimeline.length - 1; j >= 0; j--) {
+        if(currentTime >= 5 * 60 && dayTimeline[j].type === '촬영') {
+            lunchIdx = j;
+            break;
+        }
+        currentTime += dayTimeline[j].duration;
     }
-    // 남은 씬들
-    timeline = [...timeline, ...sceneBlocks];
-    
-    timeline.push({ type: '종료', time: toTimeStr(timeToMinutes(timeline[timeline.length - 1].time) + timeline[timeline.length - 1].duration), duration: 0 });
-    // 시간을 구간으로 나타냄
-    timeline = timeline.map((block, idx) => (
-        (idx === 0 || idx === timeline.length - 1) ? block : {
+    if(lunchIdx !== undefined) {
+        dayTimeline = [...dayTimeline.slice(0, lunchIdx + 1), {type: '점심', duration: 60}, ...dayTimeline.slice(lunchIdx + 1)];
+    }
+
+
+    const timeline = [
+        {type: '집합', duration: 0}, 
+        {type: '이동', duration: 60},
+        ...dayTimeline, 
+        {type: '저녁', duration: 60}, 
+        ...nightTimeline,
+        {type: '철수', duration: 0}
+    ];
+    currentTime = 7 * 60;
+    let deltaTime = 0;
+    let scheduledDay = timeline.map((block, idx) => {
+      const ret = (idx === 0 || idx === timeline.length - 1) ? {
         ...block,
-        time: block.time + " ~ " + toTimeStr(timeToMinutes(block.time) + block.duration),
-        duration: 0
-      }));
-    return {
-      ...day,
-      timeline
-    };
-  });
+        time: toTimeStr(currentTime),
+      } : {
+        ...block,
+        time: toTimeStr(currentTime) + " ~ " + toTimeStr(currentTime + block.duration),
+      };
+      if(block.type === '저녁') deltaTime = 18 * 60 - currentTime;
+      currentTime += block.duration;
+      return ret;
+    });
+    currentTime = 7 * 60 + deltaTime;
+    scheduledDay = timeline.map((block, idx) => {
+        const ret = (idx === 0 || idx === timeline.length - 1) ? {
+          ...block,
+          time: toTimeStr(currentTime),
+        } : {
+          ...block,
+          time: toTimeStr(currentTime) + " ~ " + toTimeStr(currentTime + block.duration),
+        };
+        currentTime += block.duration;
+        return ret;
+    });
+    scheduledDays.push(scheduledDay);
+ }
+
   // 유틸: 분→HH:MM, HH:MM→분
   function toTimeStr(mins) {
-    const h = Math.floor(mins / 60);
+    let h = Math.floor(mins / 60);
     const m = mins % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    let prefix = '';
+    if (h >= 24) {
+      prefix = '익일 ';
+      h -= 24;
+    }
+    return `${prefix}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
   function timeToMinutes(str) {
     const [h, m] = str.split(':').map(Number);
     return h * 60 + m;
   }
   // 이후 단계에서 scheduledDays 사용
+  const returnScheduledDays = [];
+  for(let i = 0; i < scheduledDays.length; i++) {
+    const day = scheduledDays[i];
+    const sections = [];
+    let totalTime = 0;
+    day.map((block, idx) => {
+        if(block.type === '촬영') {
+            sections.push(block.scene);
+        }
+        totalTime += block.duration;
+    });
+    returnScheduledDays.push({
+        sections: sections,
+        timeline: day,
+        totalMinutes: totalTime,
+    });
+  }
 
   // 최종 결과 리턴
   return {
-    days: scheduledDays,
+    days: returnScheduledDays,
     messages,
   };
+}
+
+/**
+ * contes를 realLocationId 기준으로 정렬한 뒤, maxTime(분) 단위로 Day 배열로 분할
+ * @param {Conte[]} contes - 콘티(씬) 목록
+ * @param {number} maxTime - 한 Day의 최대 촬영 시간(분)
+ * @returns {Array<{ contes: Conte[], totalMinutes: number }>} Day 배열
+ */
+export function splitContesByLocationAndTime(contes, maxTime, realLocations) {
+  // 1. realLocationId 기준으로 정렬
+  const sorted = [...contes].sort((a, b) => {
+    const groupA = realLocations.find(loc => loc._id === a.keywords?.realLocationId)?.groupId;
+    const groupB = realLocations.find(loc => loc._id === b.keywords?.realLocationId)?.groupId;
+    const locA = a.keywords?.realLocationId || '';
+    const locB = b.keywords?.realLocationId || '';
+    if(groupA === groupB) {
+        if (locA < locB) return -1;
+        if (locA > locB) return 1;
+        return 0;
+    }
+    if(groupA < groupB) return -1;
+    if(groupA > groupB) return 1;
+    if (locA < locB) return -1;
+    if (locA > locB) return 1;
+    return 0;
+  });
+
+  // 2. maxTime 단위로 Day 분배
+  const days = [];
+  let currentDay = { sections: [], totalMinutes: 0 };
+  for (const conte of sorted) {
+    // estimatedDuration이 '3분' 등 문자열일 수 있으므로 숫자만 추출
+    let min = 0;
+    const est = conte.estimatedDuration;
+    if (typeof est === 'string') {
+      const match = est.match(/\d+/);
+      min = match ? Number(match[0]) : 0;
+    } else if (typeof est === 'number') {
+      min = est;
+    }
+    // 실제 촬영시간(분)으로 변환 (예: 60배 등, 필요시 조정)
+    const actualMin = min * 60;
+    // Day에 추가
+    if (currentDay.totalMinutes + actualMin > maxTime && currentDay.sections.length > 0) {
+      days.push(currentDay);
+      currentDay = { sections: [], totalMinutes: 0 };
+    }
+    currentDay.sections.push({
+        ...conte,
+        totalMinutes: actualMin
+    });
+    currentDay.totalMinutes += actualMin;
+  }
+  if (currentDay.sections.length > 0) days.push(currentDay);
+  return days;
 }
