@@ -41,7 +41,7 @@ function App() {
     if (metaThemeColor) {
       metaThemeColor.setAttribute('content', '#1B1B1E')
     }
-  }, [initialize])
+  }, []); // 빈 배열로 수정하여 무한 렌더링 방지
 
   // 로딩 중일 때 스플래시 화면 표시
   if (loading) {

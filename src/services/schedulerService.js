@@ -1964,7 +1964,7 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
     let currentTime = 0;
     let lunchIdx = undefined;
     for(let j = dayTimeline.length - 1; j >= 0; j--) {
-        if(currentTime >= 5 * 60 && dayTimeline[j].type === '촬영') {
+        if(currentTime >= 5 * 60) {
             lunchIdx = j;
             break;
         }
