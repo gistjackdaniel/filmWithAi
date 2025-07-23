@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Schedule = require('../models/Schedule');
 const Project = require('../models/Project');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -64,6 +65,38 @@ router.get('/:projectId/schedules', authenticateToken, checkProjectAccess, async
     res.json({ success: true, data: schedule });
   } catch (error) {
     res.status(500).json({ success: false, message: '스케쥴 조회 오류', error });
+  }
+});
+
+// AI 일일촬영계획표 생성 (OpenAI 연동)
+router.post('/daily-shooting-plan/generate', async (req, res) => {
+  const { prompt } = req.body;
+  console.log('📝 [AI 일일촬영계획표 요청] 받은 프롬프트:', prompt);
+  try {
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: '당신은 영화 촬영 현장의 전문가입니다. 아래 프롬프트를 바탕으로 실무적으로 유용한 영화 일일촬영계획표를 한국어로 작성하세요.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 2000,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000
+      }
+    );
+    const aiResponse = response.data.choices[0].message.content.trim();
+    res.json({ result: aiResponse });
+  } catch (error) {
+    console.error('❌ OpenAI API 호출 오류:', error.message);
+    res.json({ result: 'AI 생성 오류: ' + (error.response?.data?.error?.message || error.message) });
   }
 });
 

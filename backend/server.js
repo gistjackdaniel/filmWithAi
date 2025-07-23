@@ -228,8 +228,8 @@ const generateCutsFromScene = async (sceneData) => {
       "description": "촬영 설명",
       "shootingPlan": {
         "shotSize": "MS",
-        "angleDirection": "Eye-level",
-        "cameraMovement": "Static",
+      "angleDirection": "Eye-level",
+      "cameraMovement": "Static",
         "lensSpecs": "50mm"
       },
       "characterMovement": {
@@ -273,7 +273,7 @@ const generateCutsFromScene = async (sceneData) => {
 
     const content = response.data.choices[0].message.content.trim()
     const tokenCount = response.data.usage.total_tokens
-    
+
     console.log('✅ LLM API 호출 성공:', { tokenCount, contentLength: content.length })
     
     // JSON 파싱 - 강화된 에러 처리
@@ -468,7 +468,7 @@ const generateCutsFromScene = async (sceneData) => {
             canEdit: true,
             modifiedBy: 'AI',
 
-          } 
+          }
 
           // 추가 안전장치: 모든 숫자 필드 확인
           if (isNaN(safeCut.startTime)) safeCut.startTime = startTime
@@ -542,7 +542,7 @@ const generateCutsFromScene = async (sceneData) => {
           }
           
           // 첫 번째 컷: Establish Shot (상황 설정)
-          if (cutNumber === 1) {
+        if (cutNumber === 1) {
             basePattern = {
               cutType: 'WS',
               shotSize: 'WS',
@@ -567,9 +567,9 @@ const generateCutsFromScene = async (sceneData) => {
             if (mood.includes('감정') || mood.includes('슬픔') || mood.includes('기쁨') || mood.includes('사랑')) {
               if (cutNumber === 2) {
                 basePattern = { cutType: 'MS', shotSize: 'MS', lensSpecs: '50mm', angleDirection: 'Eye-level', cameraMovement: 'Static' }
-              } else if (cutNumber === 3) {
+        } else if (cutNumber === 3) {
                 basePattern = { cutType: 'CU', shotSize: 'CU', lensSpecs: '85mm', angleDirection: 'Eye-level', cameraMovement: 'Static' }
-              } else if (cutNumber === 4) {
+        } else if (cutNumber === 4) {
                 basePattern = { cutType: 'ECU', shotSize: 'ECU', lensSpecs: '100mm', angleDirection: 'Dutch', cameraMovement: 'Static' }
               }
             }
@@ -824,19 +824,19 @@ const generateCutsFromScene = async (sceneData) => {
           ...defaultCut,
           shootingConditions: {
             ...defaultCut.shootingConditions,
-            lightingSetup: {
-              mainLight: sceneInfo.lighting === '자연광' ? '창문' : '메인 라이트',
-              fillLight: sceneInfo.lighting === '자연광' ? '반사판' : '필 라이트',
-              backLight: sceneInfo.lighting === '자연광' ? '역광' : '백 라이트',
-              specialEffects: '',
-              intensity: '보통',
-              color: '백색광'
+          lightingSetup: {
+            mainLight: sceneInfo.lighting === '자연광' ? '창문' : '메인 라이트',
+            fillLight: sceneInfo.lighting === '자연광' ? '반사판' : '필 라이트',
+            backLight: sceneInfo.lighting === '자연광' ? '역광' : '백 라이트',
+            specialEffects: '',
+            intensity: '보통',
+            color: '백색광'
             }
           },
           characterMovement: {
             ...defaultCut.characterMovement,
-            characters: [{
-              name: sceneInfo.characters || '주인공',
+          characters: [{
+            name: sceneInfo.characters || '주인공',
               position: {
                 x: 50,
                 y: 60
@@ -1036,10 +1036,10 @@ app.post('/api/cuts/generate', async (req, res) => {
           dialogue: cut.dialogue || '',
           narration: cut.narration || '',
                       characterMovement: cut.characterMovement || {
-              characters: cut.characters || [],
+            characters: cut.characters || [],
               blocking: '배치 설명',
-              cameraPosition: { x: 50, y: 50, z: 0 }
-            },
+            cameraPosition: { x: 50, y: 50, z: 0 }
+          },
           productionMethod: 'live_action',
           estimatedDuration: typeof cut.duration === 'string' ? parseInt(cut.duration) : (cut.duration || cut.estimatedDuration || 5),
           // VFX/CG 관련 필드들 - LLM 응답에서 가져오기

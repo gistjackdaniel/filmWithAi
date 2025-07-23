@@ -75,6 +75,10 @@ const SchedulerPage = (props) => {
   const [endDate, setEndDate] = useState('') // 종료 날짜
   const [dateRange, setDateRange] = useState([]) // 실제 날짜 배열
 
+  // 일일촬영계획표 모달 상태 추가
+  const [openDailyPlanModal, setOpenDailyPlanModal] = useState(false);
+  const [promptPreview, setPromptPreview] = useState('');
+
   /**
    * 콘티 데이터 우선순위:
    * 1. location.state?.conteData (실제 라우터에서 전달된 데이터)
@@ -392,6 +396,97 @@ const SchedulerPage = (props) => {
           availableMinutes: 480 // 8시간 = 480분
         }
     }
+  }
+
+  function getLocationName(realLocationId, realLocations) {
+    const loc = realLocations.find(l => l._id === realLocationId);
+    return loc ? loc.name : '미정';
+  }
+
+  function makeDailyShootingPlanPrompt({ project, scheduleData, realLocations, staffInfo, locationInfo, weather, sunrise, sunset }) {
+    const shootingDate = scheduleData.days?.[0]?.date || project.shootingDate || '미정';
+    const scenes = scheduleData.days?.[0]?.scenes || [];
+    const scheduleTable = (scheduleData.days?.[0]?.timeTable || [])
+      .map(row => `| ${row.time} | ${row.type} | ${row.scene?.title || ''} |`).join('\n');
+    return `
+다음 정보를 바탕으로 영화 일일촬영계획표를 작성해주세요.
+
+## 프로젝트 정보
+- 제목: ${project.title}
+- 촬영 날짜: ${shootingDate}
+- 날씨: ${weather || '맑음'}
+- 일출: ${sunrise || '05:30'}
+- 일몰: ${sunset || '19:30'}
+
+## 촬영할 씬 정보 (시간대별)
+${scenes.map((scene, index) => `
+${index + 1}. 씬 ${scene.scene}: ${scene.title}
+   - 설명: ${scene.description}
+   - 장소: ${getLocationName(scene.keywords?.realLocationId, realLocations)}
+   - 시간대: ${scene.keywords?.timeOfDay || '낮'}
+   - 등장인물: ${scene.characterLayout || '미정'}
+   - 소품: ${scene.props || '없음'}
+   - 조명: ${scene.lighting || '자연광'}
+   - 카메라: ${scene.cameraAngle || '중간샷'}
+   - 예상 시간: ${scene.estimatedDuration || '5분'}
+`).join('\n')}
+
+## 스태프 정보
+${staffInfo ? staffInfo : '기본 스태프 구성'}
+
+## 장소 정보
+${locationInfo ? locationInfo : realLocations.map(loc => `- ${loc.name} (${loc.address || '주소 미정'})`).join('\n')}
+
+다음 형식으로 일일촬영계획표를 작성해주세요:
+
+# 일일촬영계획표
+
+## 1. 기본 정보
+| 항목 | 내용 |
+|------|------|
+| 제목 | ${project.title} |
+| 촬영일 | ${shootingDate} |
+| 날씨 | ${weather || '맑음'} |
+| 일출/일몰 | ${sunrise || '05:30'} / ${sunset || '19:30'} |
+
+## 2. 촬영 일정표
+| 시간 | 활동 | 비고 |
+|------|------|------|
+${scheduleTable}
+
+## 3. 촬영 씬 상세
+| 씬번호 | 장소 | 시간대 | 컷수 | 내용 | 등장인물 | 단역 | 비고 |
+|--------|------|--------|------|------|----------|------|------|
+${scenes.map((scene, index) => `| ${scene.scene} | ${getLocationName(scene.keywords?.realLocationId, realLocations)} | ${scene.keywords?.timeOfDay || '낮'} | 3-5컷 | ${scene.title} | ${scene.characterLayout || '미정'} | ${scene.props ? '소품 필요' : '없음'} | ${scene.lighting || '자연광'}`).join('\n')} |
+
+## 4. 부서별 준비사항
+| 부서 | 준비사항 | 담당자 |
+|------|----------|--------|
+| 연출부 | 시나리오, 콘티, 무전기, 감독 의자, 리허설 계획서 | 감독 |
+| 제작부 | 촬영 일정표, 연락처 목록, 차량 배치, 리허설 시간 관리 | 제작부장 |
+| 미술 | 촬영지 미술 작업, 소품 준비, 리허설용 임시 소품 | 미술감독 |
+| 소품 | 씬별 소품 목록, 소품 차량, 리허설용 소품 | 소품담당 |
+| 의상/분장 | 배우 의상, 분장 도구, 헤어 도구, 리허설용 의상 | 의상담당 |
+| 촬영부 | 카메라, 렌즈, 조명 장비, 리허설용 조명 셋팅 | 촬영감독 |
+
+## 5. 연락처
+| 부서 | 담당자 | 연락처 |
+|------|--------|--------|
+| 연출부 | 감독 | 010-0000-0000 |
+| 제작부 | 제작부장 | 010-0000-0001 |
+| 미술 | 미술감독 | 010-0000-0002 |
+| 소품 | 소품담당 | 010-0000-0003 |
+| 의상/분장 | 의상담당 | 010-0000-0004 |
+| 촬영부 | 촬영감독 | 010-0000-0005 |
+
+## 6. 특이사항
+- 촬영 시간 준수 필수
+- 날씨 상황에 따른 대비책 준비
+- 안전사고 예방에 유의
+- 촬영 자료 백업 필수
+
+한국어로 자연스럽게 작성하고, 실제 촬영 현장에서 사용할 수 있는 실용적인 내용으로 작성해주세요.
+표 형식을 정확히 유지해주세요.`;
   }
 
   return (
@@ -970,6 +1065,19 @@ const SchedulerPage = (props) => {
         imageLoadErrors={{}}
         onImageLoadError={null}
       />
+
+      {/* 일일촬영계획표 모달 */}
+      <Dialog open={openDailyPlanModal} onClose={() => setOpenDailyPlanModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle>일일촬영계획표 프롬프트 미리보기</DialogTitle>
+        <DialogContent>
+          <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+            {promptPreview || '스케줄 데이터가 없습니다.'}
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDailyPlanModal(false)}>닫기</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

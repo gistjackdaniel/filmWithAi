@@ -18,7 +18,11 @@ import {
   Divider,
   Tabs,
   Tab,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Schedule,
@@ -64,6 +68,8 @@ const SimpleSchedulePage = () => {
   const [selectedConte, setSelectedConte] = useState(null); // 선택된 콘티 정보
   const [conteModalOpen, setConteModalOpen] = useState(false); // 모달 열림 여부
   const [locationManagerOpen, setLocationManagerOpen] = useState(false);
+  const [openDailyPlanModal, setOpenDailyPlanModal] = useState(false);
+  const [promptPreview, setPromptPreview] = useState('');
 
   // URL 파라미터 확인하여 즐겨찾기 모드인지 확인
   const isFavoriteView = new URLSearchParams(location.search).get('view') === 'favorite';
@@ -167,6 +173,11 @@ const SimpleSchedulePage = () => {
   const [projectInfo, setProjectInfo] = useState(null); // 프로젝트 정보 추가
   const [isLoadingConteData, setIsLoadingConteData] = useState(true); // 콘티 데이터 로딩 상태 추가
   
+  // useEffect(마운트)와 useEffect(loadConteData)를 컴포넌트 최상단에 위치
+  useEffect(() => {
+    // 마운트 시 동작 (콘솔 로그 제거)
+  }, []);
+
   useEffect(() => {
     const loadConteData = async () => {
       setIsLoadingConteData(true); // 로딩 시작
@@ -206,7 +217,9 @@ const SimpleSchedulePage = () => {
         dataToUse = projectData;
         
         // 프로젝트 정보도 함께 가져오기
+        console.log('getProjectInfo 호출, finalProjectId:', finalProjectId);
         const projectInfoData = await getProjectInfo(finalProjectId);
+        console.log('getProjectInfo 응답:', projectInfoData);
         if (projectInfoData) {
           setProjectInfo(projectInfoData);
         }
@@ -1332,6 +1345,148 @@ const SimpleSchedulePage = () => {
     0
   );
 
+  function getLocationName(realLocationId, realLocations) {
+    const loc = realLocations.find(l => l._id === realLocationId);
+    return loc ? loc.name : '미정';
+  }
+
+  function makeDailyShootingPlanPrompt({ project, day, realLocations, locationInfo, weather, sunrise, sunset }) {
+    const shootingDate = day?.date || project.shootingDate || '미정';
+    // scenes는 day.timeline에서 scene 필드가 있는 원소만 추출
+    const scenes = Array.isArray(day?.timeline)
+      ? day.timeline.filter(row => row.scene)
+      : [];
+    const scheduleTable = (day?.timeline || [])
+      .map(row => `| ${row.time} | ${row.type} | ${row.scene?.title || ''} |`).join('\n');
+    return `
+다음 정보를 바탕으로 영화 일일촬영계획표를 작성해주세요.
+
+## 프로젝트 정보
+- 제목: ${project.projectTitle || project.title || '제목 미정'}
+- 촬영 날짜: ${shootingDate}
+- 날씨: ${weather || '맑음'}
+- 일출: ${sunrise || '05:30'}
+- 일몰: ${sunset || '19:30'}
+
+## 촬영할 씬 정보 (시간대별)
+${scenes.map((scene, index) => `
+${index + 1}. 씬 ${scene.scene?.scene || scene.scene || '-'}: ${scene.scene?.title || scene.title || '-'}
+   - 설명: ${scene.scene?.description || scene.description || '-'}
+   - 장소: ${getLocationName(scene.scene?.keywords?.realLocationId || scene.keywords?.realLocationId, realLocations)}
+   - 시간대: ${scene.scene?.keywords?.timeOfDay || scene.keywords?.timeOfDay || '낮'}
+   - 등장인물: ${scene.scene?.characterLayout || scene.characterLayout || '미정'}
+   - 소품: ${scene.scene?.props || scene.props || '없음'}
+   - 조명: ${scene.scene?.lighting || scene.lighting || '자연광'}
+   - 카메라: ${scene.scene?.cameraAngle || scene.cameraAngle || '중간샷'}
+   - 예상 시간: ${scene.scene?.estimatedDuration || scene.estimatedDuration || '5분'}
+`).join('\n')}
+
+## 스태프 정보
+기본 스태프 구성
+
+## 장소 정보
+${locationInfo ? locationInfo : realLocations.map(loc => `- ${loc.name} (${loc.address || '주소 미정'})`).join('\n')}
+
+다음 형식으로 일일촬영계획표를 작성해주세요:
+
+# 일일촬영계획표
+
+## 1. 기본 정보
+| 항목 | 내용 |
+|------|------|
+| 제목 | ${project.projectTitle || project.title || '제목 미정'} |
+| 촬영일 | ${shootingDate} |
+| 날씨 | ${weather || '맑음'} |
+| 일출/일몰 | ${sunrise || '05:30'} / ${sunset || '19:30'} |
+
+## 2. 촬영 일정표
+| 시간 | 활동 | 비고 |
+|------|------|------|
+${scheduleTable}
+
+## 3. 촬영 씬 상세
+| 씬번호 | 장소 | 시간대 | 컷수 | 내용 | 등장인물 | 단역 | 비고 |
+|--------|------|--------|------|------|----------|------|------|
+${scenes.map((scene, index) => `| ${scene.scene?.scene || scene.scene || '-'} | ${getLocationName(scene.scene?.keywords?.realLocationId || scene.keywords?.realLocationId, realLocations)} | ${scene.scene?.keywords?.timeOfDay || scene.keywords?.timeOfDay || '낮'} | 3-5컷 | ${scene.scene?.title || scene.title || '-'} | ${scene.scene?.characterLayout || scene.characterLayout || '미정'} | ${(scene.scene?.props || scene.props) ? '소품 필요' : '없음'} | ${scene.scene?.lighting || scene.lighting || '자연광'}`).join('\n')} |
+
+## 4. 부서별 준비사항
+| 부서 | 준비사항 | 담당자 |
+|------|----------|--------|
+| 연출부 | 시나리오, 콘티, 무전기, 감독 의자, 리허설 계획서 | 감독 |
+| 제작부 | 촬영 일정표, 연락처 목록, 차량 배치, 리허설 시간 관리 | 제작부장 |
+| 미술 | 촬영지 미술 작업, 소품 준비, 리허설용 임시 소품 | 미술감독 |
+| 소품 | 씬별 소품 목록, 소품 차량, 리허설용 소품 | 소품담당 |
+| 의상/분장 | 배우 의상, 분장 도구, 헤어 도구, 리허설용 의상 | 의상담당 |
+| 촬영부 | 카메라, 렌즈, 조명 장비, 리허설용 조명 셋팅 | 촬영감독 |
+
+## 5. 연락처
+| 부서 | 담당자 | 연락처 |
+|------|--------|--------|
+| 연출부 | 감독 | 010-0000-0000 |
+| 제작부 | 제작부장 | 010-0000-0001 |
+| 미술 | 미술감독 | 010-0000-0002 |
+| 소품 | 소품담당 | 010-0000-0003 |
+| 의상/분장 | 의상담당 | 010-0000-0004 |
+| 촬영부 | 촬영감독 | 010-0000-0005 |
+
+## 6. 특이사항
+- 촬영 시간 준수 필수
+- 날씨 상황에 따른 대비책 준비
+- 안전사고 예방에 유의
+- 촬영 자료 백업 필수
+
+한국어로 자연스럽게 작성하고, 실제 촬영 현장에서 사용할 수 있는 실용적인 내용으로 작성해주세요.
+표 형식을 정확히 유지해주세요.`;
+  }
+
+  // 프론트에서 getDailyShootingPlanPrompt를 사용하는 함수 (selectedDay 기준)
+  async function getDailyShootingPlanPromptForSelectedDay({ finalProjectId, selectedDay, scheduleData, daysWithDates, realLocations, getProjectInfo, realLocationAPI }) {
+    const projectInfoData = await getProjectInfo(finalProjectId);
+    const realLocRes = await realLocationAPI.getRealLocations(finalProjectId);
+    const realLocationsList = realLocRes.data.data || [];
+    const day = scheduleData?.days?.[selectedDay] || null;
+    if(day) day.date = daysWithDates[selectedDay].date;
+    const prompt = (projectInfoData && day && realLocationsList.length > 0) ? makeDailyShootingPlanPrompt({
+      project: projectInfoData,
+      day,
+      realLocations: realLocationsList,
+      locationInfo: projectInfoData.locationInfo,
+      weather: projectInfoData.weather,
+      sunrise: projectInfoData.sunrise,
+      sunset: projectInfoData.sunset
+    }) : '';
+    return prompt;
+  }
+
+  // 일일촬영계획표 모달을 여는 버튼에 onClick={handleOpenDailyPlanModal}을 연결한다.
+  async function handleOpenDailyPlanModal() {
+    const prompt = await getDailyShootingPlanPromptForSelectedDay({
+      finalProjectId,
+      selectedDay,
+      scheduleData,
+      daysWithDates,
+      realLocations,
+      getProjectInfo,
+      realLocationAPI
+    });
+    setPromptPreview(prompt);
+    setOpenDailyPlanModal(true);
+  }
+
+  // AI 일일촬영계획표 결과 상태 추가
+  const [shootingPlanResult, setShootingPlanResult] = useState('');
+
+  // AI 일일촬영계획표 생성 API 호출 함수
+  async function requestDailyShootingPlan(prompt) {
+    const res = await fetch('/api/projects/daily-shooting-plan/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    return data.result;
+  }
+
   return (
     <Box sx={{ background: '#181820', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="lg">
@@ -1631,6 +1786,52 @@ const SimpleSchedulePage = () => {
         onClose={handleLocationManagerClose}
         projectId={finalProjectId}
       />
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button variant="outlined" onClick={handleOpenDailyPlanModal}>
+          일일촬영계획표 생성하기
+        </Button>
+      </Box>
+      <Dialog open={openDailyPlanModal} onClose={() => setOpenDailyPlanModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle>일일촬영계획표 프롬프트 미리보기</DialogTitle>
+        <DialogContent>
+          <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+            {shootingPlanResult
+              ? shootingPlanResult
+              : (promptPreview || '스케줄 데이터가 없습니다.')}
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDailyPlanModal(false)}>닫기</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              if (!promptPreview) return;
+              setShootingPlanResult('AI로 생성 중...');
+              try {
+                const result = await requestDailyShootingPlan(promptPreview);
+                setShootingPlanResult(result || 'AI 응답이 없습니다.');
+              } catch (err) {
+                setShootingPlanResult('AI 생성 오류: ' + (err.message || err));
+              }
+            }}
+          >
+            AI로 생성
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            disabled={!shootingPlanResult}
+            onClick={() => {
+              if (!shootingPlanResult) return;
+              localStorage.setItem('shootingPlanResult', shootingPlanResult);
+              window.open('/daily-shooting-plan/print', '_blank');
+            }}
+          >
+            인쇄
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
     </Box>
   );

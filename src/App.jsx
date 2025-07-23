@@ -12,6 +12,7 @@ import SchedulerTestPage from './pages/SchedulerTestPage'
 import SimpleSchedulePage from './pages/SimpleSchedulePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
+import DailyShootingPlanPrintPage from './pages/DailyShootingPlanPrintPage';
 
 
 /**
@@ -155,6 +156,12 @@ function App() {
               <SimpleSchedulePage />
             </ProtectedRoute>
           } 
+        />
+        
+        {/* 인쇄용 일일촬영계획표 페이지 (누구나 접근 가능) */}
+        <Route 
+          path="/daily-shooting-plan/print" 
+          element={<DailyShootingPlanPrintPage />} 
         />
         
       </Routes>

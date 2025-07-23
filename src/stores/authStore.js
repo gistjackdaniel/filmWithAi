@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import api, { userAPI } from '../services/api'
 
+let sessionSyncInitialized = false;
+
 /**
  * 인증 상태 관리 스토어
  * Zustand를 사용하여 사용자 인증 상태를 전역적으로 관리
@@ -344,6 +346,8 @@ const useAuthStore = create(
        * 브라우저 탭 간 인증 상태 동기화
        */
       setupSessionSync: () => {
+        if (sessionSyncInitialized) return;
+        sessionSyncInitialized = true;
         // 다른 탭에서 로그아웃 시 현재 탭도 로그아웃
         window.addEventListener('storage', (event) => {
           if (event.key === 'auth-storage' && event.newValue === null) {
