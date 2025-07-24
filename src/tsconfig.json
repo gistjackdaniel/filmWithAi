@@ -21,7 +21,7 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Path mapping */
-    "baseUrl": ".",
+    "baseUrl": "..",
     "paths": {
       "@/*": ["src/*"],
       "@/components/*": ["src/components/*"],
@@ -35,7 +35,7 @@
   },
   "include": [
     "src/**/*",
-    "vite.config.ts"
+    "vite.config.js"
   ],
   "exclude": [
     "node_modules",
