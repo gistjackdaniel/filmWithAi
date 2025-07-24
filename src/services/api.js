@@ -91,6 +91,36 @@ export const conteAPI = {
 }
 
 /**
+ * 스케줄 관리 API
+ */
+export const scheduleAPI = {
+  // 일일 스케줄 조회
+  getDailySchedule: (projectId, date) => api.get(`/projects/${projectId}/schedule/daily/${date}`),
+  
+  // 주간 스케줄 조회
+  getWeeklySchedule: (projectId, startDate, endDate) => api.get(`/projects/${projectId}/schedule/weekly`, { 
+    params: { startDate, endDate } 
+  }),
+  
+  // 월간 스케줄 조회
+  getMonthlySchedule: (projectId, year, month) => api.get(`/projects/${projectId}/schedule/monthly`, { 
+    params: { year, month } 
+  }),
+  
+  // 스케줄 생성
+  createSchedule: (projectId, scheduleData) => api.post(`/projects/${projectId}/schedule`, scheduleData),
+  
+  // 스케줄 업데이트
+  updateSchedule: (projectId, scheduleId, updateData) => api.put(`/projects/${projectId}/schedule/${scheduleId}`, updateData),
+  
+  // 스케줄 삭제
+  deleteSchedule: (projectId, scheduleId) => api.delete(`/projects/${projectId}/schedule/${scheduleId}`),
+  
+  // 스케줄 통계 조회
+  getScheduleStats: (projectId) => api.get(`/projects/${projectId}/schedule/stats`)
+}
+
+/**
  * AI 생성 API (기존)
  */
 export const aiAPI = {

@@ -192,15 +192,34 @@ class TimelineService {
         return { success: true, data: cached }
       }
       
-      // 백엔드 API에서 프로젝트 컷 조회
-      const response = await timelineAPI.get(`/projects/${projectId}/cuts`)
+      // 백엔드 API에서 프로젝트 전체 데이터 조회 (컷 포함)
+      const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
       console.log('timelineService getProjectCuts API response:', response.data)
       
       if (response.data && response.data.success && response.data.data) {
-        const cuts = response.data.data
+        const projectData = response.data.data
+        const conteList = projectData.conteList || []
+        
+        // 모든 씬의 컷을 수집
+        const allCuts = []
+        conteList.forEach((conte, sceneIndex) => {
+          if (conte.cuts && Array.isArray(conte.cuts)) {
+            conte.cuts.forEach((cut, cutIndex) => {
+              allCuts.push({
+                ...cut,
+                sceneId: conte.id,
+                sceneIndex: sceneIndex,
+                sceneTitle: conte.title,
+                sceneNumber: conte.scene,
+                globalIndex: allCuts.length,
+                isLastCutInScene: cutIndex === conte.cuts.length - 1
+              })
+            })
+          }
+        })
         
         // 컷 데이터를 타임라인 형식으로 변환
-        const transformedCuts = cuts.map(cut => this.transformCutData(cut))
+        const transformedCuts = allCuts.map(cut => this.transformCutData(cut))
         
         console.log('timelineService project cuts loaded:', transformedCuts.length, 'cuts')
         

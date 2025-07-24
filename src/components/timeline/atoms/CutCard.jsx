@@ -402,7 +402,7 @@ const CutCard = React.memo(({
       </Box>
 
       {/* 컷 이미지 */}
-      {cut.imageUrl && (
+      {cut.imageUrl && cut.imageUrl.trim() ? (
         <Box sx={{ 
           width: '100%', 
           height: 40, 
@@ -425,16 +425,9 @@ const CutCard = React.memo(({
               objectFit: 'cover'
             }}
             onError={(e) => {
-              console.error('❌ 컷 이미지 로딩 실패:', {
-                cutId: cut.id,
-                shotNumber: cut.shotNumber,
-                imageUrl: cut.imageUrl
-              })
+              console.warn('컷 이미지 로딩 실패:', cut.imageUrl)
               
-              // 이미지 로딩 실패 시 대체 이미지 표시
-              // 여러 fallback 옵션 시도
-              if (e.target.src.includes('dev_placeholder.png')) {
-                // 이미 placeholder를 시도했는데도 실패하면 빈 이미지로 처리
+              // 이미지 로딩 실패 시 기본 표시
                 e.target.style.display = 'none'
                 e.target.parentElement.style.backgroundColor = 'rgba(160, 163, 177, 0.3)'
                 e.target.parentElement.innerHTML = `
@@ -455,13 +448,38 @@ const CutCard = React.memo(({
                     </div>
                   </div>
                 `
-              } else {
-                // 첫 번째 시도 실패 시 placeholder 이미지로 재시도
-                e.target.src = 'http://localhost:5001/uploads/images/dev_placeholder.png'
-                e.target.onerror = null // 무한 루프 방지
-              }
             }}
           />
+        </Box>
+      ) : (
+        // 이미지가 없을 때 기본 표시
+        <Box sx={{ 
+          width: '100%', 
+          height: 40, 
+          borderRadius: 0.5,
+          border: '1px solid rgba(212, 175, 55, 0.3)',
+          mb: 0.5,
+          backgroundColor: 'rgba(160, 163, 177, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            color: var(--color-text-secondary);
+            font-size: 10px;
+            text-align: center;
+            padding: 4px;
+          ">
+            <div>
+              <div style="font-size: 16px; margin-bottom: 2px;">🎬</div>
+              <div>컷 {cut.shotNumber}</div>
+            </div>
+          </div>
         </Box>
       )}
 
