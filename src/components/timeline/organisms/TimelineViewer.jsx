@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { Box, Typography, CircularProgress, Button } from '@mui/material'
-import { Schedule, PlayArrow } from '@mui/icons-material'
+import { Box, Typography, CircularProgress, Button, IconButton } from '@mui/material'
+import { Schedule, PlayArrow, Pause, Stop } from '@mui/icons-material'
 import {
   DndContext,
   closestCenter,
@@ -19,6 +19,7 @@ import TimelineScroll from '../atoms/TimelineScroll'
 import TimelineNavigation from '../molecules/TimelineNavigation'
 import TimelineFilters from '../molecules/TimelineFilters'
 import CutCard from '../atoms/CutCard'
+import SceneCard from '../atoms/SceneCard'
 import TimeRuler from '../atoms/TimeRuler'
 import { SceneType } from '../../../types/conte'
 import { 
@@ -56,7 +57,12 @@ const TimelineViewer = (props) => {
     showTimeInfo = true, // 시간 정보 표시 여부
     baseScale = 1, // 기본 스케일 (픽셀당 초)
     // 스케줄러 관련 props
-    onViewSchedule = null // 스케줄러 보기 핸들러
+    onViewSchedule = null, // 스케줄러 보기 핸들러
+    // 재생 상태 관련 props
+    isPlaying: externalIsPlayingProp = false, // 외부에서 전달받은 재생 상태
+    currentTime: externalCurrentTimeProp = 0, // 외부에서 전달받은 현재 시간
+    onPlayStateChange: externalOnPlayStateChangeProp = () => {}, // 재생 상태 변경 핸들러
+    onTimeChange: externalOnTimeChangeProp = () => {} // 시간 변경 핸들러
   } = props || {}
 
   // 디버깅 로그 추가
@@ -181,7 +187,18 @@ const TimelineViewer = (props) => {
   const [currentTimeScale, setCurrentTimeScale] = useState(timeScale)
   const [currentZoomLevel, setCurrentZoomLevel] = useState(zoomLevel)
   const [totalDuration, setTotalDuration] = useState(0)
-  const [currentTime, setCurrentTime] = useState(0)
+  // 내부 currentTime 제거 - 외부에서 전달받음
+  // const [currentTime, setCurrentTime] = useState(0)
+
+  // 재생 관련 상태 추가
+  const [playbackSpeed, setPlaybackSpeed] = useState(1) // 재생 속도 (1 = 실시간)
+  const currentTimeRef = useRef(externalCurrentTime) // currentTime의 최신 값을 참조하기 위한 ref
+
+  // 외부에서 전달받은 재생 상태 사용
+  const externalIsPlaying = externalIsPlayingProp || false
+  const externalCurrentTime = externalCurrentTimeProp || 0
+  const externalOnPlayStateChange = externalOnPlayStateChangeProp
+  const externalOnTimeChange = externalOnTimeChangeProp
 
   // 시간 기반 계산 로직 - 줌 레벨에 따라 동적 timeScale 계산
   const calculatedTimeScale = useMemo(() => {
@@ -192,7 +209,16 @@ const TimelineViewer = (props) => {
   }, [currentZoomLevel, baseScale])
 
   const calculatedTotalDuration = useMemo(() => {
-    return calculateTotalDuration(safeScenes)
+    const duration = calculateTotalDuration(safeScenes)
+    console.log(`🎬 calculatedTotalDuration: ${duration}s (씬 개수: ${safeScenes.length})`)
+    
+    // 각 씬의 duration 정보 로깅
+    safeScenes.forEach((scene, index) => {
+      console.log(`  씬 ${index + 1}: duration=${scene?.duration || 0}s`)
+    })
+    
+    // 최소 10초 보장 (테스트용)
+    return Math.max(duration, 10)
   }, [safeScenes])
 
   const timelineWidth = useMemo(() => {
@@ -207,6 +233,95 @@ const TimelineViewer = (props) => {
   const timeBasedScrollPosition = useMemo(() => {
     return pixelsToTime(scrollPosition, calculatedTimeScale)
   }, [scrollPosition, calculatedTimeScale])
+
+  // 재생 제어 함수들 - 외부 상태 사용
+  const startPlayback = useCallback(() => {
+    if (externalIsPlaying) return
+    
+    if (calculatedTotalDuration <= 0) {
+      return
+    }
+    
+    // 외부 재생 상태 변경만 수행 - 인터벌은 ProjectPage에서 관리
+    if (externalOnPlayStateChange && !externalIsPlaying) {
+      externalOnPlayStateChange(true)
+    }
+  }, [externalIsPlaying, calculatedTotalDuration, externalOnPlayStateChange])
+
+  const pausePlayback = useCallback(() => {
+    // 외부 재생 상태 변경만 수행 - 인터벌은 ProjectPage에서 관리
+    if (externalOnPlayStateChange && externalIsPlaying) {
+      externalOnPlayStateChange(false)
+    }
+  }, [externalOnPlayStateChange, externalIsPlaying])
+
+  const stopPlayback = useCallback(() => {
+    // 외부 재생 상태 변경만 수행 - 인터벌은 ProjectPage에서 관리
+    if (externalOnPlayStateChange && externalIsPlaying) {
+      externalOnPlayStateChange(false)
+    }
+    if (externalOnTimeChange) {
+      externalOnTimeChange(0)
+    }
+  }, [externalOnTimeChange, externalOnPlayStateChange, externalIsPlaying])
+
+  const togglePlayback = useCallback(() => {
+    if (externalIsPlaying) {
+      pausePlayback()
+    } else {
+      startPlayback()
+    }
+  }, [externalIsPlaying, startPlayback, pausePlayback])
+
+  // 키보드 이벤트 처리
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // 스페이스바로 재생/일시정지 토글
+      if (event.code === 'Space') {
+        event.preventDefault()
+        togglePlayback()
+      }
+      
+      // ESC로 재생 정지
+      if (event.code === 'Escape') {
+        stopPlayback()
+      }
+      
+      // 방향키로 시간 이동
+      if (event.code === 'ArrowLeft') {
+        event.preventDefault()
+        // setCurrentTime(prev => Math.max(0, prev - 5)) // 5초 뒤로
+      }
+      
+      if (event.code === 'ArrowRight') {
+        event.preventDefault()
+        // setCurrentTime(prev => Math.min(calculatedTotalDuration, prev + 5)) // 5초 앞으로
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [togglePlayback, stopPlayback, calculatedTotalDuration])
+
+  // 재생 상태 변경 시 인터벌 정리
+  useEffect(() => {
+    return () => {
+      // if (playbackIntervalRef.current) { // 불필요한 인터벌 정리 제거
+      //   clearInterval(playbackIntervalRef.current)
+      // }
+    }
+  }, [])
+
+  // 현재 시간이 변경될 때 스크롤 위치 업데이트
+  useEffect(() => {
+    if (scrollRef.current) {
+      const newScrollPosition = timeToPixels(externalCurrentTime, calculatedTimeScale)
+      scrollRef.current.scrollLeft = newScrollPosition
+      setScrollPosition(newScrollPosition)
+    }
+  }, [externalCurrentTime, calculatedTimeScale])
 
   // 드래그 앤 드롭 센서 설정 - 최상위 레벨에서 Hook 호출
   const sensors = useSensors(
@@ -226,6 +341,13 @@ const TimelineViewer = (props) => {
       onSceneClick(scene)
     }
   }, [onSceneClick])
+
+  // 누락된 props들에 대한 기본값 설정
+  const onSceneClick = props.onSceneClick
+  const onSceneEdit = props.onSceneEdit
+  const onSceneInfo = props.onSceneInfo
+  const onScenesReorder = props.onScenesReorder
+  const selectedSceneId = props.selectedSceneId
 
   // 다중 선택 핸들러
   const handleSceneMultiSelect = useCallback((scene, event) => {
@@ -278,10 +400,8 @@ const TimelineViewer = (props) => {
   // 드래그 종료 핸들러
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event
-    console.log('Drag end event:', { active, over }) // 디버깅 로그 추가
 
     if (!stableSafeScenesRef || !Array.isArray(stableSafeScenesRef)) {
-      console.log('Scenes is not available for drag operation')
       return
     }
 
@@ -289,11 +409,8 @@ const TimelineViewer = (props) => {
       const oldIndex = stableSafeScenesRef.findIndex(scene => scene.id === active.id)
       const newIndex = stableSafeScenesRef.findIndex(scene => scene.id === over?.id)
 
-      console.log('Scene indices:', { oldIndex, newIndex }) // 디버깅 로그 추가
-
       if (oldIndex !== -1 && newIndex !== -1) {
         const newScenes = arrayMove(stableSafeScenesRef, oldIndex, newIndex)
-        console.log('New scenes order:', newScenes.map(s => ({ id: s.id, scene: s.scene }))) // 디버깅 로그 추가
         if (onScenesReorder) {
           onScenesReorder(newScenes)
         }
@@ -307,7 +424,7 @@ const TimelineViewer = (props) => {
     
     // 시간 기반 현재 시간 계산
     const newCurrentTime = pixelsToTime(position, calculatedTimeScale)
-    setCurrentTime(newCurrentTime)
+    // setCurrentTime(newCurrentTime) // 내부 상태 제거
     
     // 시간 기반 현재 씬 인덱스 계산
     let newSceneIndex = 0
@@ -451,12 +568,13 @@ const TimelineViewer = (props) => {
   }, [stableSafeScenesRef, filters])
 
   // 안전한 필터링된 씬들 참조
-  const safeFilteredScenes = filteredScenes
-    .map(scene => ({
-      ...scene,
-      id: scene.id || scene.cutId // id가 없으면 cutId를 id로 사용
-    }))
-    .filter(scene => scene && scene.id);
+  const safeFilteredScenes = useMemo(() => {
+    if (!filteredScenes || !Array.isArray(filteredScenes)) {
+      console.warn('TimelineViewer: filteredScenes is not an array', filteredScenes)
+      return []
+    }
+    return filteredScenes.filter(scene => scene && scene.id) // 유효한 씬만 필터링
+  }, [filteredScenes])
 
   // 안전한 씬 ID 배열
   const safeSceneIds = useMemo(() => {
@@ -552,6 +670,77 @@ const TimelineViewer = (props) => {
           filteredCount={safeFilteredScenes.length}
         />
 
+        {/* 재생 컨트롤 버튼들 */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <IconButton
+            onClick={() => {
+              console.log('🎬 재생 버튼 클릭됨')
+              console.log(`🎬 현재 상태: isPlaying=${externalIsPlaying}, currentTime=${externalCurrentTime}s, calculatedTotalDuration=${calculatedTotalDuration}s`)
+              togglePlayback()
+            }}
+            sx={{
+              color: externalIsPlaying ? 'var(--color-accent)' : 'var(--color-primary)',
+              '&:hover': {
+                backgroundColor: 'rgba(212, 175, 55, 0.1)'
+              }
+            }}
+            title={externalIsPlaying ? '일시정지 (스페이스바)' : '재생 (스페이스바)'}
+          >
+            {externalIsPlaying ? <Pause /> : <PlayArrow />}
+          </IconButton>
+          
+          <IconButton
+            onClick={() => {
+              console.log('🎬 정지 버튼 클릭됨')
+              stopPlayback()
+            }}
+            sx={{
+              color: 'var(--color-text-secondary)',
+              '&:hover': {
+                backgroundColor: 'rgba(160, 163, 177, 0.1)'
+              }
+            }} 
+            title="정지 (ESC)"
+          >
+            <Stop />
+          </IconButton>
+          
+          {/* 테스트용: 시간 수동 업데이트 버튼 */}
+          <IconButton
+            onClick={() => {
+              console.log('🎬 테스트: 시간 수동 업데이트')
+              // setCurrentTime(prev => { // 내부 상태 제거
+              //   const newTime = prev + 2
+              //   console.log(`🎬 시간 업데이트: ${prev}s → ${newTime}s`)
+              //   return newTime
+              // })
+            }}
+            sx={{
+              color: 'var(--color-accent)',
+              '&:hover': {
+                backgroundColor: 'rgba(212, 175, 55, 0.1)'
+              }
+            }}
+            title="테스트: 시간 +2초"
+          >
+            <Schedule />
+          </IconButton>
+        </Box>
+
+        {/* 현재 시간 표시 */}
+        <Typography
+          variant="body2"
+          sx={{
+            font: 'var(--font-body-2)',
+            color: 'var(--color-text-secondary)',
+            minWidth: '80px',
+            textAlign: 'center'
+          }}
+        >
+          현재: {formatTimeFromSeconds(externalCurrentTime)}
+          {externalIsPlaying && ' (재생 중)'}
+        </Typography>
+
         {/* 콘티 추가 버튼 */}
         <Button 
           variant="outlined" 
@@ -634,7 +823,7 @@ const TimelineViewer = (props) => {
           }}
         >
           {/* 시간 눈금 */}
-          {showTimeInfo && calculatedTotalDuration > 0 && (
+          {showTimeInfo && (
             <Box
               sx={{
                 position: 'absolute',
@@ -647,7 +836,7 @@ const TimelineViewer = (props) => {
             >
               <TimeRuler
                 totalDuration={calculatedTotalDuration}
-                currentTime={timeBasedScrollPosition}
+                currentTime={externalCurrentTime} // 현재 재생 시간 전달
                 zoomLevel={currentZoomLevel}
                 baseScale={baseScale}
                 timeScale={calculatedTimeScale}
@@ -922,7 +1111,8 @@ const TimelineViewer = (props) => {
                 color: 'var(--color-text-secondary)'
               }}
             >
-              현재: {formatTimeFromSeconds(timeBasedScrollPosition)}
+              현재: {formatTimeFromSeconds(externalCurrentTime)}
+              {externalIsPlaying && ' (재생 중)'}
             </Typography>
           )}
         </Box>

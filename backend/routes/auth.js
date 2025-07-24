@@ -151,4 +151,36 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
+/**
+ * Google Cloud 인증 토큰 제공
+ * Veo3 API 사용을 위한 인증 토큰을 클라이언트에 제공
+ */
+router.get('/google-cloud-token', async (req, res) => {
+  try {
+    // Google Cloud 서비스 계정 키를 사용한 인증
+    const { GoogleAuth } = require('google-auth-library')
+    const auth = new GoogleAuth({
+      keyFile: process.env.GOOGLE_CLOUD_KEY_FILE || './google-cloud-key.json',
+      scopes: ['https://www.googleapis.com/auth/cloud-platform']
+    })
+
+    const client = await auth.getClient()
+    const token = await client.getAccessToken()
+
+    res.json({
+      success: true,
+      token: token.token,
+      expiresAt: token.expiry_date
+    })
+
+  } catch (error) {
+    console.error('Google Cloud 인증 오류:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Google Cloud 인증에 실패했습니다.',
+      details: error.message
+    })
+  }
+})
+
 module.exports = router; 

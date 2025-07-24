@@ -69,14 +69,25 @@ const VideoCard = ({
     for (const cut of allCuts) {
       const cutDuration = cut.estimatedDuration || cut.duration || 5
       if (currentTime >= accumulatedTime && currentTime < accumulatedTime + cutDuration) {
-        return cut
+        const relativeTime = currentTime - accumulatedTime
+        // 로그 제거 - 불필요한 중복 로그
+        return {
+          ...cut,
+          relativeTime: relativeTime
+        }
       }
       accumulatedTime += cutDuration
     }
     
     // 마지막 컷인 경우
     if (currentTime >= accumulatedTime) {
-      return allCuts[allCuts.length - 1]
+      const lastCut = allCuts[allCuts.length - 1]
+      const relativeTime = Math.min(currentTime - accumulatedTime, lastCut.estimatedDuration || lastCut.duration || 5)
+      // 로그 제거 - 불필요한 중복 로그
+      return lastCut ? {
+        ...lastCut,
+        relativeTime: relativeTime
+      } : null
     }
     
     return null
@@ -249,17 +260,14 @@ const VideoCard = ({
       const maxWidth = Math.max(400, videoDuration * 20) // 최대 1초당 20px
       cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
       
-      console.log(`VideoCard 동적 계산 비디오 ${shotNumber}: duration=${videoDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
     } else if (videoDuration > 0) {
       // timeScale이 0이지만 duration이 있는 경우 기본 계산
       const basePixelsPerSecond = 10
       const timeBasedWidth = videoDuration * basePixelsPerSecond
       cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, 150))
       
-      console.log(`VideoCard 기본 계산 비디오 ${shotNumber}: duration=${videoDuration}s, fallback width=${cardWidth}px`)
     }
   } else {
-    console.log(`VideoCard 외부 너비 사용 비디오 ${shotNumber}: width=${width}px`)
   }
 
   // 비디오가 없는 경우 업로드 영역 표시
@@ -386,6 +394,7 @@ const VideoCard = ({
               src={displayMedia.url}
               poster={displayMedia.poster}
               controls={false}
+              currentTime={currentCut?.relativeTime || 0}
               style={{ width: '100%', height: '100%' }}
               onLoadingChange={handleVideoLoadingChange}
               onError={handleVideoError}
@@ -460,14 +469,15 @@ const VideoCard = ({
             src={videoUrl}
             poster={posterUrl}
             controls={false}
+            currentTime={currentCut?.relativeTime || 0}
             style={{ width: '100%', height: '100%' }}
             onLoadingChange={handleVideoLoadingChange}
             onError={handleVideoError}
           />
         )}
 
-        {/* 재생 버튼 오버레이 */}
-        {!isPlaying && !isVideoLoading && !videoError && (
+        {/* 재생 버튼 오버레이 - 숨김 */}
+        {/* {!isPlaying && !isVideoLoading && !videoError && (
           <Box
             sx={{
               position: 'absolute',
@@ -491,7 +501,7 @@ const VideoCard = ({
               <PlayArrow sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
-        )}
+        )} */}
       </Box>
 
       {/* 비디오 정보 오버레이 */}

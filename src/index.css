@@ -77,6 +77,47 @@ code {
   background: #B8941F; /* Accent 색상의 어두운 버전 */
 }
 
+/* ===== 비디오 컨트롤 숨기기 ===== */
+.no-video-controls {
+  /* 모든 비디오 컨트롤 숨기기 */
+  -webkit-media-controls: none !important;
+  -webkit-media-controls-panel: none !important;
+  -webkit-media-controls-play-button: none !important;
+  -webkit-media-controls-start-playback-button: none !important;
+  -webkit-media-controls-timeline: none !important;
+  -webkit-media-controls-current-time-display: none !important;
+  -webkit-media-controls-time-remaining-display: none !important;
+  -webkit-media-controls-mute-button: none !important;
+  -webkit-media-controls-volume-slider: none !important;
+  -webkit-media-controls-fullscreen-button: none !important;
+}
+
+/* Firefox용 비디오 컨트롤 숨기기 */
+.no-video-controls::-moz-media-controls {
+  display: none !important;
+}
+
+.no-video-controls::-moz-media-controls-panel {
+  display: none !important;
+}
+
+/* 모든 브라우저에서 비디오 컨트롤 숨기기 */
+.no-video-controls video::-webkit-media-controls {
+  display: none !important;
+}
+
+.no-video-controls video::-webkit-media-controls-panel {
+  display: none !important;
+}
+
+.no-video-controls video::-webkit-media-controls-play-button {
+  display: none !important;
+}
+
+.no-video-controls video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+}
+
 /* ===== 전역 애니메이션 ===== */
 
 /**

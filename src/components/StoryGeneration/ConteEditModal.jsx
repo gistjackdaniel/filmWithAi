@@ -67,8 +67,10 @@ const ConteEditModal = ({
   onEdit,
   onRegenerate
 }) => {
-  // 디버깅 로그
-  console.log('🔍 ConteEditModal props:', { open, conte, onClose, onSave })
+  // props 디버깅
+  useEffect(() => {
+    // props 변경 시 필요한 처리
+  }, [open, conte, onSave, onClose])
   
   // 로컬 상태 관리
   const [editedConte, setEditedConte] = useState(conte)
@@ -112,7 +114,6 @@ const ConteEditModal = ({
 
   // 편집된 콘티가 변경될 때마다 상태 업데이트
   useEffect(() => {
-    console.log('🔄 editedConte 업데이트:', conte)
     setEditedConte(conte)
   }, [conte])
 
@@ -163,7 +164,6 @@ const ConteEditModal = ({
    * @param {Event} event - 이미지 로딩 에러 이벤트
    */
   const handleImageLoadError = (event) => {
-    console.error('이미지 로딩 실패:', editedConte?.imageUrl)
     setImageLoadError(true)
     // 이미지 요소 숨기기
     if (event.target) {
@@ -176,8 +176,6 @@ const ConteEditModal = ({
    */
   const handleImageRetry = async () => {
     try {
-      console.log('🔄 이미지 재시도 시작:', editedConte.scene)
-      
       // 이미지 생성 API 호출
       const imagePrompt = `${editedConte.title}: ${editedConte.description}. ${editedConte.visualDescription || ''} ${editedConte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
       
@@ -204,7 +202,6 @@ const ConteEditModal = ({
       toast.success('이미지가 재생성되었습니다!')
       
     } catch (error) {
-      console.error('❌ 이미지 재시도 실패:', error)
       toast.error('이미지 재생성에 실패했습니다.')
     }
   }
@@ -220,8 +217,6 @@ const ConteEditModal = ({
     try {
       // 이미지 생성 프롬프트 구성
       const imagePrompt = `${editedConte.title}: ${editedConte.description}. ${editedConte.visualDescription || ''} ${editedConte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
-      
-      console.log('🎨 이미지 재생성 시작:', imagePrompt)
       
       // 이미지 생성 API 호출
       const imageResponse = await generateSceneImage({
@@ -246,11 +241,9 @@ const ConteEditModal = ({
         onRegenerateImage(updatedConte)
       }
       
-      console.log('✅ 이미지 재생성 완료:', imageResponse.imageUrl)
       toast.success('이미지가 재생성되었습니다!')
       
     } catch (error) {
-      console.error('❌ 이미지 재생성 실패:', error)
       toast.error('이미지 재생성에 실패했습니다.')
     } finally {
       setIsRegeneratingImage(false)
@@ -266,8 +259,6 @@ const ConteEditModal = ({
     setIsRegeneratingConte(true)
     
     try {
-      console.log('🎬 콘티 재생성 시작:', editedConte.title)
-      
       // 실제 API가 없으므로 임시로 시뮬레이션
       // const updatedConte = await regenerateConteWithRetry(editedConte)
       
@@ -290,11 +281,9 @@ const ConteEditModal = ({
         await onRegenerateConte(updatedConte)
       }
       
-      console.log('✅ 콘티 재생성 완료:', updatedConte.title)
       toast.success('콘티가 재생성되었습니다!')
       
     } catch (error) {
-      console.error('❌ 콘티 재생성 실패:', error)
       toast.error('콘티 재생성에 실패했습니다.')
     } finally {
       setIsRegeneratingConte(false)
@@ -305,22 +294,15 @@ const ConteEditModal = ({
    * 저장 핸들러
    */
   const handleSave = async () => {
-    console.log('💾 저장 버튼 클릭됨')
-    console.log('editedConte:', editedConte)
-    
     try {
     if (onSave) {
-      console.log('✅ onSave 함수 호출')
       onSave(editedConte)
-      console.log('✅ onSave 함수 호출 완료')
       toast.success('콘티가 성공적으로 저장되었습니다!')
     } else {
-      console.error('❌ onSave 함수가 없습니다!')
       toast.error('저장 기능을 사용할 수 없습니다.')
       return
     }
   } catch (error) {
-    console.error('❌ 콘티 저장 실패:', error)
     toast.error('콘티 저장에 실패했습니다.')
     return
   }

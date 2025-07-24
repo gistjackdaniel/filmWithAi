@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { 
   Box, 
   IconButton, 
@@ -9,13 +9,10 @@ import {
   Chip
 } from '@mui/material'
 import {
-  PlayArrow,
-  Pause,
   VolumeUp,
   VolumeOff,
   Fullscreen,
   FullscreenExit,
-  Settings,
   Error,
   Refresh
 } from '@mui/icons-material'
@@ -28,18 +25,25 @@ import {
  */
 const VideoPlayer = ({
   src,
-  poster,
-  volume = 0.8,
-  onLoadingChange,
-  onError,
+  isPlaying = false, // 외부에서 제어하는 재생 상태
+  currentTime = 0, // 비디오 시작 시간
+  onTimeUpdate, // 타임라인에서 비디오 시간 업데이트 시 호출될 콜백
+  onPlayStateChange, // 재생 상태 변경 시 호출될 콜백
+  onLoadingChange, // 로딩 상태 변경 시 호출될 콜백
+  onError, // 에러 발생 시 호출될 콜백
+  volume = 1,
+  muted = false,
   controls = true,
-  style = {},
-  className = '',
+  autoPlay = false,
+  loop = false,
+  preload = 'metadata',
+  poster,
+  className,
+  style,
   ...props
 }) => {
   const videoRef = useRef(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
+  const [currentTimeState, setCurrentTimeState] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volumeLevel, setVolumeLevel] = useState(volume)
   const [isMuted, setIsMuted] = useState(false)
@@ -47,6 +51,117 @@ const VideoPlayer = ({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showControls, setShowControls] = useState(true)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false) // 비디오 재생 상태 추적
+  const playTimeoutRef = useRef(null)
+  const pauseTimeoutRef = useRef(null)
+  const lastIsPlayingRef = useRef(isPlaying) // 이전 재생 상태 저장
+
+  // 외부 재생 상태에 따라 비디오 재생/정지 - 최적화된 버전
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    
+    // 디바운싱 - 이전 상태와 동일하면 무시
+    if (isPlaying === lastIsPlayingRef.current) {
+      return
+    }
+    
+    // 이전 타임아웃 정리
+    if (playTimeoutRef.current) {
+      clearTimeout(playTimeoutRef.current)
+      playTimeoutRef.current = null
+    }
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current)
+      pauseTimeoutRef.current = null
+    }
+    
+    // 현재 비디오 상태 확인
+    const isCurrentlyPlaying = !video.paused && !video.ended
+    
+    // 상태가 실제로 변경될 때만 실행
+    if (isPlaying && !isCurrentlyPlaying) {
+      // 재생 시작 시에만 시간 설정
+      if (currentTime > 0 && video.readyState >= 1) {
+        video.currentTime = currentTime
+      }
+      
+      // 재생 시도 - 더 긴 지연으로 안정성 확보
+      playTimeoutRef.current = setTimeout(() => {
+        if (video && video.paused && !video.ended) {
+          video.play().catch(error => {
+            if (error.name !== 'AbortError') {
+              console.error('🎬 비디오 재생 실패:', error)
+            }
+          })
+        }
+      }, 150) // 150ms 지연으로 증가
+    } else if (!isPlaying && isCurrentlyPlaying) {
+      // 정지 시도 - 즉시 정지
+      video.pause()
+    }
+    
+    // 현재 상태 저장
+    lastIsPlayingRef.current = isPlaying
+    
+    return () => {
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current)
+      }
+      if (pauseTimeoutRef.current) {
+        clearTimeout(pauseTimeoutRef.current)
+      }
+    }
+  }, [isPlaying, currentTime]) // currentTime 의존성 추가
+
+  // 비디오 시작 시간 설정 - 재생 중에도 시간 업데이트 허용
+  useEffect(() => {
+    if (videoRef.current && currentTime > 0) {
+      // 비디오가 로드된 후에만 시간 설정
+      if (videoRef.current.readyState >= 1) {
+        // 재생 중이 아닐 때만 비디오 시간 강제 설정
+        if (videoRef.current.paused && !isVideoPlaying) {
+          // 현재 비디오 시간과 비교하여 큰 차이가 있을 때만 설정
+          const currentVideoTime = videoRef.current.currentTime
+          const timeDifference = Math.abs(currentVideoTime - currentTime)
+          
+          if (timeDifference > 0.5) { // 0.5초 이상 차이가 있을 때만 설정
+            videoRef.current.currentTime = currentTime
+          }
+        }
+        // 재생 중일 때는 비디오 시간을 강제로 설정하지 않음 (자연스러운 재생 유지)
+      }
+    }
+  }, [currentTime, isVideoPlaying])
+
+  // 비디오 재생 상태 변경 감지 - 외부 제어만 사용하므로 비활성화
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    // 비디오 재생 상태 추적
+    const handlePlay = () => {
+      setIsVideoPlaying(true)
+    }
+
+    const handlePause = () => {
+      setIsVideoPlaying(false)
+    }
+
+    const handleEnded = () => {
+      setIsVideoPlaying(false)
+    }
+
+    video.addEventListener('play', handlePlay)
+    video.addEventListener('pause', handlePause)
+    video.addEventListener('ended', handleEnded)
+
+    return () => {
+      video.removeEventListener('play', handlePlay)
+      video.removeEventListener('pause', handlePause)
+      video.removeEventListener('ended', handleEnded)
+    }
+  }, [])
 
   // 비디오 로딩 상태 관리
   useEffect(() => {
@@ -82,17 +197,6 @@ const VideoPlayer = ({
     }
   }, [isMuted, volumeLevel])
 
-  // 재생/일시정지 토글 핸들러
-  const handlePlayPause = useCallback(() => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause()
-      } else {
-        videoRef.current.play()
-      }
-    }
-  }, [isPlaying])
-
   // 전체화면 토글 핸들러
   const handleFullscreenToggle = useCallback(() => {
     if (videoRef.current) {
@@ -116,67 +220,105 @@ const VideoPlayer = ({
     }
   }, [isFullscreen])
 
-  // 진행률 변경 핸들러
-  const handleSeek = useCallback((event, newValue) => {
-    if (videoRef.current) {
-      const newTime = (newValue / 100) * duration
-      videoRef.current.currentTime = newTime
-      setCurrentTime(newTime)
-    }
-  }, [duration])
-
-  // 시간 포맷팅 함수
-  const formatTime = useCallback((seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }, [])
-
-  // 비디오 이벤트 핸들러들
+  // 비디오 메타데이터 로드 후 시작 시간 설정
   const handleLoadedMetadata = useCallback(() => {
     if (videoRef.current) {
+      console.log('🎬 VideoPlayer 메타데이터 로드 완료:', {
+        src: src,
+        duration: videoRef.current.duration,
+        videoWidth: videoRef.current.videoWidth,
+        videoHeight: videoRef.current.videoHeight,
+        isPlaying: isPlaying,
+        startTime: currentTime
+      })
       setDuration(videoRef.current.duration)
       setIsLoading(false)
       setError(null)
+      
+      // 메타데이터 로드 후 시작 시간 설정
+      if (currentTime > 0) {
+        videoRef.current.currentTime = currentTime
+      }
     }
-  }, [])
+  }, [src, isPlaying, currentTime])
 
   const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime)
+      // 재생 중일 때만 시간 업데이트 (정지 상태에서는 불필요한 업데이트 방지)
+      if (!videoRef.current.paused) {
+        const videoTime = videoRef.current.currentTime
+        // 비디오 시간이 실제로 변경되었을 때만 업데이트
+        if (Math.abs(videoTime - currentTimeState) > 0.1) {
+          setCurrentTimeState(videoTime)
+          // 타임라인 시간 동기화를 위해 onTimeUpdate 콜백 호출
+          if (onTimeUpdate) {
+            // 비디오의 현재 시간을 타임라인에 전달
+            onTimeUpdate(videoTime)
+          }
+        }
+      }
     }
-  }, [])
-
-  const handlePlay = useCallback(() => {
-    setIsPlaying(true)
-  }, [])
-
-  const handlePause = useCallback(() => {
-    setIsPlaying(false)
-  }, [])
+  }, [currentTimeState, onTimeUpdate])
 
   const handleEnded = useCallback(() => {
-    setIsPlaying(false)
-    setCurrentTime(0)
-  }, [])
+    console.log('🎬 VideoPlayer 비디오 종료')
+    setIsVideoPlaying(false)
+    // 비디오 종료 시 타임라인 진행을 위해 onTimeUpdate 호출
+    if (onTimeUpdate && videoRef.current) {
+      // 비디오의 전체 길이를 전달하여 타임라인이 다음 컷으로 진행되도록 함
+      onTimeUpdate(videoRef.current.duration)
+    }
+  }, [onTimeUpdate])
 
   const handleError = useCallback((error) => {
-    console.error('Video error:', error)
+    console.error('🎬 VideoPlayer 오류:', {
+      src: src,
+      error: error,
+      videoElement: videoRef.current,
+      isPlaying: isPlaying
+    })
     setError(error)
     setIsLoading(false)
+    // 외부 제어만 사용하므로 재생 상태 변경 비활성화
+    // if (isPlaying && onPlayStateChange) {
+    //   onPlayStateChange(false)
+    // }
     if (onError) {
       onError(error)
     }
-  }, [onError])
+  }, [onError, src, isPlaying])
 
   const handleLoadStart = useCallback(() => {
+    console.log('🎬 VideoPlayer 로딩 시작:', { src, isPlaying })
     setIsLoading(true)
     setError(null)
-  }, [])
+  }, [src, isPlaying])
 
   const handleCanPlay = useCallback(() => {
+    // 로그 제거 - 불필요한 중복 로그
     setIsLoading(false)
   }, [])
+
+  // 메모이제이션된 비디오 스타일
+  const videoStyle = useMemo(() => ({
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    ...style
+  }), [style])
+
+  // 메모이제이션된 비디오 props
+  const videoProps = useMemo(() => ({
+    src,
+    poster,
+    onLoadedMetadata: handleLoadedMetadata,
+    onTimeUpdate: handleTimeUpdate,
+    onEnded: handleEnded,
+    onError: handleError,
+    onLoadStart: handleLoadStart,
+    onCanPlay: handleCanPlay,
+    ...props
+  }), [src, poster, handleLoadedMetadata, handleTimeUpdate, handleEnded, handleError, handleLoadStart, handleCanPlay, props])
 
   // 전체화면 변경 감지
   useEffect(() => {
@@ -232,23 +374,8 @@ const VideoPlayer = ({
       {/* 비디오 요소 */}
       <video
         ref={videoRef}
-        src={src}
-        poster={poster}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          ...style
-        }}
-        onLoadedMetadata={handleLoadedMetadata}
-        onTimeUpdate={handleTimeUpdate}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onEnded={handleEnded}
-        onError={handleError}
-        onLoadStart={handleLoadStart}
-        onCanPlay={handleCanPlay}
-        {...props}
+        style={videoStyle}
+        {...videoProps}
       />
 
       {/* 로딩 상태 */}
@@ -314,33 +441,9 @@ const VideoPlayer = ({
             zIndex: 1
           }}
         >
-          {/* 진행률 바 */}
-          <Slider
-            value={duration > 0 ? (currentTime / duration) * 100 : 0}
-            onChange={handleSeek}
-            sx={{
-              color: 'var(--color-accent)',
-              '& .MuiSlider-thumb': {
-                width: 12,
-                height: 12,
-                backgroundColor: 'var(--color-accent)'
-              },
-              '& .MuiSlider-track': {
-                backgroundColor: 'var(--color-accent)'
-              }
-            }}
-          />
-
           {/* 컨트롤 버튼들 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* 재생/일시정지 버튼 */}
-              <Tooltip title={isPlaying ? '일시정지' : '재생'}>
-                <IconButton onClick={handlePlayPause} size="small" sx={{ color: 'white' }}>
-                  {isPlaying ? <Pause /> : <PlayArrow />}
-                </IconButton>
-              </Tooltip>
-
               {/* 음소거 버튼 */}
               <Tooltip title={isMuted ? '음소거 해제' : '음소거'}>
                 <IconButton onClick={handleMuteToggle} size="small" sx={{ color: 'white' }}>
@@ -364,21 +467,9 @@ const VideoPlayer = ({
                   }}
                 />
               </Box>
-
-              {/* 시간 표시 */}
-              <Typography variant="caption" sx={{ color: 'white', ml: 1 }}>
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </Typography>
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* 설정 버튼 */}
-              <Tooltip title="설정">
-                <IconButton size="small" sx={{ color: 'white' }}>
-                  <Settings />
-                </IconButton>
-              </Tooltip>
-
               {/* 전체화면 버튼 */}
               <Tooltip title={isFullscreen ? '전체화면 해제' : '전체화면'}>
                 <IconButton onClick={handleFullscreenToggle} size="small" sx={{ color: 'white' }}>

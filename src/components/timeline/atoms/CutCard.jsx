@@ -17,7 +17,8 @@ import {
   Refresh,
   Videocam,
   Person,
-  Settings
+  Settings,
+  AutoAwesome
 } from '@mui/icons-material'
 import toast from 'react-hot-toast'
 
@@ -36,6 +37,7 @@ import {
  * 컷 카드 컴포넌트 - 타임라인에서 개별 컷을 표시
  * 컷의 상세 정보를 카드 형태로 표시하고 드래그 가능
  * 시간 기반 타임라인을 지원하여 컷의 지속 시간에 따라 너비가 동적으로 조정됨
+ * V2로 드래그 앤 드롭 기능 지원
  */
 const CutCard = React.memo(({ 
   cut, 
@@ -51,7 +53,9 @@ const CutCard = React.memo(({
   timeScale = 1, // 픽셀당 시간 (초)
   zoomLevel = 1, // 줌 레벨
   showTimeInfo = true, // 시간 정보 표시 여부
-  width = null // 외부에서 전달된 너비 (우선 사용)
+  width = null, // 외부에서 전달된 너비 (우선 사용)
+  onDragStart, // V2로 드래그 시작 시 호출
+  onDragEnd // V2로 드래그 종료 시 호출
 }) => {
   // cut 객체가 유효하지 않으면 빈 카드 반환
   if (!cut || !cut.id) {
@@ -98,8 +102,53 @@ const CutCard = React.memo(({
     transition,
     opacity: isDragging ? 0.7 : 1,
     zIndex: isDragging ? 1000 : 'auto',
-    rotate: isDragging ? '2deg' : '0deg',
-    boxShadow: isDragging ? '0 8px 32px rgba(212, 175, 55, 0.3)' : 'none',
+  }
+
+  /**
+   * V2로 드래그 시작 핸들러
+   */
+  const handleDragStart = (event) => {
+    // 기본 드래그 앤 드롭이 활성화된 경우
+    if (isDraggable) {
+      return
+    }
+
+    // V2로 드래그할 수 있도록 데이터 설정
+    event.dataTransfer.setData('application/json', JSON.stringify({
+      type: 'cut-from-v1',
+      cut: cut,
+      source: 'timeline-v1'
+    }))
+    
+    // 드래그 이미지 설정
+    if (event.target) {
+      event.dataTransfer.setDragImage(event.target, 0, 0)
+    }
+    
+    if (onDragStart) {
+      onDragStart(event, cut)
+    }
+  }
+
+  /**
+   * V2로 드래그 종료 핸들러
+   */
+  const handleDragEnd = (event) => {
+    // V2로 드래그되었는지 확인
+    const data = event.dataTransfer.getData('application/json')
+    if (data) {
+      try {
+        const dragData = JSON.parse(data)
+        if (dragData.type === 'cut-from-v1' && dragData.source === 'timeline-v1') {
+          
+          if (onDragEnd) {
+            onDragEnd(event)
+          }
+        }
+      } catch (error) {
+        console.error('드래그 데이터 파싱 오류:', error)
+      }
+    }
   }
 
   // 컷 타입에 따른 아이콘과 색상 결정
@@ -191,19 +240,15 @@ const CutCard = React.memo(({
       const maxWidth = Math.max(400, cutDuration * 20) // 최대 1초당 20px
       cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
       
-      // 디버깅 로그
-      console.log(`CutCard 동적 계산 컷 ${cut.shotNumber}: duration=${cutDuration}s, timeScale=${timeScale}, pixelsPerSecond=${pixelsPerSecond}, timeBasedWidth=${timeBasedWidth}px, finalWidth=${cardWidth}px`)
     } else if (cutDuration > 0) {
       // timeScale이 0이지만 duration이 있는 경우 기본 계산
       const basePixelsPerSecond = 10
       const timeBasedWidth = cutDuration * basePixelsPerSecond
       cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, 150))
       
-      console.log(`CutCard 기본 계산 컷 ${cut.shotNumber}: duration=${cutDuration}s, fallback width=${cardWidth}px`)
     }
   } else {
     // 외부에서 전달된 너비 사용 시 로그
-    console.log(`CutCard 외부 너비 사용 컷 ${cut.shotNumber}: width=${width}px`)
   }
 
   // 시간 정보 포맷팅
@@ -298,6 +343,9 @@ const CutCard = React.memo(({
         style={style}
         {...attributes}
         {...listeners}
+        draggable={!isDraggable} // 기본 드래그 앤 드롭이 비활성화된 경우에만 V2 드래그 활성화
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         onClick={(event) => {
           if (onClick) {
             // Shift 키가 눌린 상태에서 클릭하면 씬 편집 모드로 처리

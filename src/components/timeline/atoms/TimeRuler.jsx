@@ -41,7 +41,6 @@ const TimeRuler = ({
   const dynamicTimeScale = useMemo(() => {
     // 외부에서 전달된 timeScale이 있으면 우선 사용
     if (timeScale !== null) {
-      console.log(`🎬 TimeRuler 외부 timeScale 사용: ${timeScale}`)
       return timeScale
     }
     
@@ -50,7 +49,6 @@ const TimeRuler = ({
     const zoomedPixelsPerSecond = basePixelsPerSecond * zoomLevel
     const calculatedTimeScale = 1 / zoomedPixelsPerSecond // 픽셀당 시간 (초)
     
-    console.log(`🎬 TimeRuler 내부 계산: zoomLevel=${zoomLevel}, pixelsPerSecond=${zoomedPixelsPerSecond}, timeScale=${calculatedTimeScale}`)
     return calculatedTimeScale
   }, [timeScale, zoomLevel])
 
@@ -61,7 +59,6 @@ const TimeRuler = ({
     const totalWidth = totalDuration * pixelsPerSecond
     const minWidth = Math.max(1000, totalWidth) // 최소 1000px 보장
     
-    console.log(`🎬 TimeRuler timelineWidth: totalDuration=${totalDuration}s, dynamicTimeScale=${dynamicTimeScale}, pixelsPerSecond=${pixelsPerSecond}, totalWidth=${totalWidth}px, finalWidth=${minWidth}px`)
     return minWidth
   }, [totalDuration, dynamicTimeScale])
 
@@ -141,25 +138,43 @@ const TimeRuler = ({
       }
     }
     
-    console.log(`🎬 TimeRuler 눈금 생성: totalDuration=${totalDuration}s, zoomLevel=${zoomLevel}, tickStep=${tickStep}, pixelsPerSecond=${pixelsPerSecond}, ticks=${ticks.length}개`)
-    
     return ticks
   }, [totalDuration, dynamicTimeScale, zoomLevel, shouldDisplayTick])
 
+  // pixelsPerSecond 계산
+  const pixelsPerSecond = useMemo(() => {
+    return 1 / dynamicTimeScale
+  }, [dynamicTimeScale])
+
   // 현재 시간 위치 계산 - 동적 시간 스케일에 맞게 조정
   const currentTimePosition = useMemo(() => {
-    if (currentTime <= 0) {
-      console.log('TimeRuler currentTimePosition: currentTime이 0 이하입니다')
-      return 0
-    }
-    
-    const pixelsPerSecond = 1 / dynamicTimeScale
     const position = currentTime * pixelsPerSecond
-    
-    console.log(`TimeRuler currentTimePosition: currentTime=${currentTime}s, dynamicTimeScale=${dynamicTimeScale}, pixelsPerSecond=${pixelsPerSecond}, position=${position}px`)
-    
-    return Math.max(0, position)
-  }, [currentTime, dynamicTimeScale])
+    return position
+  }, [currentTime, pixelsPerSecond])
+
+  // 재생 상태에 따른 playhead 스타일
+  const playheadStyle = useMemo(() => ({
+    position: 'absolute',
+    left: `${currentTimePosition}px`,
+    top: 0,
+    bottom: 0,
+    width: '4px',
+    backgroundColor: '#FFD700',
+    zIndex: 30,
+    boxShadow: '0 0 16px rgba(255, 215, 0, 0.8)',
+    transition: 'left 0.1s ease-out', // 부드러운 이동
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: -8,
+      left: -5,
+      width: 0,
+      height: 0,
+      borderLeft: '6px solid transparent',
+      borderRight: '6px solid transparent',
+      borderTop: '12px solid #FFD700'
+    }
+  }), [currentTimePosition])
 
   // 시간 클릭 핸들러
   const handleTimeClick = (time) => {
@@ -176,15 +191,7 @@ const TimeRuler = ({
     const scrollContainer = event.currentTarget.closest('[data-scroll-container]')
     const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0
     const clickX = event.clientX - rect.left + scrollLeft
-    const pixelsPerSecond = 1 / dynamicTimeScale
     const clickedTime = clickX / pixelsPerSecond
-    
-    console.log('🎬 TimeRuler 클릭:', {
-      clickX,
-      scrollLeft,
-      pixelsPerSecond,
-      clickedTime
-    })
     
     onTimeClick(Math.max(0, clickedTime))
   }
@@ -195,7 +202,6 @@ const TimeRuler = ({
     const scrollContainer = event.currentTarget.closest('[data-scroll-container]')
     const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0
     const mouseX = event.clientX - rect.left + scrollLeft
-    const pixelsPerSecond = 1 / dynamicTimeScale
     const hoveredTime = mouseX / pixelsPerSecond
     
     setHoverPosition(mouseX)
@@ -308,29 +314,7 @@ const TimeRuler = ({
       )}
 
       {/* 현재 시간 playhead */}
-      <Box
-        sx={{
-          position: 'absolute',
-          left: `${currentTimePosition}px`,
-          top: 0,
-          bottom: 0,
-          width: '4px',
-          backgroundColor: '#FFD700',
-          zIndex: 30,
-          boxShadow: '0 0 16px rgba(255, 215, 0, 0.8)',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: -8,
-            left: -5,
-            width: 0,
-            height: 0,
-            borderLeft: '6px solid transparent',
-            borderRight: '6px solid transparent',
-            borderTop: '12px solid #FFD700'
-          }
-        }}
-      />
+      <Box sx={playheadStyle} />
 
       {/* 그리드 라인 - 동적 시간 스케일에 맞게 조정 */}
       {showGrid && (

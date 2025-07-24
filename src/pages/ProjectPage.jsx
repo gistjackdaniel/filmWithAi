@@ -1,58 +1,68 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { 
-  Box, 
-  Typography, 
   Container,
+  Typography, 
+  Box, 
   Button,
+  Chip, 
   Grid,
   Card,
   CardContent,
   CardActions,
-  Chip,
-  IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Table,
-  TableBody,
-  TableCell,
+  IconButton,
+  Tooltip,
+  LinearProgress,
+  Alert,
+  Snackbar,
   TableContainer,
+  Table,
   TableHead,
+  TableBody,
   TableRow,
+  TableCell,
   Paper
 } from '@mui/material'
 import { 
+  ArrowBack,
   Save,
   PlayArrow,
   Edit,
-  Visibility,
+  Delete,
   Add,
   List,
   Book,
+  Schedule,
+  Movie,
+  Videocam,
+  CloudUpload,
+  Refresh,
+  Settings,
+  Info,
+  CheckCircle,
+  Error,
+  Warning,
   Print,
-  Download
+  Visibility
 } from '@mui/icons-material'
-import { useNavigate, useLocation } from 'react-router-dom'
-import api from '../services/api'
-import toast from 'react-hot-toast'
+import { useAuthStore } from '../stores/authStore'
+import useProjectStore from '../stores/projectStore'
+import CommonHeader from '../components/CommonHeader'
+import StoryResult from '../components/StoryGeneration/StoryResult'
 import CutTimelineViewer from '../components/timeline/organisms/CutTimelineViewer'
+import VideoPlayer from '../components/timeline/atoms/VideoPlayer'
+import { toast } from 'react-hot-toast'
+import api from '../services/api'
+
 import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
 import CutEditModal from '../components/StoryGeneration/CutEditModal'
 import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
-import StoryResult from '../components/StoryGeneration/StoryResult' // StoryResult 컴포넌트 추가
 import useTimelineStore from '../stores/timelineStore'
-import CommonHeader from '../components/CommonHeader'
 
 /**
  * 프로젝트 상세 페이지 컴포넌트
@@ -67,20 +77,24 @@ const ProjectPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   
-  // 타임라인 스토어
+  // 인증 상태 확인
+  const { isAuthenticated, token, user } = useAuthStore()
+  
+  // 타임라인 스토어에서 데이터 가져오기
   const {
     cuts,
+    scenes,
     selectedCutId,
-    selectedSceneId, // 추가
+    selectedSceneId,
     loading: timelineLoading,
     error: timelineError,
+    currentProjectId,
     modalOpen,
     currentCut,
-    currentScene, // 추가
-    setCurrentProjectId,
-    
-    loadProjectCuts,
+    currentScene,
     selectCut,
+    loadProjectCuts,
+    setCurrentProjectId,
     openModal,
     closeModal,
     disconnectRealtimeUpdates,
@@ -88,6 +102,14 @@ const ProjectPage = () => {
     updateCutWithAPI,
     deleteCutWithAPI
   } = useTimelineStore()
+  
+  // 디버깅: cuts 데이터 확인
+  console.log('🔍 ProjectPage cuts 데이터 확인:', {
+    cutsLength: cuts?.length || 0,
+    cutsType: typeof cuts,
+    cutsIsArray: Array.isArray(cuts),
+    cuts: cuts?.slice(0, 3) // 처음 3개만 로그
+  })
   
   // 로컬 상태 관리
   const [project, setProject] = useState(null) // 프로젝트 정보
@@ -99,6 +121,34 @@ const ProjectPage = () => {
   const [showCutList, setShowCutList] = useState(false)
   const [showContinuityBook, setShowContinuityBook] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [v2Videos, setV2Videos] = useState([])
+  const [showV2Track, setShowV2Track] = useState(true)
+  const playStateTimeoutRef = useRef(null)
+  const playbackIntervalRef = useRef(null)
+
+  // 총 지속 시간 계산 함수
+  const calculateTotalDuration = useCallback(() => {
+    if (!project?.conteList) return 0
+    
+    let totalDuration = 0
+    
+    // 모든 씬의 컷 지속 시간 합계
+    project.conteList.forEach(scene => {
+      if (scene.cuts && Array.isArray(scene.cuts)) {
+        scene.cuts.forEach(cut => {
+          totalDuration += cut.estimatedDuration || cut.duration || 5
+        })
+      }
+    })
+    
+    // V2 비디오 지속 시간과 비교하여 더 긴 시간 사용
+    const v2TotalDuration = v2Videos.reduce((total, video) => {
+      return total + (video.duration || 5)
+    }, 0)
+    
+    return Math.max(totalDuration, v2TotalDuration)
+  }, [project, v2Videos])
 
   // 컷 선택 핸들러 (Playhead 이동 시)
   const handleCutSelect = useCallback((cutId) => {
@@ -286,6 +336,10 @@ const ProjectPage = () => {
           setProject(tempProject)
           setLoading(false)
           
+          // 컷 데이터 자동 로드 (temp-project-id인 경우)
+          console.log('🔄 컷 데이터 자동 로드 시작')
+          loadProjectCuts('temp-project-id')
+          
           // 컷 생성이 요청된 경우
           if (generateCuts && mode === 'timeline') {
             console.log('🎬 컷 생성 및 타임라인 표시 시작')
@@ -313,6 +367,18 @@ const ProjectPage = () => {
       disconnectRealtimeUpdates()
     }
   }, [disconnectRealtimeUpdates])
+
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      if (playStateTimeoutRef.current) {
+        clearTimeout(playStateTimeoutRef.current)
+      }
+      if (playbackIntervalRef.current) {
+        clearInterval(playbackIntervalRef.current)
+      }
+    }
+  }, [])
 
   /**
    * 시간 문자열을 초 단위로 변환하는 함수
@@ -634,6 +700,23 @@ const ProjectPage = () => {
     try {
       console.log('ProjectPage fetchProject started for projectId:', projectId)
       console.log('ProjectPage API URL:', `/projects/${projectId}`)
+      
+      // 인증 상태 확인
+      console.log('🔐 인증 상태 확인:', {
+        isAuthenticated,
+        hasToken: !!token,
+        hasUser: !!user,
+        tokenLength: token?.length || 0
+      })
+      
+      // 인증되지 않은 경우 로그인 페이지로 리다이렉트
+      if (!isAuthenticated || !token) {
+        console.log('❌ 인증되지 않은 사용자. 로그인 페이지로 리다이렉트...')
+        toast.error('로그인이 필요합니다.')
+        navigate('/')
+        return
+      }
+      
       setLoading(true)
       
       const response = await api.get(`/projects/${projectId}?includeContes=true`)
@@ -1199,20 +1282,36 @@ const ProjectPage = () => {
   }
 
   /**
-   * 컷리스트 데이터 생성
+   * 컷리스트 데이터 생성 - 씬별로 그룹화
    */
   const generateCutListData = () => {
-    if (!cuts || cuts.length === 0) return []
+    if (!project?.conteList || !cuts) return []
     
-    return cuts.map(cut => {
+    const cutListData = []
+    
+    // 씬별로 컷을 그룹화
+    project.conteList.forEach((scene, sceneIndex) => {
+      // sceneId와 sceneNumber 모두로 매칭 시도
+      const sceneCuts = cuts.filter(cut => {
+        const sceneIdMatch = cut.sceneId === scene.id || cut.sceneId === scene._id
+        const sceneNumberMatch = cut.sceneNumber === scene.scene
+        const conteIdMatch = cut.sceneId === scene.conteId
+        
+        return sceneIdMatch || sceneNumberMatch || conteIdMatch
+      })
+      
+      // 씬별 컷 데이터 생성
+      if (sceneCuts && sceneCuts.length > 0) {
+        sceneCuts.forEach(cut => {
       const shotSize = cut.shootingPlan?.shotSize || cut.shotSize || 'MS'
       const angleDirection = cut.shootingPlan?.angleDirection || cut.angleDirection || 'Eye-Level'
       const cameraMovement = cut.shootingPlan?.cameraMovement || cut.cameraMovement || 'Static'
       const lensSpecs = cut.shootingPlan?.lensSpecs || cut.lensSpecs || ''
       const equipment = cut.requiredEquipment?.cameras?.join(', ') || ''
       
-      return {
-        scene: cut.sceneNumber || cut.sceneId,
+          cutListData.push({
+            scene: scene.scene || sceneIndex + 1,
+            sceneTitle: scene.title,
         cut: cut.shotNumber,
         description: cut.description,
         shotSize,
@@ -1220,31 +1319,157 @@ const ProjectPage = () => {
         cameraMovement,
         lensSpecs,
         equipment
+          })
+        })
       }
     })
+    
+    return cutListData
   }
 
   /**
-   * 콘티북 데이터 생성
+   * 콘티북 데이터 생성 - 씬별로 그룹화
    */
   const generateContinuityBookData = () => {
-    if (!cuts || cuts.length === 0) return []
+    if (!project?.conteList || !cuts) return []
     
-    return cuts.map(cut => {
+    const continuityBookData = []
+    
+    // 씬별로 컷을 그룹화
+    project.conteList.forEach((scene, sceneIndex) => {
+      // sceneId와 sceneNumber 모두로 매칭 시도
+      const sceneCuts = cuts.filter(cut => {
+        const sceneIdMatch = cut.sceneId === scene.id || cut.sceneId === scene._id
+        const sceneNumberMatch = cut.sceneNumber === scene.scene
+        const conteIdMatch = cut.sceneId === scene.conteId
+        
+        return sceneIdMatch || sceneNumberMatch || conteIdMatch
+      })
+      
+      // 씬별 컷 데이터 생성
+      if (sceneCuts && sceneCuts.length > 0) {
+        sceneCuts.forEach(cut => {
       const shotSize = cut.shootingPlan?.shotSize || cut.shotSize || 'MS'
       const angleDirection = cut.shootingPlan?.angleDirection || cut.angleDirection || 'Eye-Level'
       const cameraMovement = cut.shootingPlan?.cameraMovement || cut.cameraMovement || 'Static'
       
-      return {
+          continuityBookData.push({
+            scene: scene.scene || sceneIndex + 1,
+            sceneTitle: scene.title,
         cutNumber: cut.shotNumber,
         imageUrl: cut.imageUrl,
         description: cut.description,
         shotSize,
         angleDirection,
         cameraMovement
+          })
+        })
       }
     })
+    
+    return continuityBookData
   }
+
+  // 정렬된 컷 목록 계산 함수
+  const getSortedCuts = useCallback(() => {
+    if (!project?.conteList || !cuts) return []
+    
+    const sortedCuts = []
+    let globalCutIndex = 0
+    
+    project.conteList.forEach((scene, sceneIndex) => {
+      // sceneId와 sceneNumber 모두로 매칭 시도
+      const sceneCuts = cuts.filter(cut => {
+        const sceneIdMatch = cut.sceneId === scene.id || cut.sceneId === scene._id
+        const sceneNumberMatch = cut.sceneNumber === scene.scene
+        const conteIdMatch = cut.sceneId === scene.conteId
+        
+        return sceneIdMatch || sceneNumberMatch || conteIdMatch
+      })
+      
+      if (sceneCuts && Array.isArray(sceneCuts)) {
+        sceneCuts.forEach((cut, cutIndex) => {
+          sortedCuts.push({
+            ...cut,
+            sceneId: scene.id,
+            sceneIndex: sceneIndex,
+            sceneTitle: scene.title,
+            sceneNumber: scene.scene,
+            globalIndex: globalCutIndex,
+            isLastCutInScene: cutIndex === sceneCuts.length - 1
+          })
+          globalCutIndex++
+        })
+      }
+    })
+    
+    return sortedCuts
+  }, [project?.conteList, cuts])
+
+  // V1 컷 이미지 렌더링 함수
+  const renderV1CutImage = useCallback(() => {
+    // 정렬된 컷 목록 사용
+    const sortedCuts = getSortedCuts()
+    
+    // 현재 시간에 해당하는 V1 컷 찾기
+    let accumulatedTime = 0
+    let currentCut = null
+    
+    if (sortedCuts && sortedCuts.length > 0) {
+      for (const cut of sortedCuts) {
+        const cutDuration = cut.estimatedDuration || cut.duration || 5
+        const cutEndTime = accumulatedTime + cutDuration
+        
+        if (currentTime >= accumulatedTime && currentTime < cutEndTime) {
+          currentCut = cut
+          break
+        }
+        accumulatedTime = cutEndTime
+      }
+      
+      // 현재 시간이 모든 컷 범위를 벗어난 경우 마지막 컷 선택
+      if (!currentCut && sortedCuts.length > 0) {
+        currentCut = sortedCuts[sortedCuts.length - 1]
+      }
+    }
+    
+    if (currentCut?.imageUrl) {
+      return (
+        <img
+          key={`${currentCut.id}-${currentTime}`} // 시간이 변경될 때마다 이미지 재로드
+          src={currentCut.imageUrl.startsWith('/') ? `http://localhost:5001${currentCut.imageUrl}` : currentCut.imageUrl}
+          alt={`컷 ${currentCut.shotNumber} - ${currentCut.title}`}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain'
+          }}
+          onError={(e) => console.error('🎬 컷 이미지 로딩 오류:', currentCut.title)}
+        />
+      )
+    } else {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            V1 컷 이미지 플레이어
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            컷 이미지 미리보기
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+            {currentCut ? `컷 ${currentCut.shotNumber}: ${currentCut.title}` : '컷을 선택하거나 생성해주세요'}
+          </Typography>
+        </Box>
+      )
+    }
+  }, [currentTime, getSortedCuts])
 
   // 로딩 중일 때 로딩 화면 표시
   if (loading) {
@@ -1376,7 +1601,7 @@ const ProjectPage = () => {
           {showTimeline && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                비디오 플레이어 (v1 - 컷 이미지 미리보기)
+                비디오 플레이어 ({showV2Track && v2Videos.length > 0 ? 'V2 - 비디오' : 'V1 - 컷 이미지 미리보기'})
               </Typography>
               <Box 
                 sx={{ 
@@ -1391,46 +1616,100 @@ const ProjectPage = () => {
                   overflow: 'hidden'
                 }}
               >
-                {/* 현재 Playhead 위치의 컷 이미지 표시 */}
-                {(() => {
-                  // 현재 선택된 컷이나 첫 번째 컷의 이미지 표시
-                  const currentCut = cuts?.find(cut => cut.id === selectedCutId) || cuts?.[0]
-                  
-                  if (currentCut?.imageUrl) {
+                {/* V2 트랙이 활성화되고 비디오가 있는 경우 V2 비디오 표시 */}
+                {showV2Track && v2Videos.length > 0 ? (
+                  (() => {
+                    // 현재 시간에 해당하는 V2 비디오 찾기
+                    let accumulatedTime = 0
+                    let currentVideo = null
+                    
+                    for (const video of v2Videos) {
+                      const videoDuration = video.duration || 5
+                      const videoEndTime = accumulatedTime + videoDuration
+                      
+                      if (currentTime >= accumulatedTime && currentTime < videoEndTime) {
+                        currentVideo = video
+                        break
+                      }
+                      accumulatedTime = videoEndTime
+                    }
+                    
+                    // 현재 시간이 모든 비디오 범위를 벗어난 경우 V1 컷 이미지 표시
+                    if (!currentVideo) {
+                      return renderV1CutImage()
+                    }
+
+                    if (currentVideo?.videoUrl) {
+                      
+                      // 비디오 URL 처리
+                      const videoUrl = (() => {
+                        const url = currentVideo.videoUrl
+                        
+                        // 이미 완전한 URL인 경우
+                        if (url.startsWith('http://') || url.startsWith('https://')) {
+                          return url
+                        }
+                        
+                        // 로컬 파일 경로인 경우 (blob: 또는 /uploads/ 형식)
+                        if (url.startsWith('blob:')) {
+                          return url
+                        }
+                        
+                        // 상대 경로인 경우 백엔드 서버 URL 추가
+                        if (url.startsWith('/')) {
+                          return `http://localhost:5001${url}`
+                        }
+                        
+                        // 파일명만 있는 경우 uploads 폴더 경로로 가정
+                        return `http://localhost:5001/uploads/videos/${url}`
+                      })()
+                      
+                      // 현재 시간에 해당하는 비디오 내 상대 시간 계산
+                      let relativeTime = 0
+                      let videoStartTime = 0
+                      
+                      for (const video of v2Videos) {
+                        const videoDuration = video.duration || 5
+                        const videoEndTime = videoStartTime + videoDuration
+                        
+                        if (currentTime >= videoStartTime && currentTime < videoEndTime) {
+                          relativeTime = currentTime - videoStartTime
+                          break
+                        }
+                        videoStartTime = videoEndTime
+                      }
+                      
+                      // 로그 제거 - 불필요한 중복 로그
+                      
                     return (
-                      <img
-                        src={currentCut.imageUrl.startsWith('/') ? `http://localhost:5001${currentCut.imageUrl}` : currentCut.imageUrl}
-                        alt={`컷 ${currentCut.shotNumber} - ${currentCut.title}`}
+                        <VideoPlayer
+                          key={`${currentVideo.id}`}
+                          src={videoUrl}
+                          poster={currentVideo.imageUrl}
+                          isPlaying={isPlaying}
+                          currentTime={relativeTime}
+                          onTimeUpdate={(videoTime) => {
+                            // 비디오 시간을 타임라인 시간으로 변환
+                            const timelineTime = videoStartTime + videoTime
+                            setCurrentTime(timelineTime)
+                          }}
                         style={{
                           width: '100%',
-                          height: '100%',
-                          objectFit: 'contain'
+                            height: '100%'
+                          }}
+                          onError={(error) => {
+                            console.error('🎬 비디오 로딩 오류:', currentVideo.title, error)
                         }}
                       />
                     )
                   } else {
-                    return (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        color: 'white',
-                        textAlign: 'center'
-                      }}>
-                        <Typography variant="h6" sx={{ mb: 1 }}>
-                          비디오 플레이어
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 2 }}>
-                          v1: 컷 이미지 미리보기
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                          {currentCut ? `컷 ${currentCut.shotNumber}: ${currentCut.title}` : '컷을 선택하거나 생성해주세요'}
-                        </Typography>
-        </Box>
-                    )
-                  }
-                })()}
+                      return renderV1CutImage()
+                    }
+                  })()
+                ) : (
+                  // V2 트랙이 비활성화이거나 비디오가 없는 경우 V1 컷 이미지 표시
+                  renderV1CutImage()
+                )}
                 
                 {/* 플레이어 컨트롤 오버레이 */}
                 <Box sx={{
@@ -1447,28 +1726,80 @@ const ProjectPage = () => {
                 }}>
                   <Typography variant="caption" color="white">
                     {(() => {
-                      const currentCut = cuts?.find(cut => cut.id === selectedCutId) || cuts?.[0]
+                      if (showV2Track && v2Videos.length > 0) {
+                        // V2 비디오 정보 표시 - 동일한 시간 계산 로직 사용
+                        let accumulatedTime = 0
+                        let currentVideo = null
+                        
+                        for (const video of v2Videos) {
+                          const videoDuration = video.duration || 5
+                          const videoEndTime = accumulatedTime + videoDuration
+                          
+                          if (currentTime >= accumulatedTime && currentTime < videoEndTime) {
+                            currentVideo = video
+                            break
+                          }
+                          accumulatedTime = videoEndTime
+                        }
+                        
+                        // 현재 시간에 해당하는 V2 비디오가 있는 경우
+                        if (currentVideo) {
+                          return `${currentVideo.title} (${currentVideo.duration}s)`
+                        } else {
+                          // V2 비디오가 없으면 V1 컷 정보 표시
+                          let cutAccumulatedTime = 0
+                          let currentCut = null
+                          
+                          const sortedCuts = getSortedCuts()
+                          
+                          if (sortedCuts && sortedCuts.length > 0) {
+                            for (const cut of sortedCuts) {
+                              const cutDuration = cut.estimatedDuration || cut.duration || 5
+                              const cutEndTime = cutAccumulatedTime + cutDuration
+                              
+                              if (currentTime >= cutAccumulatedTime && currentTime < cutEndTime) {
+                                currentCut = cut
+                                break
+                              }
+                              cutAccumulatedTime = cutEndTime
+                            }
+                            
+                            if (!currentCut && sortedCuts.length > 0) {
+                              currentCut = sortedCuts[sortedCuts.length - 1]
+                            }
+                          }
+                          
                       return currentCut ? `컷 ${currentCut.shotNumber}: ${currentCut.title}` : '컷 없음'
+                        }
+                      } else {
+                        // V1 컷 정보 표시 - 동일한 시간 계산 로직 사용
+                        let accumulatedTime = 0
+                        let currentCut = null
+                        
+                        const sortedCuts = getSortedCuts()
+                        
+                        if (sortedCuts && sortedCuts.length > 0) {
+                          for (const cut of sortedCuts) {
+                            const cutDuration = cut.estimatedDuration || cut.duration || 5
+                            const cutEndTime = accumulatedTime + cutDuration
+                            
+                            if (currentTime >= accumulatedTime && currentTime < cutEndTime) {
+                              currentCut = cut
+                              break
+                            }
+                            accumulatedTime = cutEndTime
+                          }
+                          
+                          if (!currentCut && sortedCuts.length > 0) {
+                            currentCut = sortedCuts[sortedCuts.length - 1]
+                          }
+                        }
+                        
+                        return currentCut ? `컷 ${currentCut.shotNumber}: ${currentCut.title}` : '컷 없음'
+                      }
                     })()}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button 
-                      size="small" 
-                      variant="contained" 
-                      color="primary"
-                      onClick={() => setIsPlaying(!isPlaying)}
-                    >
-                      {isPlaying ? '일시정지' : '재생'}
-                    </Button>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      color="inherit"
-                      onClick={() => setIsPlaying(false)}
-                    >
-                      정지
-                    </Button>
-                  </Box>
+                  {/* 재생 제어는 CutTimelineViewer에서만 처리 */}
                 </Box>
               </Box>
             </Box>
@@ -1678,7 +2009,7 @@ const ProjectPage = () => {
               </Box>
           </Box>
           
-            {/* 컷이 있는 경우에만 타임라인 표시 */}
+            {/* V1 타임라인 (컷 타임라인) */}
             {cuts && cuts.length > 0 ? (
               <CutTimelineViewer
                 scenes={(() => {
@@ -1690,20 +2021,8 @@ const ProjectPage = () => {
                       const sceneNumberMatch = cut.sceneNumber === scene.scene
                       const conteIdMatch = cut.sceneId === scene.conteId
                       
-                      console.log(`🔍 컷 ${cut.id} 매칭 확인:`, {
-                        cutSceneId: cut.sceneId,
-                        cutSceneNumber: cut.sceneNumber,
-                        sceneId: scene.id,
-                        sceneNumber: scene.scene,
-                        sceneIdMatch,
-                        sceneNumberMatch,
-                        conteIdMatch
-                      })
-                      
                       return sceneIdMatch || sceneNumberMatch || conteIdMatch
                     })
-                    
-                    console.log(`🔍 씬 ${scene.title} (${scene.id})에 매칭된 컷:`, sceneCuts.length, '개')
                     
                     return {
                       ...scene,
@@ -1711,13 +2030,20 @@ const ProjectPage = () => {
                     }
                   }) || []
                   
-                  console.log('🔍 CutTimelineViewer에 전달할 scenes 데이터:', {
-                    totalScenes: scenesWithCuts.length,
-                    totalCuts: cuts.length,
+                  // 디버깅 로그 추가
+                  console.log('🔍 ProjectPage CutTimelineViewer scenes 데이터:', {
+                    cutsLength: cuts.length,
+                    projectConteListLength: project?.conteList?.length || 0,
+                    scenesWithCutsLength: scenesWithCuts.length,
                     scenesWithCuts: scenesWithCuts.map(scene => ({
                       id: scene.id,
                       title: scene.title,
-                      cutsCount: scene.cuts?.length || 0
+                      cutsLength: scene.cuts?.length || 0,
+                      cuts: scene.cuts?.map(cut => ({
+                        id: cut.id,
+                        shotNumber: cut.shotNumber,
+                        title: cut.title
+                      }))
                     }))
                   })
                   
@@ -1738,6 +2064,58 @@ const ProjectPage = () => {
             baseScale={1}
             onViewSchedule={handleViewSchedule}
                 onCutSelect={handleCutSelect}
+                currentTime={currentTime}
+                onTimeChange={setCurrentTime}
+                isPlaying={isPlaying}
+                onPlayStateChange={(playing) => {
+                  // 강화된 디바운싱 - 현재 상태와 동일하면 완전히 무시
+                  if (playing === isPlaying) {
+                    return
+                  }
+                  
+                  // 추가 안전장치 - 이전 상태 저장
+                  const prevIsPlaying = isPlaying
+                  
+                  // 상태 변경
+                  setIsPlaying(playing)
+                  
+                  // 재생 상태에 따라 인터벌 관리 - 더 안전한 조건 체크
+                  if (playing && !prevIsPlaying) {
+                    // 재생 시작 시에만 인터벌 설정
+                    if (playbackIntervalRef.current) {
+                      clearInterval(playbackIntervalRef.current)
+                    }
+                    playbackIntervalRef.current = setInterval(() => {
+                      setCurrentTime(prevTime => {
+                        const newTime = prevTime + 0.1 // 0.1초씩 증가
+                        
+                        // 재생 완료 시 자동 정지
+                        const totalDuration = calculateTotalDuration()
+                        if (newTime >= totalDuration) {
+                          // 재생 완료 시 정지
+                          if (playbackIntervalRef.current) {
+                            clearInterval(playbackIntervalRef.current)
+                            playbackIntervalRef.current = null
+                          }
+                          setIsPlaying(false)
+                          return totalDuration
+                        }
+                        
+                        return newTime
+                      })
+                    }, 200) // 200ms로 증가하여 비디오 재생과의 충돌 방지
+                  } else if (!playing && prevIsPlaying) {
+                    // 재생 정지 시에만 인터벌 정리
+                    if (playbackIntervalRef.current) {
+                      clearInterval(playbackIntervalRef.current)
+                      playbackIntervalRef.current = null
+                    }
+                  }
+                }}
+                onV2StateChange={(v2State) => {
+                  setShowV2Track(v2State.showV2Track)
+                  setV2Videos(v2State.v2Videos)
+                }}
               />
             ) : (
               <Box sx={{ 
@@ -1765,6 +2143,8 @@ const ProjectPage = () => {
                 </Button>
         </Box>
             )}
+
+
           </Box>
         )}
 
@@ -1838,6 +2218,7 @@ const ProjectPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>씬</TableCell>
+                  <TableCell>씬 제목</TableCell>
                   <TableCell>컷</TableCell>
                   <TableCell>설명</TableCell>
                   <TableCell>사이즈</TableCell>
@@ -1848,9 +2229,47 @@ const ProjectPage = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {generateCutListData().map((cut, index) => (
-                  <TableRow key={index}>
+                {(() => {
+                  const cutListData = generateCutListData()
+                  const groupedData = []
+                  let currentScene = null
+                  
+                  cutListData.forEach((cut, index) => {
+                    // 새로운 씬이 시작되면 구분선 추가
+                    if (currentScene !== cut.scene) {
+                      if (currentScene !== null) {
+                        // 이전 씬 구분선
+                        groupedData.push({
+                          type: 'separator',
+                          scene: currentScene,
+                          key: `separator-${currentScene}`
+                        })
+                      }
+                      currentScene = cut.scene
+                    }
+                    
+                    groupedData.push({
+                      type: 'cut',
+                      data: cut,
+                      key: `cut-${index}`
+                    })
+                  })
+                  
+                  return groupedData.map((item) => {
+                    if (item.type === 'separator') {
+                      return (
+                        <TableRow key={item.key} sx={{ backgroundColor: 'grey.100' }}>
+                          <TableCell colSpan={9} sx={{ textAlign: 'center', fontWeight: 'bold' }}>
+                            ─── 씬 {item.scene} ───
+                          </TableCell>
+                        </TableRow>
+                      )
+                    } else {
+                      const cut = item.data
+                      return (
+                        <TableRow key={item.key}>
                     <TableCell>{cut.scene}</TableCell>
+                          <TableCell>{cut.sceneTitle}</TableCell>
                     <TableCell>{cut.cut}</TableCell>
                     <TableCell>{cut.description}</TableCell>
                     <TableCell>{cut.shotSize}</TableCell>
@@ -1859,7 +2278,10 @@ const ProjectPage = () => {
                     <TableCell>{cut.lensSpecs}</TableCell>
                     <TableCell>{cut.equipment}</TableCell>
                   </TableRow>
-                ))}
+                      )
+                    }
+                  })
+                })()}
               </TableBody>
             </Table>
           </TableContainer>
@@ -1892,6 +2314,8 @@ const ProjectPage = () => {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell>씬</TableCell>
+                  <TableCell>씬 제목</TableCell>
                   <TableCell>컷 번호</TableCell>
                   <TableCell>콘티 이미지</TableCell>
                   <TableCell>설명</TableCell>
@@ -1901,8 +2325,47 @@ const ProjectPage = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {generateContinuityBookData().map((cut, index) => (
-                  <TableRow key={index}>
+                {(() => {
+                  const continuityBookData = generateContinuityBookData()
+                  const groupedData = []
+                  let currentScene = null
+                  
+                  continuityBookData.forEach((cut, index) => {
+                    // 새로운 씬이 시작되면 구분선 추가
+                    if (currentScene !== cut.scene) {
+                      if (currentScene !== null) {
+                        // 이전 씬 구분선
+                        groupedData.push({
+                          type: 'separator',
+                          scene: currentScene,
+                          key: `separator-${currentScene}`
+                        })
+                      }
+                      currentScene = cut.scene
+                    }
+                    
+                    groupedData.push({
+                      type: 'cut',
+                      data: cut,
+                      key: `cut-${index}`
+                    })
+                  })
+                  
+                  return groupedData.map((item) => {
+                    if (item.type === 'separator') {
+                      return (
+                        <TableRow key={item.key} sx={{ backgroundColor: 'grey.100' }}>
+                          <TableCell colSpan={8} sx={{ textAlign: 'center', fontWeight: 'bold' }}>
+                            ─── 씬 {item.scene} ───
+                          </TableCell>
+                        </TableRow>
+                      )
+                    } else {
+                      const cut = item.data
+                      return (
+                        <TableRow key={item.key}>
+                          <TableCell>{cut.scene}</TableCell>
+                          <TableCell>{cut.sceneTitle}</TableCell>
                     <TableCell>{cut.cutNumber}</TableCell>
                     <TableCell>
                       {cut.imageUrl ? (
@@ -1922,7 +2385,10 @@ const ProjectPage = () => {
                     <TableCell>{cut.angleDirection}</TableCell>
                     <TableCell>{cut.cameraMovement}</TableCell>
                   </TableRow>
-                ))}
+                      )
+                    }
+                  })
+                })()}
               </TableBody>
             </Table>
           </TableContainer>
