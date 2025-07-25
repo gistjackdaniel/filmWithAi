@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { useAuthStore } from './authStore'
+import { useAuthStore } from './authStore.js'
 
 /**
  * 스토리 생성 히스토리 관리 스토어

@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { SceneType } from '../types/conte'
 import timelineService from '../services/timelineService'
-import { cutAPI } from '../services/api'
-import { useAuthStore } from './authStore'
+import api from '../services/api.js'
+import { useAuthStore } from './authStore.js'
 
 /**
  * 타임라인 상태 관리 스토어

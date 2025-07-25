@@ -47,7 +47,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { generateOptimalSchedule, generateBreakdown, generateScheduleCSV, generateBreakdownCSV } from '../services/schedulerService'
-import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
+import ConteDetailModal from '../components/story/ConteDetailModal'
 import CommonHeader from '../components/CommonHeader'
 
 /**

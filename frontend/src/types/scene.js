@@ -1,6 +1,6 @@
 /**
- * 콘티/씬 관련 타입 정의
- * 콘티(Conte)와 씬(Scene) 데이터 구조를 정의
+ * 씬 관련 타입 정의
+ * 씬(Scene) 데이터 구조를 정의
  */
 
 /**
@@ -28,9 +28,9 @@ export const NodeType = {
 }
 
 /**
- * 캡션카드 노드 인터페이스
+ * 씬 노드 인터페이스
  */
-export const CaptionCardNode = {
+export const SceneNode = {
   id: String,           // 노드 고유 ID
   type: NodeType,       // 노드 타입
   value: String,        // 노드 값
@@ -39,9 +39,9 @@ export const CaptionCardNode = {
 }
 
 /**
- * 캡션카드 구성요소 인터페이스
+ * 씬 구성요소 인터페이스
  */
-export const CaptionCardComponents = {
+export const SceneComponents = {
   // 기본 정보
   sceneNumber: Number,        // 씬 번호
   description: String,        // 인물들이 처한 상황에 대한 대략적인 설명
@@ -70,13 +70,13 @@ export const CaptionCardComponents = {
 }
 
 /**
- * 캡션카드 인터페이스
+ * 씬 인터페이스
  */
-export const CaptionCard = {
-  id: String,                    // 캡션카드 고유 ID
+export const Scene = {
+  id: String,                    // 씬 고유 ID
   type: SceneType,         // 타입 (AI 생성 / 실사 촬영)
-  components: CaptionCardComponents, // 구성요소
-  nodes: [CaptionCardNode],      // 노드 배열 (그래프 구조)
+  components: SceneComponents, // 구성요소
+  nodes: [SceneNode],      // 노드 배열 (그래프 구조)
   position: {                    // 타임라인에서의 위치
     x: Number,
     y: Number,
@@ -89,13 +89,13 @@ export const CaptionCard = {
 }
 
 /**
- * 콘티 API 응답 타입
+ * 씬 API 응답 타입
  */
-export const ConteApiResponse = {
+export const SceneApiResponse = {
   success: Boolean,
   message: String,
   data: {
-    conte: {
+    scene: {
       id: String,
       scene: Number,
       title: String,
@@ -111,8 +111,8 @@ export const ConteApiResponse = {
 export default {
   SceneType,
   NodeType,
-  CaptionCardNode,
-  CaptionCardComponents,
-  CaptionCard,
-  ConteApiResponse,
+  SceneNode,
+  SceneComponents,
+  Scene,
+  SceneApiResponse,
 } 

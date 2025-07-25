@@ -12,7 +12,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
  */
 router.post('/google', async (req, res) => {
   try {
-    const { access_token } = req.body;
+    let access_token = req.body.access_token;
+    
+    // access_token이 중첩된 객체인 경우 처리
+    if (access_token && typeof access_token === 'object' && access_token.access_token) {
+      access_token = access_token.access_token;
+    }
     
     console.log('Received request body:', req.body);
     console.log('Access token present:', !!access_token);
@@ -43,20 +48,35 @@ router.post('/google', async (req, res) => {
       name: userInfo.name 
     });
 
-    // 사용자 정보 생성
-    const user = {
-      id: userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name,
-      picture: userInfo.picture,
-      given_name: userInfo.given_name,
-      family_name: userInfo.family_name
-    };
+    // User 모델 import
+    const User = require('../models/User');
 
-    // JWT 토큰 생성
+    // 사용자 정보를 데이터베이스에 저장하거나 업데이트
+    let user = await User.findOne({ googleId: userInfo.id });
+    
+    if (!user) {
+      // 새 사용자 생성
+      user = new User({
+        googleId: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture
+      });
+      await user.save();
+      console.log('New user created:', user._id);
+    } else {
+      // 기존 사용자 정보 업데이트
+      user.name = userInfo.name;
+      user.picture = userInfo.picture;
+      user.lastLoginAt = new Date();
+      await user.save();
+      console.log('Existing user updated:', user._id);
+    }
+
+    // JWT 토큰 생성 (MongoDB ObjectId 사용)
     const token = jwt.sign(
       { 
-        userId: user.id, 
+        userId: user._id, 
         email: user.email 
       },
       JWT_SECRET,
@@ -67,7 +87,12 @@ router.post('/google', async (req, res) => {
     res.json({
       success: true,
       token,
-      user
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture
+      }
     });
 
   } catch (error) {

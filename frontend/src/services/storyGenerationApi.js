@@ -1,4 +1,4 @@
-import api from './api'
+import api from './api.js'
 
 /**
  * AI 스토리 생성 API 서비스 (OpenAI GPT-4o + DALL·E 3)

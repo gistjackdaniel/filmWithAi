@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore } from './authStore'
+import { useAuthStore } from './authStore.js'
 
 /**
  * 스토리 생성 상태 관리 스토어

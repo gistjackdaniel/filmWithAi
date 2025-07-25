@@ -41,9 +41,9 @@ import {
   Lightbulb,
   Warning
 } from '@mui/icons-material'
-import ConteGenerator from '../components/StoryGeneration/ConteGenerator'
-import ConteResult from '../components/StoryGeneration/ConteResult'
-import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
+import ConteGenerator from '../components/story/ConteGenerator'
+import ConteResult from '../components/story/ConteResult'
+import ConteEditModal from '../components/story/ConteEditModal'
 import { generateSceneImage } from '../services/storyGenerationApi'
 import useProjectStore from '../stores/projectStore'
 import useTimelineStore from '../stores/timelineStore' // 타임라인 스토어 추가

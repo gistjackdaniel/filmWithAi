@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createProject as createProjectApi, createConte as createConteApi, updateConte as updateConteApi, updateProject as updateProjectApi, getProjects, getProject } from '../services/projectApi'
-import { useAuthStore } from './authStore'
+import { useAuthStore } from './authStore.js'
 
 /**
  * 프로젝트 상태 관리 스토어

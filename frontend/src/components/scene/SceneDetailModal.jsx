@@ -22,14 +22,14 @@ import {
 } from '@mui/icons-material'
 
 /**
- * 콘티 상세 정보 모달 컴포넌트
- * 콘티 리스트와 스케줄표에서 공통으로 사용하는 상세 정보 모달
- * PRD 2.1.3 AI 콘티 생성 기능의 상세 정보 표시 컴포넌트
+ * 씬 상세 정보 모달 컴포넌트
+ * 씬 리스트와 스케줄표에서 공통으로 사용하는 상세 정보 모달
+ * PRD 2.1.3 AI 씬 생성 기능의 상세 정보 표시 컴포넌트
  */
-const ConteDetailModal = ({ 
+const SceneDetailModal = ({ 
   open, 
   onClose, 
-  conte, 
+  scene, 
   onEdit,
   onImageRetry,
   imageLoadErrors = {},
@@ -37,7 +37,7 @@ const ConteDetailModal = ({
   isGeneratingImages = false,
   imageGenerationProgress = 0
 }) => {
-  if (!conte) return null
+  if (!scene) return null
 
   // 백엔드 서버 주소를 환경변수 또는 기본값으로 설정
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
@@ -50,7 +50,7 @@ const ConteDetailModal = ({
     <Modal
       open={open}
       onClose={onClose}
-      aria-labelledby="conte-detail-modal"
+      aria-labelledby="scene-detail-modal"
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -76,7 +76,7 @@ const ConteDetailModal = ({
           alignItems: 'center'
         }}>
           <Typography variant="h5" component="h2">
-            씬 {conte.scene}: {conte.title}
+            씬 {scene.scene}: {scene.title}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             {onEdit && (
@@ -84,7 +84,7 @@ const ConteDetailModal = ({
                 variant="outlined"
                 startIcon={<Edit />}
                 onClick={() => {
-                  onEdit(conte)
+                  onEdit(scene)
                   onClose()
                 }}
               >
@@ -101,7 +101,7 @@ const ConteDetailModal = ({
         <Box sx={{ p: 3 }}>
           <Grid container spacing={3}>
             {/* 씬 이미지 */}
-            {(conte.imageUrl || isGeneratingImages) && (
+            {(scene.imageUrl || isGeneratingImages) && (
               <Grid item xs={12}>
                 <Box sx={{ 
                   width: '100%', 
@@ -113,17 +113,17 @@ const ConteDetailModal = ({
                   position: 'relative',
                   backgroundColor: 'var(--color-card-bg)'
                 }}>
-                  {conte.imageUrl ? (
+                  {scene.imageUrl ? (
                     <img 
-                      src={getImageUrl(conte.imageUrl)} 
-                      alt={`씬 ${conte.scene} 이미지`}
+                      src={getImageUrl(scene.imageUrl)} 
+                      alt={`씬 ${scene.scene} 이미지`}
                       style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover'
                       }}
-                      onError={(e) => onImageLoadError && onImageLoadError(conte.id, e)}
-                      onLoad={() => onImageLoadError && onImageLoadError(conte.id, null)}
+                      onError={(e) => onImageLoadError && onImageLoadError(scene.id, e)}
+                      onLoad={() => onImageLoadError && onImageLoadError(scene.id, null)}
                     />
                   ) : isGeneratingImages ? (
                     <Box sx={{ 
@@ -149,7 +149,7 @@ const ConteDetailModal = ({
                       )}
                     </Box>
                   ) : null}
-                  {imageLoadErrors[conte.id] && (
+                  {imageLoadErrors[scene.id] && (
                     <Box sx={{ 
                       position: 'absolute', 
                       top: 0, 
@@ -171,7 +171,7 @@ const ConteDetailModal = ({
                         <Button
                           variant="contained"
                           startIcon={<Refresh />}
-                          onClick={() => onImageRetry(conte)}
+                          onClick={() => onImageRetry(scene)}
                           sx={{ 
                             backgroundColor: 'var(--color-primary)',
                             '&:hover': {
@@ -199,21 +199,21 @@ const ConteDetailModal = ({
                     <Grid item xs={12}>
                       <Typography variant="subtitle2" color="text.secondary">설명</Typography>
                       <Typography variant="body1" paragraph>
-                        {conte.description}
+                        {scene.description}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="subtitle2" color="text.secondary">타입</Typography>
                       <Chip 
-                        label={conte.type === 'generated_video' ? 'AI 생성 비디오' : '실사 촬영용'} 
-                        color={conte.type === 'generated_video' ? 'secondary' : 'primary'}
+                        label={scene.type === 'generated_video' ? 'AI 생성 비디오' : '실사 촬영용'} 
+                        color={scene.type === 'generated_video' ? 'secondary' : 'primary'}
                         sx={{ mt: 1 }}
                       />
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="subtitle2" color="text.secondary">예상 시간</Typography>
                       <Typography variant="body1">
-                        {conte.estimatedDuration || '5분'}
+                        {scene.estimatedDuration || '5분'}
                       </Typography>
                     </Grid>
                   </Grid>
@@ -233,13 +233,13 @@ const ConteDetailModal = ({
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="text.secondary">렌즈 스펙</Typography>
                       <Typography variant="body1" paragraph>
-                        {conte.lensSpecs || '설정 없음'}
+                        {scene.lensSpecs || '설정 없음'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="text.secondary">시각 효과</Typography>
                       <Typography variant="body1" paragraph>
-                        {conte.visualEffects || '설정 없음'}
+                        {scene.visualEffects || '설정 없음'}
                       </Typography>
                     </Grid>
                   </Grid>
@@ -259,25 +259,25 @@ const ConteDetailModal = ({
                                           <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">조명</Typography>
                         <Typography variant="body1" paragraph>
-                          {conte.lighting || '설정 없음'}
+                          {scene.lighting || '설정 없음'}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">날씨</Typography>
                         <Typography variant="body1" paragraph>
-                          {conte.weather || '설정 없음'}
+                          {scene.weather || '설정 없음'}
                         </Typography>
                       </Grid>
                     <Grid item xs={12}>
                       <Typography variant="subtitle2" color="text.secondary">시각적 설명</Typography>
                       <Typography variant="body1" paragraph>
-                        {conte.visualDescription || '설정 없음'}
+                        {scene.visualDescription || '설정 없음'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12}>
                       <Typography variant="subtitle2" color="text.secondary">전환</Typography>
                       <Typography variant="body1" paragraph>
-                        {conte.transition || '설정 없음'}
+                        {scene.transition || '설정 없음'}
                       </Typography>
                     </Grid>
                   </Grid>
@@ -286,7 +286,7 @@ const ConteDetailModal = ({
             </Grid>
 
             {/* 대사 */}
-            {conte.dialogue && (
+            {scene.dialogue && (
               <Grid item xs={12}>
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMore />}>
@@ -300,7 +300,7 @@ const ConteDetailModal = ({
                       borderRadius: 1,
                       border: '1px solid #ddd'
                     }}>
-                      {conte.dialogue}
+                      {scene.dialogue}
                     </Typography>
                   </AccordionDetails>
                 </Accordion>
@@ -308,7 +308,7 @@ const ConteDetailModal = ({
             )}
 
             {/* 키워드 정보 */}
-            {conte.keywords && (
+            {scene.keywords && (
               <Grid item xs={12}>
                 <Accordion>
                   <AccordionSummary expandIcon={<ExpandMore />}>
@@ -319,62 +319,62 @@ const ConteDetailModal = ({
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">사용자 정보</Typography>
                         <Typography variant="body1" paragraph>
-                          {conte.keywords.userInfo || '기본 사용자'}
+                          {scene.keywords.userInfo || '기본 사용자'}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">장소</Typography>
                         <Typography variant="body1" paragraph>
-                          {conte.keywords.location || '기본 장소'}
+                          {scene.keywords.location || '기본 장소'}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">장비</Typography>
                         <Typography variant="body1" paragraph>
-                          {conte.keywords.equipment || '기본 장비'}
+                          {scene.keywords.equipment || '기본 장비'}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">조명</Typography>
                         <Typography variant="body1" paragraph>
-                          {conte.keywords.lighting || '기본 조명'}
+                          {scene.keywords.lighting || '기본 조명'}
                         </Typography>
                       </Grid>
-                      {conte.keywords.cast && Array.isArray(conte.keywords.cast) && conte.keywords.cast.length > 0 && (
+                      {scene.keywords.cast && Array.isArray(scene.keywords.cast) && scene.keywords.cast.length > 0 && (
                         <Grid item xs={12} sm={6}>
                           <Typography variant="subtitle2" color="text.secondary">배우</Typography>
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                            {conte.keywords.cast.map((actor, index) => (
+                            {scene.keywords.cast.map((actor, index) => (
                               <Chip key={index} label={actor} size="small" variant="outlined" />
                             ))}
                           </Box>
                         </Grid>
                       )}
-                      {conte.keywords.props && Array.isArray(conte.keywords.props) && conte.keywords.props.length > 0 && (
+                      {scene.keywords.props && Array.isArray(scene.keywords.props) && scene.keywords.props.length > 0 && (
                         <Grid item xs={12} sm={6}>
                           <Typography variant="subtitle2" color="text.secondary">소품</Typography>
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                            {conte.keywords.props.map((prop, index) => (
+                            {scene.keywords.props.map((prop, index) => (
                               <Chip key={index} label={prop} size="small" variant="outlined" />
                             ))}
                           </Box>
                         </Grid>
                       )}
-                      {conte.keywords.crew && Array.isArray(conte.keywords.crew) && conte.keywords.crew.length > 0 && (
+                      {scene.keywords.crew && Array.isArray(scene.keywords.crew) && scene.keywords.crew.length > 0 && (
                         <Grid item xs={12} sm={6}>
                           <Typography variant="subtitle2" color="text.secondary">필요 인력</Typography>
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                            {conte.keywords.crew.map((crew, index) => (
+                            {scene.keywords.crew.map((crew, index) => (
                               <Chip key={index} label={crew} size="small" variant="outlined" color="primary" />
                             ))}
                           </Box>
                         </Grid>
                       )}
-                      {conte.keywords.equipment && Array.isArray(conte.keywords.equipment) && conte.keywords.equipment.length > 0 && (
+                      {scene.keywords.equipment && Array.isArray(scene.keywords.equipment) && scene.keywords.equipment.length > 0 && (
                         <Grid item xs={12} sm={6}>
                           <Typography variant="subtitle2" color="text.secondary">필요 장비</Typography>
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                            {conte.keywords.equipment.map((equipment, index) => (
+                            {scene.keywords.equipment.map((equipment, index) => (
                               <Chip key={index} label={equipment} size="small" variant="outlined" color="secondary" />
                             ))}
                           </Box>
@@ -392,4 +392,4 @@ const ConteDetailModal = ({
   )
 }
 
-export default ConteDetailModal 
+export default SceneDetailModal 

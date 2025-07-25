@@ -8,7 +8,6 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App.jsx'
 import createAppTheme from './theme/theme.js'
 import './index.css'
-import SchedulerTestPage from './pages/SchedulerTestPage';
 
 /**
  * SceneForge 앱의 진입점
@@ -23,7 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   // React Strict Mode로 개발 시 잠재적 문제 감지
   <React.StrictMode>
     {/* Google OAuth 프로바이더 */}
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || "your_google_client_id_here"}>
+    <GoogleOAuthProvider clientId="145980000578-pvrebvn4l5moka39n2jpvusqo0337fqe.apps.googleusercontent.com">
       {/* SPA 라우팅을 위한 Browser Router */}
       <BrowserRouter
         future={{

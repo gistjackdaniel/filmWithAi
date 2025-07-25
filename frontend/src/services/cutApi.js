@@ -1,4 +1,4 @@
-import api from './api'
+import api from './api.js'
 
 /**
  * 컷 관리 API 서비스

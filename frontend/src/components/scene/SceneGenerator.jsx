@@ -24,21 +24,21 @@ import {
   PlayArrow,
   Info
 } from '@mui/icons-material'
-import { generateConteWithRetry, generateSceneImage } from '../../services/storyGenerationApi'
-import ConteResult from './ConteResult'
-import ConteEditModal from './ConteEditModal'
+import { generateSceneWithRetry, generateSceneImage } from '../../services/storyGenerationApi'
+import SceneResult from './SceneResult'
+import SceneEditModal from './SceneEditModal'
 import useStoryGenerationStore from '../../stores/storyGenerationStore'
 import toast from 'react-hot-toast'
 import useProjectStore from '../../stores/projectStore'
 
 /**
- * AI 캡션 카드 생성 컴포넌트
- * 스토리를 바탕으로 상세한 캡션 카드를 생성하는 기능
- * 키워드 노드와 그래프 관계성을 포함한 전문적인 캡션 카드 생성
- * PRD 2.1.3 AI 콘티 생성 기능의 핵심 컴포넌트
+ * AI 씬 생성 컴포넌트
+ * 스토리를 바탕으로 상세한 씬을 생성하는 기능
+ * 키워드 노드와 그래프 관계성을 포함한 전문적인 씬 생성
+ * PRD 2.1.3 AI 씬 생성 기능의 핵심 컴포넌트
  *
  * [AI 프롬프트 안내]
- * 각 씬(콘티)에는 반드시 keywords.crew(필요 인력: 촬영감독, 카메라맨 등)와 keywords.equipment(필요 장비: 카메라, 조명 등)를 포함해서 생성해 주세요.
+ * 각 씬에는 반드시 keywords.crew(필요 인력: 촬영감독, 카메라맨 등)와 keywords.equipment(필요 장비: 카메라, 조명 등)를 포함해서 생성해 주세요.
  * 예시:
  *   keywords: {
  *     ...
@@ -46,9 +46,9 @@ import useProjectStore from '../../stores/projectStore'
  *     equipment: ["카메라", "조명", "마이크"]
  *   }
  */
-const ConteGenerator = ({ 
+const SceneGenerator = ({ 
   story = '', 
-  onConteGenerated,
+  onSceneGenerated,
   onGenerationStart,
   onGenerationComplete,
   onImageGenerationUpdate,
@@ -57,33 +57,33 @@ const ConteGenerator = ({
 }) => {
   // Zustand 스토어에서 상태 가져오기
   const {
-    conteGeneration,
-    startConteGeneration,
-    completeConteGeneration,
-    failConteGeneration,
-    updateConteSettings
+    sceneGeneration,
+    startSceneGeneration,
+    completeSceneGeneration,
+    failSceneGeneration,
+    updateSceneSettings
   } = useStoryGenerationStore()
 
-  const { isGenerating, generatedConte, generationError, conteSettings } = conteGeneration
+  const { isGenerating, generatedScene, generationError, sceneSettings } = sceneGeneration
 
   // 로컬 상태 관리
   const [showResult, setShowResult] = useState(false) // 결과 표시 여부
   const [generatingImages, setGeneratingImages] = useState(false) // 이미지 생성 중 상태
   const [imageGenerationProgress, setImageGenerationProgress] = useState(0) // 이미지 생성 진행률
   const [editModalOpen, setEditModalOpen] = useState(false) // 편집 모달 열림 상태
-  const [editingConte, setEditingConte] = useState(null) // 편집 중인 콘티
-  const [editingIndex, setEditingIndex] = useState(-1) // 편집 중인 콘티 인덱스
+  const [editingScene, setEditingScene] = useState(null) // 편집 중인 씬
+  const [editingIndex, setEditingIndex] = useState(-1) // 편집 중인 씬 인덱스
 
   // 편집 모달 상태 디버깅
   useEffect(() => {
     console.log('🔍 편집 모달 상태 변경:', {
       editModalOpen,
-      editingConte: editingConte?.title,
+      editingScene: editingScene?.title,
       editingIndex
     })
-  }, [editModalOpen, editingConte, editingIndex])
+  }, [editModalOpen, editingScene, editingIndex])
 
-  // 콘티 생성 설정 옵션
+  // 씬 생성 설정 옵션
   const genreOptions = [
     { value: '일반', label: '일반' },
     { value: '드라마', label: '드라마' },
@@ -775,12 +775,12 @@ const ConteGenerator = ({
                       variant="outlined"
                     />
                     <Chip 
-                      label={conteSettings.genre} 
+                      label={sceneSettings.genre} 
                       size="small" 
                       variant="outlined"
                     />
                     <Chip 
-                      label={conteSettings.focus} 
+                      label={sceneSettings.focus} 
                       size="small" 
                       variant="outlined"
                     />
@@ -799,7 +799,7 @@ const ConteGenerator = ({
             variant="contained"
             size="large"
             startIcon={isGenerating ? <CircularProgress size={20} /> : <Movie />}
-            onClick={handleGenerateConte}
+            onClick={handleGenerateScene}
             disabled={isGenerating || generatingImages || !story.trim()}
             sx={{
               backgroundColor: 'var(--color-primary)',
@@ -814,8 +814,8 @@ const ConteGenerator = ({
               py: 1.5
             }}
           >
-            {isGenerating ? 'AI 캡션 카드 생성 중...' : 
-             generatingImages ? '씬 이미지 생성 중...' : 'AI 캡션 카드 생성하기'}
+            {isGenerating ? 'AI 씬 생성 중...' : 
+             generatingImages ? '씬 이미지 생성 중...' : 'AI 씬 생성하기'}
           </Button>
         </Box>
       )}
@@ -864,11 +864,11 @@ const ConteGenerator = ({
       {/* 생성 안내 */}
       {!story.trim() && (
         <Alert severity="warning" sx={{ mt: 2 }}>
-          캡션 카드를 생성하려면 먼저 스토리를 생성해주세요.
+          씬을 생성하려면 먼저 스토리를 생성해주세요.
         </Alert>
       )}
     </Box>
   )
 }
 
-export default ConteGenerator 
+export default SceneGenerator 

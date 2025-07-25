@@ -47,35 +47,35 @@ import {
   PhotoCamera,
   Info
 } from '@mui/icons-material'
-import { generateSceneImage, regenerateConteWithRetry } from '../../services/storyGenerationApi'
+import { generateSceneImage, regenerateSceneWithRetry } from '../../services/storyGenerationApi'
 import toast from 'react-hot-toast'
-import { SceneType } from '../../types/conte'
+import { SceneType } from '../../types/scene'
 
 /**
- * 콘티 편집 모달 컴포넌트
+ * 씬 편집 모달 컴포넌트
  * 개별 씬의 정보를 편집하고 이미지를 재생성할 수 있는 기능
  * SceneDetailModal의 모든 기능을 통합하여 상세 정보 표시와 편집 기능 제공
- * PRD 2.1.3 AI 콘티 생성 기능의 편집 부분
+ * PRD 2.1.3 AI 씬 생성 기능의 편집 부분
  */
-const ConteEditModal = ({ 
+const SceneEditModal = ({ 
   open, 
   onClose, 
-  conte, 
+  scene, 
   onSave,
   onRegenerateImage,
-  onRegenerateConte,
+  onRegenerateScene,
   onEdit,
   onRegenerate
 }) => {
   // props 디버깅
   useEffect(() => {
     // props 변경 시 필요한 처리
-  }, [open, conte, onSave, onClose])
+  }, [open, scene, onSave, onClose])
   
   // 로컬 상태 관리
-  const [editedConte, setEditedConte] = useState(conte)
+  const [editedScene, setEditedScene] = useState(scene)
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false)
-  const [isRegeneratingConte, setIsRegeneratingConte] = useState(false)
+  const [isRegeneratingScene, setIsRegeneratingScene] = useState(false)
   const [activeTab, setActiveTab] = useState(0) // 0: 기본 정보, 1: 촬영 정보, 2: 장면 설정
   
   // 이미지 로딩 실패 상태 관리
@@ -110,12 +110,12 @@ const ConteEditModal = ({
     }
   }
 
-  const typeInfo = editedConte?.type ? getSceneTypeInfo(editedConte.type) : null
+  const typeInfo = editedScene?.type ? getSceneTypeInfo(editedScene.type) : null
 
-  // 편집된 콘티가 변경될 때마다 상태 업데이트
+  // 편집된 씬이 변경될 때마다 상태 업데이트
   useEffect(() => {
-    setEditedConte(conte)
-  }, [conte])
+    setEditedScene(scene)
+  }, [scene])
 
   /**
    * 필드 값 변경 핸들러
@@ -123,7 +123,7 @@ const ConteEditModal = ({
    * @param {any} value - 새로운 값
    */
   const handleFieldChange = (field, value) => {
-    setEditedConte(prev => ({
+    setEditedScene(prev => ({
       ...prev,
       [field]: value
     }))
@@ -135,7 +135,7 @@ const ConteEditModal = ({
    * @param {any} value - 새로운 값
    */
   const handleKeywordChange = (keywordField, value) => {
-    setEditedConte(prev => ({
+    setEditedScene(prev => ({
       ...prev,
       keywords: {
         ...prev.keywords,
@@ -150,7 +150,7 @@ const ConteEditModal = ({
    * @param {number} value - 새로운 값
    */
   const handleWeightChange = (weightField, value) => {
-    setEditedConte(prev => ({
+    setEditedScene(prev => ({
       ...prev,
       weights: {
         ...prev.weights,
@@ -177,7 +177,7 @@ const ConteEditModal = ({
   const handleImageRetry = async () => {
     try {
       // 이미지 생성 API 호출
-      const imagePrompt = `${editedConte.title}: ${editedConte.description}. ${editedConte.visualDescription || ''} ${editedConte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
+      const imagePrompt = `${editedScene.title}: ${editedScene.description}. ${editedScene.visualDescription || ''} ${editedScene.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
       
       const imageResponse = await generateSceneImage({
         sceneDescription: imagePrompt,
@@ -186,15 +186,15 @@ const ConteEditModal = ({
         size: '1024x1024'
       })
       
-      // 편집 중인 콘티 업데이트
-      setEditedConte(prev => ({
-        ...prev,
-        imageUrl: imageResponse.imageUrl,
-        imagePrompt: imagePrompt,
-        imageGeneratedAt: imageResponse.generatedAt,
-        imageModel: imageResponse.model,
-        isFreeTier: imageResponse.isFreeTier
-      }))
+              // 편집 중인 씬 업데이트
+        setEditedScene(prev => ({
+          ...prev,
+          imageUrl: imageResponse.imageUrl,
+          imagePrompt: imagePrompt,
+          imageGeneratedAt: imageResponse.generatedAt,
+          imageModel: imageResponse.model,
+          isFreeTier: imageResponse.isFreeTier
+        }))
       
       // 에러 상태 제거
       setImageLoadError(false)
@@ -210,13 +210,13 @@ const ConteEditModal = ({
    * 이미지 재생성 핸들러
    */
   const handleRegenerateImage = async () => {
-    if (!editedConte) return
+    if (!editedScene) return
 
     setIsRegeneratingImage(true)
     
     try {
       // 이미지 생성 프롬프트 구성
-      const imagePrompt = `${editedConte.title}: ${editedConte.description}. ${editedConte.visualDescription || ''} ${editedConte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
+      const imagePrompt = `${editedScene.title}: ${editedScene.description}. ${editedScene.visualDescription || ''} ${editedScene.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
       
       // 이미지 생성 API 호출
       const imageResponse = await generateSceneImage({
@@ -251,42 +251,42 @@ const ConteEditModal = ({
   }
 
   /**
-   * 콘티 재생성 핸들러
+   * 씬 재생성 핸들러
    */
-  const handleRegenerateConte = async () => {
-    if (!editedConte) return
+  const handleRegenerateScene = async () => {
+    if (!editedScene) return
 
-    setIsRegeneratingConte(true)
+    setIsRegeneratingScene(true)
     
     try {
       // 실제 API가 없으므로 임시로 시뮬레이션
       // const updatedConte = await regenerateConteWithRetry(editedConte)
       
-      // 임시로 기존 콘티를 업데이트 (실제로는 API 호출)
-      const updatedConte = {
-        ...editedConte,
+      // 임시로 기존 씬을 업데이트 (실제로는 API 호출)
+      const updatedScene = {
+        ...editedScene,
         lastModified: new Date().toISOString(),
         modifiedBy: '사용자',
-        description: `${editedConte.description} (재생성됨)`,
-        dialogue: editedConte.dialogue ? `${editedConte.dialogue} (재생성됨)` : '새로운 대사가 생성되었습니다.',
+        description: `${editedScene.description} (재생성됨)`,
+        dialogue: editedScene.dialogue ? `${editedScene.dialogue} (재생성됨)` : '새로운 대사가 생성되었습니다.',
 
-        visualDescription: editedConte.visualDescription ? `${editedConte.visualDescription} (재생성됨)` : '새로운 시각적 설명'
+        visualDescription: editedScene.visualDescription ? `${editedScene.visualDescription} (재생성됨)` : '새로운 시각적 설명'
       }
       
-      // 편집된 콘티 업데이트
-      setEditedConte(updatedConte)
+      // 편집된 씬 업데이트
+      setEditedScene(updatedScene)
       
-      // 부모 컴포넌트에 콘티 재생성 완료 알림
-      if (onRegenerateConte) {
-        await onRegenerateConte(updatedConte)
+      // 부모 컴포넌트에 씬 재생성 완료 알림
+      if (onRegenerateScene) {
+        await onRegenerateScene(updatedScene)
       }
       
-      toast.success('콘티가 재생성되었습니다!')
+      toast.success('씬이 재생성되었습니다!')
       
     } catch (error) {
-      toast.error('콘티 재생성에 실패했습니다.')
+      toast.error('씬 재생성에 실패했습니다.')
     } finally {
-      setIsRegeneratingConte(false)
+      setIsRegeneratingScene(false)
     }
   }
 
@@ -296,14 +296,14 @@ const ConteEditModal = ({
   const handleSave = async () => {
     try {
     if (onSave) {
-      onSave(editedConte)
-      toast.success('콘티가 성공적으로 저장되었습니다!')
+      onSave(editedScene)
+      toast.success('씬이 성공적으로 저장되었습니다!')
     } else {
       toast.error('저장 기능을 사용할 수 없습니다.')
       return
     }
   } catch (error) {
-    toast.error('콘티 저장에 실패했습니다.')
+    toast.error('씬 저장에 실패했습니다.')
     return
   }
   
@@ -315,7 +315,7 @@ const ConteEditModal = ({
    */
   const handleClose = () => {
     // 변경사항이 있으면 확인
-    if (JSON.stringify(editedConte) !== JSON.stringify(conte)) {
+    if (JSON.stringify(editedScene) !== JSON.stringify(scene)) {
       if (window.confirm('저장하지 않은 변경사항이 있습니다. 정말로 닫으시겠습니까?')) {
         onClose()
       }
@@ -1434,14 +1434,14 @@ const ConteEditModal = ({
             <Button
               variant="outlined"
               startIcon={<Refresh />}
-              onClick={handleRegenerateConte}
-              disabled={isRegeneratingConte}
+              onClick={handleRegenerateScene}
+              disabled={isRegeneratingScene}
             >
-              {isRegeneratingConte ? '재생성 중...' : '콘티 재생성'}
+              {isRegeneratingScene ? '재생성 중...' : '씬 재생성'}
             </Button>
-            {editedConte?.type && editedConte.type === SceneType.GENERATED_VIDEO && onRegenerate && (
+            {editedScene?.type && editedScene.type === SceneType.GENERATED_VIDEO && onRegenerate && (
               <Button
-                onClick={() => onRegenerate(editedConte)}
+                onClick={() => onRegenerate(editedScene)}
                 variant="outlined"
                 startIcon={<PlayArrow />}
                 sx={{
@@ -1471,7 +1471,7 @@ const ConteEditModal = ({
             </Button>
             {onEdit && (
               <Button
-                onClick={() => onEdit(editedConte)}
+                onClick={() => onEdit(editedScene)}
                 variant="contained"
                 startIcon={<Edit />}
                 sx={{
@@ -1499,4 +1499,4 @@ const ConteEditModal = ({
   )
 }
 
-export default ConteEditModal 
+export default SceneEditModal 

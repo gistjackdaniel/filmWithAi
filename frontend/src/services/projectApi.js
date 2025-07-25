@@ -1,4 +1,4 @@
-import api from './api'
+import api from './api.js'
 
 /**
  * 프로젝트 관리 API 서비스

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import api, { userAPI } from '../services/api'
+import api from '../services/api'
 
 /**
  * 인증 상태 관리 스토어
@@ -62,56 +62,20 @@ const useAuthStore = create(
 
       /**
        * Google OAuth 로그인 처리
-       * @param {Object} userData - Google OAuth 사용자 데이터
+       * @param {string} accessToken - Google OAuth access token
        * @returns {Object} 로그인 결과 { success: boolean, error?: string }
        */
-      login: async (userData) => {
+      login: async (accessToken) => {
         try {
           set({ loading: true })
           
-          // Google access_token을 사용하여 사용자 정보 가져오기
-          const googleUserInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: {
-              'Authorization': `Bearer ${userData.access_token}`
-            }
-          }).then(res => res.json())
-          
-          // 백엔드에 전송할 사용자 데이터 구성
-          const userDataForBackend = {
-            googleId: googleUserInfo.id,
-            email: googleUserInfo.email,
-            name: googleUserInfo.name,
-            picture: googleUserInfo.picture
-          }
-          
-          // MongoDB 연동된 사용자 인증 API 호출
-          const response = await userAPI.googleAuth(userDataForBackend)
-          const { data } = response.data
-          const { token, user } = data
+          // 서버에 Google access token 전송하여 JWT 토큰 받기
+          const response = await api.post('/auth/google', { access_token: accessToken })
+          const { token, user } = response.data
           
           // 토큰과 사용자 정보 설정
           get().setToken(token)
           get().setUser(user)
-          
-          // 사용자별 데이터 로드
-          try {
-            const { default: storyStore } = await import('./storyGenerationStore')
-            if (storyStore && storyStore.getState) {
-              storyStore.getState().loadUserData(user.id)
-            }
-            
-            const { default: timelineStore } = await import('./timelineStore')
-            if (timelineStore && timelineStore.getState) {
-              timelineStore.getState().loadUserData(user.id)
-            }
-            
-            const { default: historyStore } = await import('./storyHistoryStore')
-            if (historyStore && historyStore.getState) {
-              historyStore.getState().loadUserData(user.id)
-            }
-          } catch (error) {
-            console.warn('Failed to load user data:', error)
-          }
           
           // 자동 로그아웃 타이머 설정
           get().setAutoLogoutTimer()
@@ -127,32 +91,9 @@ const useAuthStore = create(
 
       /**
        * 로그아웃 처리
-       * 모든 인증 정보를 초기화하고 다른 스토어들도 초기화
+       * 모든 인증 정보를 초기화
        */
-      logout: async () => {
-        // 다른 스토어들 초기화
-        try {
-          // 스토리 생성 스토어 초기화
-          const { default: storyStore } = await import('./storyGenerationStore')
-          if (storyStore && storyStore.getState) {
-            storyStore.getState().clearAllData()
-          }
-          
-          // 타임라인 스토어 초기화
-          const { default: timelineStore } = await import('./timelineStore')
-          if (timelineStore && timelineStore.getState) {
-            timelineStore.getState().clearAllData()
-          }
-          
-          // 스토리 히스토리 스토어 초기화
-          const { default: historyStore } = await import('./storyHistoryStore')
-          if (historyStore && historyStore.getState) {
-            historyStore.getState().clearAllData()
-          }
-        } catch (error) {
-          console.warn('Failed to clear other stores:', error)
-        }
-        
+      logout: () => {
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -160,18 +101,6 @@ const useAuthStore = create(
           loading: false 
         })
         get().setToken(null)
-        
-        // 로컬 스토리지에서 사용자별 데이터 제거
-        try {
-          const currentUser = get().user
-          if (currentUser && currentUser.id) {
-            localStorage.removeItem(`story-data-${currentUser.id}`)
-            localStorage.removeItem(`conte-data-${currentUser.id}`)
-            localStorage.removeItem(`timeline-data-${currentUser.id}`)
-          }
-        } catch (error) {
-          console.warn('Failed to clear user data from localStorage:', error)
-        }
       },
 
       /**
@@ -250,60 +179,14 @@ const useAuthStore = create(
             }
           }
 
-          // MongoDB 연동된 사용자 프로필 조회 API 호출
-          const response = await userAPI.getProfile()
-          get().setUser(response.data.data.user)
+          // 서버에 현재 사용자 정보 요청
+          const response = await api.get('/auth/me')
+          get().setUser(response.data.user)
           set({ loading: false })
         } catch (error) {
           console.error('Auth check error:', error)
           // 인증 실패 시 로그아웃 처리
           get().logout()
-          // 로딩 상태도 해제
-          set({ loading: false })
-        }
-      },
-
-      /**
-       * 강제 인증 상태 갱신
-       * 토큰을 다시 확인하고 필요시 갱신
-       */
-      forceAuthRefresh: async () => {
-        try {
-          console.log('🔐 강제 인증 상태 갱신 시작...')
-          
-          // 현재 토큰 확인
-          const token = get().token
-          if (!token) {
-            console.log('❌ 토큰이 없습니다. 로그인이 필요합니다.')
-            return { success: false, needsLogin: true }
-          }
-
-          // 토큰 유효성 확인
-          if (get().isTokenExpired(token)) {
-            console.log('⚠️ 토큰이 만료되었습니다. 갱신 시도...')
-            const refreshSuccess = await get().refreshToken()
-            if (!refreshSuccess) {
-              console.log('❌ 토큰 갱신 실패. 로그인이 필요합니다.')
-              get().logout()
-              return { success: false, needsLogin: true }
-            }
-          }
-
-          // 서버에 인증 상태 확인
-          const response = await userAPI.getProfile()
-          if (response.data.success) {
-            console.log('✅ 인증 상태 확인 완료')
-            get().setUser(response.data.data.user)
-            return { success: true, needsLogin: false }
-          } else {
-            console.log('❌ 서버 인증 확인 실패')
-            get().logout()
-            return { success: false, needsLogin: true }
-          }
-        } catch (error) {
-          console.error('❌ 강제 인증 갱신 실패:', error)
-          get().logout()
-          return { success: false, needsLogin: true }
         }
       },
 
@@ -376,18 +259,6 @@ const useAuthStore = create(
         try {
           // 세션 동기화 설정
           get().setupSessionSync()
-          
-          // 토큰이 없으면 바로 로딩 상태 해제
-          const token = get().token
-          if (!token) {
-            set({ 
-              user: null, 
-              isAuthenticated: false, 
-              token: null,
-              loading: false 
-            })
-            return
-          }
           
           await get().checkAuth()
         } catch (error) {

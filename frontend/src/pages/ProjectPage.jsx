@@ -53,15 +53,15 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import useProjectStore from '../stores/projectStore'
 import CommonHeader from '../components/CommonHeader'
-import StoryResult from '../components/StoryGeneration/StoryResult'
+import StoryResult from '../components/story/StoryResult'
 import CutTimelineViewer from '../components/timeline/organisms/CutTimelineViewer'
 import VideoPlayer from '../components/timeline/atoms/VideoPlayer'
 import { toast } from 'react-hot-toast'
 import api from '../services/api'
 
-import ConteEditModal from '../components/StoryGeneration/ConteEditModal'
-import CutEditModal from '../components/StoryGeneration/CutEditModal'
-import ConteDetailModal from '../components/StoryGeneration/ConteDetailModal'
+import ConteEditModal from '../components/story/ConteEditModal'
+import CutEditModal from '../components/story/CutEditModal'
+import ConteDetailModal from '../components/story/ConteDetailModal'
 import useTimelineStore from '../stores/timelineStore'
 
 /**

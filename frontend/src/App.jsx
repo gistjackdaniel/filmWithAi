@@ -8,7 +8,6 @@ import ProjectPage from './pages/ProjectPage'
 import ConteGenerationPage from './pages/ConteGenerationPage'
 import DirectStoryPage from './pages/DirectStoryPage'
 import SchedulerPage from './pages/SchedulerPage'
-import SchedulerTestPage from './pages/SchedulerTestPage'
 import SimpleSchedulePage from './pages/SimpleSchedulePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -121,11 +120,7 @@ function App() {
           } 
         />
         
-        {/* 스케줄러 테스트 페이지 라우트 */}
-        <Route 
-          path="/scheduler-test" 
-          element={<SchedulerTestPage />} 
-        />
+
         
         {/* 간단한 스케줄 페이지 라우트 */}
         <Route 

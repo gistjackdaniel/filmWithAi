@@ -42,15 +42,15 @@ import {
   Timeline
 } from '@mui/icons-material'
 import toast from 'react-hot-toast'
-import { CAPTION_CARD_TYPES, GRAPH_RELATIONSHIPS, groupCaptionCards } from '../../data/conteCardStructure'
+import { SCENE_TYPES, GRAPH_RELATIONSHIPS, groupScenes } from '../../data/sceneCardStructure'
 
 /**
- * 생성된 캡션 카드 결과 표시 컴포넌트
- * 모든 캡션 카드 요소들과 키워드 노드를 상세하게 표시하는 기능
- * PRD 2.1.3 AI 콘티 생성 기능의 결과 표시 컴포넌트
+ * 생성된 씬 결과 표시 컴포넌트
+ * 모든 씬 요소들과 키워드 노드를 상세하게 표시하는 기능
+ * PRD 2.1.3 AI 씬 생성 기능의 결과 표시 컴포넌트
  */
-const ConteResult = ({ 
-  conteList = [], 
+const SceneResult = ({ 
+  sceneList = [], 
   onEdit,
   onRegenerate,
   isGenerating = false,
@@ -72,31 +72,31 @@ const ConteResult = ({
   }
 
   /**
-   * 캡션 카드 편집 핸들러
+   * 씬 편집 핸들러
    * @param {number} sceneIndex - 편집할 씬 인덱스
    */
-  const handleEditConte = (sceneIndex) => {
-    console.log('🎬 ConteResult 편집 핸들러 호출:', { sceneIndex, onEdit: !!onEdit })
+  const handleEditScene = (sceneIndex) => {
+    console.log('🎬 SceneResult 편집 핸들러 호출:', { sceneIndex, onEdit: !!onEdit })
     if (onEdit) {
-      console.log('✅ onEdit 함수 호출:', { card: conteList[sceneIndex], sceneIndex })
-      onEdit(conteList[sceneIndex], sceneIndex)
+      console.log('✅ onEdit 함수 호출:', { card: sceneList[sceneIndex], sceneIndex })
+      onEdit(sceneList[sceneIndex], sceneIndex)
     } else {
       console.error('❌ onEdit 함수가 없습니다!')
     }
-    toast.success('캡션 카드 편집 모드로 전환되었습니다.')
+    toast.success('씬 편집 모드로 전환되었습니다.')
   }
 
   /**
-   * 캡션 카드 재생성 핸들러
+   * 씬 재생성 핸들러
    */
-  const handleRegenerateConte = () => {
+  const handleRegenerateScene = () => {
     if (onRegenerate) {
       onRegenerate()
     }
   }
 
   /**
-   * 캡션 카드 저장 핸들러
+   * 씬 저장 핸들러
    */
   const handleSaveConte = () => {
     // TODO: 캡션 카드 저장 API 연동
@@ -1075,4 +1075,4 @@ const ConteResult = ({
   )
 }
 
-export default ConteResult 
+export default SceneResult 
