@@ -52,7 +52,7 @@ import {
 } from '@mui/icons-material'
 import { useAuthStore } from '../stores/authStore'
 import useProjectStore from '../stores/projectStore'
-import CommonHeader from '../components/CommonHeader'
+import { CommonHeader } from '../components/common'
 import StoryResult from '../components/story/StoryResult'
 import CutTimelineViewer from '../components/timeline/organisms/CutTimelineViewer'
 import VideoPlayer from '../components/timeline/atoms/VideoPlayer'

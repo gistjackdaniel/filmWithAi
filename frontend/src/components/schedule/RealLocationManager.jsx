@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, List, ListItem, ListItemText, IconButton, Button, TextField, Divider } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import api from '../services/api';
+import api from '../../services/api';
 import RealLocationDetailModal from './RealLocationDetailModal';
 
 const RealLocationManager = ({ projectId }) => {

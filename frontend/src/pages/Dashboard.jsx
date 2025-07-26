@@ -37,11 +37,11 @@ import { useAuthStore } from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
-import UserProfile from '../components/UserProfile'
+import { UserProfile } from '../components/auth'
 import OnboardingModal from '../components/OnboardingModal'
 import ProjectSelectionModal from '../components/ProjectSelectionModal'
 import { toggleProjectFavorite, getFavoriteProjects, getProject } from '../services/projectApi'
-import CommonHeader from '../components/CommonHeader'
+import { CommonHeader } from '../components/common'
 
 /**
  * SceneForge 대시보드 페이지 컴포넌트

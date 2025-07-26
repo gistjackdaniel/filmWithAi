@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore } from './stores/authStore'
-import SplashScreen from './components/SplashScreen'
+import { SplashScreen } from './components/common'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import ProjectPage from './pages/ProjectPage'
@@ -9,7 +9,7 @@ import ConteGenerationPage from './pages/ConteGenerationPage'
 import DirectStoryPage from './pages/DirectStoryPage'
 import SchedulerPage from './pages/SchedulerPage'
 import SimpleSchedulePage from './pages/SimpleSchedulePage'
-import ProtectedRoute from './components/ProtectedRoute'
+import { ProtectedRoute } from './components/common'
 import ErrorBoundary from './components/ErrorBoundary'
 
 

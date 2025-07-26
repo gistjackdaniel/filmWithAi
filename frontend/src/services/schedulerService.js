@@ -1,84 +1,71 @@
 /**
  * 스케줄러 서비스
- * 콘티 데이터를 바탕으로 최적의 촬영 스케줄을 생성하는 서비스
+ * Scene 데이터를 바탕으로 최적의 촬영 스케줄을 생성하는 서비스
  * PRD 스케줄러 기능의 핵심 로직
  */
 
 /**
- * 콘티 데이터를 바탕으로 최적의 촬영 스케줄 생성
- * @param {Array} conteData - 콘티 데이터 배열
+ * Scene 데이터를 바탕으로 최적의 촬영 스케줄 생성
+ * @param {Array} sceneData - Scene 데이터 배열
  * @returns {Object} 최적화된 스케줄 데이터
  */
-export const generateOptimalSchedule = (conteData) => {
+export const generateOptimalSchedule = (sceneData) => {
   try {
     console.log('🎬 스케줄러 시작 - 입력 데이터:', {
-      totalCount: conteData?.length || 0,
-      isArray: Array.isArray(conteData),
-      firstItem: conteData?.[0] ? {
-        id: conteData[0].id,
-        title: conteData[0].title,
-        type: conteData[0].type,
-        hasKeywords: !!conteData[0].keywords,
-        keywords: conteData[0].keywords
+      totalCount: sceneData?.length || 0,
+      isArray: Array.isArray(sceneData),
+      firstItem: sceneData?.[0] ? {
+        id: sceneData[0]._id,
+        scene: sceneData[0].scene,
+        title: sceneData[0].title,
+        location: sceneData[0].location?.name,
+        timeOfDay: sceneData[0].timeOfDay
       } : '없음'
     });
     
-    if (!conteData || !Array.isArray(conteData) || conteData.length === 0) {
-      console.warn('⚠️ 스케줄러: 유효하지 않은 콘티 데이터');
-      return { 
-        days: [], 
-        totalDays: 0,
-        totalScenes: 0,
-        estimatedTotalDuration: 0,
-        message: '콘티 데이터가 없습니다.'
-      }
-    }
+    // 모든 Scene을 사용 (Scene은 기본적으로 실사 촬영용)
+    const scenes = sceneData;
     
-    // 실사 촬영용 콘티만 필터링 (여러 타입명 지원)
-    const liveActionConte = conteData.filter(conte => 
-      conte.type === 'live_action' || 
-      conte.type === 'LIVE_ACTION' || 
-      conte.type === '실사 촬영용'
-    )
-    
-    console.log('🎬 실사 촬영용 콘티 필터링 결과:', {
-      total: conteData.length,
-      liveAction: liveActionConte.length,
-      types: [...new Set(conteData.map(c => c.type))]
+    console.log('🎬 Scene 데이터 처리 결과:', {
+      total: sceneData.length,
+      scenes: scenes.length
     });
     
-    if (liveActionConte.length === 0) {
-      console.warn('⚠️ 스케줄러: 실사 촬영용 콘티가 없음');
+    if (scenes.length === 0) {
+      console.warn('⚠️ 스케줄러: Scene이 없음');
       return { 
         days: [], 
         totalDays: 0,
         totalScenes: 0,
         estimatedTotalDuration: 0,
-        message: '실사 촬영용 콘티가 없습니다.'
+        message: 'Scene이 없습니다.'
       }
     }
     
-    // 각 콘티의 keywords 정보 로깅
-    liveActionConte.forEach((conte, index) => {
-      console.log(`🎬 콘티 ${index + 1} keywords:`, {
-        id: conte.id,
-        title: conte.title,
-        keywords: conte.keywords,
-        location: conte.keywords?.location,
-        equipment: conte.keywords?.equipment
+    // 각 Scene의 스케줄링 정보 로깅
+    scenes.forEach((scene, index) => {
+      console.log(`🎬 Scene ${index + 1} 스케줄링 정보:`, {
+        id: scene._id,
+        scene: scene.scene,
+        title: scene.title,
+        location: scene.location?.name,
+        timeOfDay: scene.timeOfDay,
+        cast: scene.cast,
+        crew: scene.crew,
+        equipment: scene.equipment
       });
     });
     
     // 장소별로 그룹화
-    const locationGroups = groupByLocation(liveActionConte)
+    const locationGroups = groupByLocation(scenes)
     console.log('🎬 장소별 그룹화 결과:', Object.keys(locationGroups));
     
     // 장비별로 그룹화
-    const equipmentGroups = groupByEquipment(liveActionConte)
+    const equipmentGroups = groupByEquipment(scenes)
     console.log('🎬 장비별 그룹화 결과:', Object.keys(equipmentGroups));
     
     // 가중치 계산 및 최적화
-    const optimizedSchedule = optimizeScheduleWithWeights(liveActionConte, locationGroups, equipmentGroups)
+    const optimizedSchedule = optimizeScheduleWithWeights(scenes, locationGroups, equipmentGroups)
     
     console.log('✅ 스케줄러 완료:', {
       totalDays: optimizedSchedule.totalDays,
@@ -95,58 +82,58 @@ export const generateOptimalSchedule = (conteData) => {
 
 /**
  * 장소별 그룹화
- * @param {Array} conteData - 콘티 데이터
+ * @param {Array} sceneData - Scene 데이터
  * @returns {Object} 장소별 그룹화된 데이터
  */
-const groupByLocation = (conteData) => {
+const groupByLocation = (sceneData) => {
   const groups = {}
   
-  conteData.forEach(conte => {
-    // 콘티에서 장소 정보 추출 (description에서 추출하거나 기본값 사용)
-    const location = extractLocationFromConte(conte) || '미정'
+  sceneData.forEach(scene => {
+    // Scene에서 장소 정보 추출
+    const location = extractLocationFromScene(scene) || '미정'
     
     if (!groups[location]) {
       groups[location] = []
     }
-    groups[location].push(conte)
+    groups[location].push(scene)
   })
   
   return groups
 }
 
 /**
- * 콘티에서 장소 정보 추출
- * @param {Object} conte - 콘티 객체
- * @returns {string} 추출된 장소 정보 (반드시 keywords.location 기반)
+ * Scene에서 장소 정보 추출
+ * @param {Object} scene - Scene 객체
+ * @returns {string} 추출된 장소 정보
  */
-const extractLocationFromConte = (conte) => {
+const extractLocationFromScene = (scene) => {
   console.log('📍 장소 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsLocation: conte.keywords?.location,
-    fallbackLocation: conte.location
+    id: scene._id,
+    scene: scene.scene,
+    title: scene.title,
+    locationName: scene.location?.name,
+    realLocationId: scene.location?.realLocationId
   });
   
-  // 반드시 keywords.location만 사용 (description fallback 제거)
-  if (conte.keywords && conte.keywords.location && conte.keywords.location !== '기본 장소') {
-    return conte.keywords.location
+  // Scene의 location.name 사용
+  if (scene.location && scene.location.name && scene.location.name !== '') {
+    return scene.location.name
   }
   // 정보가 없으면 '미정' 반환
   return '미정'
 }
 
 /**
- * 장비별 그룹화 (개선된 버전)
- * @param {Array} conteData - 콘티 데이터
+ * 장비별 그룹화 (Scene 스키마 기반)
+ * @param {Array} sceneData - Scene 데이터
  * @returns {Object} 장비별 그룹화된 데이터
  */
-const groupByEquipment = (conteData) => {
+const groupByEquipment = (sceneData) => {
   const groups = {}
   
-  conteData.forEach(conte => {
-    // 콘티에서 장비 정보 추출 (배열로 반환됨)
-    const equipmentList = extractEquipmentFromConte(conte)
+  sceneData.forEach(scene => {
+    // Scene에서 장비 정보 추출 (배열로 반환됨)
+    const equipmentList = extractEquipmentFromScene(scene)
     
     // 각 장비별로 그룹화
     equipmentList.forEach(equipment => {
@@ -154,8 +141,8 @@ const groupByEquipment = (conteData) => {
         groups[equipment] = []
       }
       // 중복 방지
-      if (!groups[equipment].find(c => c.id === conte.id)) {
-        groups[equipment].push(conte)
+      if (!groups[equipment].find(s => s._id === scene._id)) {
+        groups[equipment].push(scene)
       }
     })
   })
@@ -165,22 +152,22 @@ const groupByEquipment = (conteData) => {
 
 /**
  * 가중치 기반 스케줄 최적화
- * @param {Array} allScenes - 모든 씬 데이터
+ * @param {Array} allScenes - 모든 Scene 데이터
  * @param {Object} locationGroups - 장소별 그룹
  * @param {Object} equipmentGroups - 장비별 그룹
  * @returns {Object} 최적화된 스케줄
  */
 const optimizeScheduleWithWeights = (allScenes, locationGroups, equipmentGroups) => {
-  // 각 씬에 대한 가중치 계산
+  // 각 Scene에 대한 가중치 계산
   const scenesWithWeights = allScenes.map(scene => ({
     ...scene,
     weight: calculateSceneWeight(scene, allScenes)
   }))
   
-  // 가중치 기반으로 씬들을 최적화된 순서로 정렬
+  // 가중치 기반으로 Scene들을 최적화된 순서로 정렬
   const optimizedScenes = optimizeSceneOrder(scenesWithWeights)
   
-  // 최적화된 씬들을 일정으로 배치
+  // 최적화된 Scene들을 일정으로 배치
   const days = createScheduleFromOptimizedScenes(optimizedScenes)
   
   return {
@@ -193,21 +180,21 @@ const optimizeScheduleWithWeights = (allScenes, locationGroups, equipmentGroups)
 }
 
 /**
- * 씬의 가중치 계산 (우선순위 기반)
- * @param {Object} scene - 씬 객체
- * @param {Array} allScenes - 모든 씬 배열
+ * Scene의 가중치 계산 (우선순위 기반)
+ * @param {Object} scene - Scene 객체
+ * @param {Array} allScenes - 모든 Scene 배열
  * @returns {number} 가중치 점수
  */
 const calculateSceneWeight = (scene, allScenes) => {
   let weight = 0
   
-  // 1. 장소 가중치 (최우선) - 같은 장소의 씬이 많을수록 높은 가중치
+  // 1. 장소 가중치 (최우선) - 같은 장소의 Scene이 많을수록 높은 가중치
   const sameLocationScenes = allScenes.filter(s => 
-    extractLocationFromConte(s) === extractLocationFromConte(scene)
+    extractLocationFromScene(s) === extractLocationFromScene(scene)
   )
   weight += sameLocationScenes.length * 1000 // 최우선 가중치
   
-  // 2. 배우 가중치 (두 번째 우선순위) - 같은 배우가 나오는 씬이 많을수록 높은 가중치
+  // 2. 배우 가중치 (두 번째 우선순위) - 같은 배우가 나오는 Scene이 많을수록 높은 가중치
   const sameActorScenes = allScenes.filter(s => 
     hasSameActors(s, scene)
   )
@@ -219,35 +206,57 @@ const calculateSceneWeight = (scene, allScenes) => {
   )
   weight += sameTimeSlotScenes.length * 200 // 세 번째 우선순위
   
-  // 4. 장비 가중치 (네 번째 우선순위) - 같은 장비의 씬이 많을수록 높은 가중치
+  // 4. 장비 가중치 (네 번째 우선순위) - 같은 장비의 Scene이 많을수록 높은 가중치
   const sameEquipmentScenes = allScenes.filter(s => 
-    extractEquipmentFromConte(s) === extractEquipmentFromConte(scene)
+    extractEquipmentFromScene(s) === extractEquipmentFromScene(scene)
   )
   weight += sameEquipmentScenes.length * 100 // 네 번째 우선순위
   
-  // 5. 복잡도 가중치 (다섯 번째 우선순위) - 긴 씬은 높은 가중치
-  const duration = scene.estimatedDuration || 5
-  weight += duration * 10 // 복잡도는 낮은 우선순위
+  // 5. 복잡도 가중치 (다섯 번째 우선순위) - 긴 Scene은 높은 가중치
+  const duration = scene.estimatedDuration || '5분'
+  const durationMinutes = parseDurationToMinutes(duration)
+  weight += durationMinutes * 10 // 복잡도는 낮은 우선순위
   
-  // 6. 우선순위 가중치 (씬 번호가 낮을수록 높은 가중치)
+  // 6. 우선순위 가중치 (Scene 번호가 낮을수록 높은 가중치)
   const sceneNumber = scene.scene || 1
   weight += (100 - sceneNumber) * 1
+  
+  // 7. Scene 우선순위 가중치 (Scene 스키마의 priorities 사용)
+  if (scene.priorities) {
+    weight += scene.priorities.location * 50
+    weight += scene.priorities.cast * 30
+    weight += scene.priorities.time * 20
+    weight += scene.priorities.equipment * 10
+  }
   
   return weight
 }
 
 /**
- * 가중치 기반으로 씬 순서 최적화 (다중 씬 지원)
- * @param {Array} scenesWithWeights - 가중치가 포함된 씬 배열
- * @returns {Array} 최적화된 씬 순서
+ * 시간 문자열을 분으로 변환
+ * @param {string} duration - 시간 문자열 (예: "5분", "10분")
+ * @returns {number} 분 단위 시간
+ */
+const parseDurationToMinutes = (duration) => {
+  if (typeof duration === 'string') {
+    const match = duration.match(/(\d+)분/)
+    return match ? Number(match[1]) : 5
+  }
+  return typeof duration === 'number' ? duration : 5
+}
+
+/**
+ * 가중치 기반으로 Scene 순서 최적화
+ * @param {Array} scenesWithWeights - 가중치가 포함된 Scene 배열
+ * @returns {Array} 최적화된 Scene 순서
  */
 const optimizeSceneOrder = (scenesWithWeights) => {
   if (scenesWithWeights.length <= 2) {
-    // 씬이 2개 이하일 때는 단순 정렬
+    // Scene이 2개 이하일 때는 단순 정렬
     return [...scenesWithWeights].sort((a, b) => b.weight - a.weight)
   }
   
-  // 다중 씬을 위한 개선된 그리디 알고리즘
+  // 다중 Scene을 위한 개선된 그리디 알고리즘
   const optimizedOrder = []
   const usedScenes = new Set()
   
@@ -269,18 +278,18 @@ const optimizeSceneOrder = (scenesWithWeights) => {
       // 그룹 내에서 가중치 순으로 정렬
       const sortedGroupScenes = groupScenes.sort((a, b) => b.weight - a.weight)
       
-      // 사용되지 않은 씬들만 추가
+      // 사용되지 않은 Scene들만 추가
       for (const scene of sortedGroupScenes) {
-        if (!usedScenes.has(scene.id)) {
+        if (!usedScenes.has(scene._id)) {
           optimizedOrder.push(scene)
-          usedScenes.add(scene.id)
+          usedScenes.add(scene._id)
         }
       }
     }
   }
   
-  // 4단계: 남은 씬들을 가중치 순으로 추가
-  const remainingScenes = scenesWithWeights.filter(scene => !usedScenes.has(scene.id))
+  // 4단계: 남은 Scene들을 가중치 순으로 추가
+  const remainingScenes = scenesWithWeights.filter(scene => !usedScenes.has(scene._id))
   remainingScenes.sort((a, b) => b.weight - a.weight)
   optimizedOrder.push(...remainingScenes)
   
@@ -288,15 +297,15 @@ const optimizeSceneOrder = (scenesWithWeights) => {
 }
 
 /**
- * 장소별 씬 그룹화
- * @param {Array} scenes - 씬 배열
+ * 장소별 Scene 그룹화
+ * @param {Array} scenes - Scene 배열
  * @returns {Object} 장소별 그룹 객체
  */
 const groupScenesByLocation = (scenes) => {
   const groups = {}
   
   scenes.forEach(scene => {
-    const location = extractLocationFromConte(scene)
+    const location = extractLocationFromScene(scene)
     if (!groups[location]) {
       groups[location] = []
     }
@@ -307,15 +316,15 @@ const groupScenesByLocation = (scenes) => {
 }
 
 /**
- * 배우별 씬 그룹화
- * @param {Array} scenes - 씬 배열
+ * 배우별 Scene 그룹화
+ * @param {Array} scenes - Scene 배열
  * @returns {Object} 배우별 그룹 객체
  */
 const groupScenesByActors = (scenes) => {
   const groups = {}
   
   scenes.forEach(scene => {
-    const actors = extractActorsFromConte(scene)
+    const actors = extractActorsFromScene(scene)
     actors.forEach(actor => {
       if (!groups[actor]) {
         groups[actor] = []
@@ -328,15 +337,15 @@ const groupScenesByActors = (scenes) => {
 }
 
 /**
- * 시간대별 씬 그룹화
- * @param {Array} scenes - 씬 배열
+ * 시간대별 Scene 그룹화
+ * @param {Array} scenes - Scene 배열
  * @returns {Object} 시간대별 그룹 객체
  */
 const groupScenesByTimeSlot = (scenes) => {
   const groups = {}
   
   scenes.forEach(scene => {
-    const timeSlot = extractTimeSlotFromConte(scene)
+    const timeSlot = extractTimeSlotFromScene(scene)
     if (!groups[timeSlot]) {
       groups[timeSlot] = []
     }
@@ -349,15 +358,15 @@ const groupScenesByTimeSlot = (scenes) => {
 }
 
 /**
- * 장비별 씬 그룹화
- * @param {Array} scenes - 씬 배열
+ * 장비별 Scene 그룹화
+ * @param {Array} scenes - Scene 배열
  * @returns {Object} 장비별 그룹 객체
  */
 const groupScenesByEquipment = (scenes) => {
   const groups = {}
   
   scenes.forEach(scene => {
-    const equipment = extractEquipmentFromConte(scene)
+    const equipment = extractEquipmentFromScene(scene)
     if (!groups[equipment]) {
       groups[equipment] = []
     }
@@ -427,7 +436,7 @@ const optimizeGroupOrder = (groupScenes, currentOrder) => {
     let bestScore = -1
     
     for (const scene of groupScenes) {
-      if (usedInGroup.has(scene.id)) continue
+      if (usedInGroup.has(scene._id)) continue
       
       // 현재 그룹 순서에 씬을 추가했을 때의 점수 계산
       const score = calculateGroupCombinationScore([...optimizedGroupOrder, scene], currentOrder)
@@ -440,7 +449,7 @@ const optimizeGroupOrder = (groupScenes, currentOrder) => {
     
     if (bestScene) {
       optimizedGroupOrder.push(bestScene)
-      usedInGroup.add(bestScene.id)
+      usedInGroup.add(bestScene._id)
     }
   }
   
@@ -482,8 +491,8 @@ const calculateCombinationScore = (scenes) => {
   
   // 1. 같은 장소의 씬들이 연속되면 최우선 보너스 점수
   for (let i = 1; i < scenes.length; i++) {
-    const prevLocation = extractLocationFromConte(scenes[i-1])
-    const currLocation = extractLocationFromConte(scenes[i])
+    const prevLocation = extractLocationFromScene(scenes[i-1])
+    const currLocation = extractLocationFromScene(scenes[i])
     
     if (prevLocation === currLocation) {
       score += 1000 // 최우선 보너스 (같은 장소)
@@ -499,8 +508,8 @@ const calculateCombinationScore = (scenes) => {
   
   // 3. 같은 시간대의 씬들이 연속되면 세 번째 우선순위 보너스
   for (let i = 1; i < scenes.length; i++) {
-    const prevTimeSlot = extractTimeSlotFromConte(scenes[i-1])
-    const currTimeSlot = extractTimeSlotFromConte(scenes[i])
+    const prevTimeSlot = extractTimeSlotFromScene(scenes[i-1])
+    const currTimeSlot = extractTimeSlotFromScene(scenes[i])
     
     if (prevTimeSlot === currTimeSlot && prevTimeSlot !== '미정') {
       score += 200 // 세 번째 우선순위 보너스 (같은 시간대)
@@ -509,21 +518,21 @@ const calculateCombinationScore = (scenes) => {
   
   // 4. 같은 장비의 씬들이 연속되면 네 번째 우선순위 보너스
   for (let i = 1; i < scenes.length; i++) {
-    const prevEquipment = extractEquipmentFromConte(scenes[i-1])
-    const currEquipment = extractEquipmentFromConte(scenes[i])
+    const prevEquipment = extractEquipmentFromScene(scenes[i-1])
+    const currEquipment = extractEquipmentFromScene(scenes[i])
     
     if (prevEquipment === currEquipment) {
       score += 100 // 네 번째 우선순위 보너스 (같은 장비)
     }
   }
   
-  // 5. 복잡도 보너스 (긴 씬들이 연속되면 보너스)
+  // 5. 복잡도 보너스 (긴 Scene들이 연속되면 보너스)
   for (let i = 1; i < scenes.length; i++) {
-    const prevDuration = scenes[i-1].estimatedDuration || 5
-    const currDuration = scenes[i].estimatedDuration || 5
+    const prevDuration = parseDurationToMinutes(scenes[i-1].estimatedDuration || '5분')
+    const currDuration = parseDurationToMinutes(scenes[i].estimatedDuration || '5분')
     
     if (prevDuration >= 8 && currDuration >= 8) {
-      score += 50 // 복잡한 씬 연속 보너스
+      score += 50 // 복잡한 Scene 연속 보너스
     }
   }
   
@@ -550,7 +559,7 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
   const locationGroups = {}
   
   for (const scene of optimizedScenes) {
-    const location = extractLocationFromConte(scene)
+    const location = extractLocationFromScene(scene)
     if (!locationGroups[location]) {
       locationGroups[location] = []
     }
@@ -667,8 +676,8 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
   for (let i = 0; i < locationTimeSlotOptimizedScenes.length; i++) {
     const scene = locationTimeSlotOptimizedScenes[i]
     const sceneDuration = scene.actualShootingDuration || getSafeDuration(scene)
-    const sceneLocation = extractLocationFromConte(scene)
-    const sceneTimeSlot = extractTimeSlotFromConte(scene)
+    const sceneLocation = extractLocationFromScene(scene)
+    const sceneTimeSlot = extractTimeSlotFromScene(scene)
     
     // 디버깅: 최적화된 씬 정보 확인
     console.log(`[SchedulerService] 최적화된 씬 ${i + 1}:`, {
@@ -773,8 +782,8 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
   console.log(`[SchedulerService] Day ${dayNumber}, 장소: ${location}, 시간대: ${timeSlot} 스케줄 생성:`, {
     scenesCount: scenes.length,
     totalDuration: duration,
-    locations: scenes.map(scene => extractLocationFromConte(scene)),
-    timeSlots: scenes.map(scene => extractTimeSlotFromConte(scene)),
+    locations: scenes.map(scene => extractLocationFromScene(scene)),
+    timeSlots: scenes.map(scene => extractTimeSlotFromScene(scene)),
     sceneTitles: scenes.map(scene => scene.title || `씬 ${scene.scene}`)
   })
   
@@ -796,11 +805,11 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
   const scenesWithDetails = scenes.map(scene => ({
     ...scene,
     // 상세 카메라 정보 추가
-    cameraDetails: extractCameraFromConte(scene),
+    cameraDetails: extractCameraFromScene(scene),
     // 상세 인력 정보 추가
-    crewDetails: extractCrewFromConte(scene),
+    crewDetails: extractCrewFromScene(scene),
     // 상세 장비 정보 추가
-    equipmentDetails: extractEquipmentFromConte(scene)
+    equipmentDetails: extractEquipmentFromScene(scene)
   }));
   
   // 스케줄 row 반환
@@ -862,7 +871,7 @@ const calculateDayEfficiency = (scenes, duration) => {
   
   // 다중 씬인 경우 기존 계산 방식 사용
   // 장소 효율성 (같은 장소에서 연속 촬영 시 100% 효율성)
-  const locations = scenes.map(scene => extractLocationFromConte(scene))
+  const locations = scenes.map(scene => extractLocationFromScene(scene))
   const uniqueLocations = new Set(locations)
   
   // 같은 장소에서 연속 촬영 시 100% 효율성, 다른 장소가 있으면 비례 계산
@@ -873,7 +882,7 @@ const calculateDayEfficiency = (scenes, duration) => {
                         safeDuration >= 240 && safeDuration <= 600 ? 0.7 : 0.3
   
   // 배우 효율성 (같은 배우들이 연속 출연하는 경우 100% 효율성)
-  const allActors = scenes.map(scene => extractActorsFromConte(scene))
+  const allActors = scenes.map(scene => extractActorsFromScene(scene))
   
   let actorEfficiency = 0 // 변수를 블록 외부에서 선언
   
@@ -947,7 +956,7 @@ const getMostCommonLocation = (scenes) => {
   const locationCount = {}
   
   scenes.forEach(scene => {
-    const location = extractLocationFromConte(scene)
+    const location = extractLocationFromScene(scene)
     locationCount[location] = (locationCount[location] || 0) + 1
   })
   
@@ -966,29 +975,29 @@ const calculateDayOptimizationScore = (scenes) => {
   let score = 0
   
   // 1. 같은 장소 보너스 (최우선)
-  const locations = scenes.map(scene => extractLocationFromConte(scene))
+  const locations = scenes.map(scene => extractLocationFromScene(scene))
   const uniqueLocations = new Set(locations)
   score += (scenes.length - uniqueLocations.size) * 1000 // 최우선 가중치
   
   // 2. 같은 배우 보너스 (두 번째 우선순위)
-  const actors = scenes.map(scene => extractActorsFromConte(scene)).flat()
+  const actors = scenes.map(scene => extractActorsFromScene(scene)).flat()
   const uniqueActors = new Set(actors)
   const actorEfficiency = actors.length - uniqueActors.size
   score += actorEfficiency * 500 // 두 번째 우선순위
   
   // 3. 같은 시간대 보너스 (세 번째 우선순위)
-  const timeSlots = scenes.map(scene => extractTimeSlotFromConte(scene))
+  const timeSlots = scenes.map(scene => extractTimeSlotFromScene(scene))
   const uniqueTimeSlots = new Set(timeSlots.filter(slot => slot !== '미정'))
   const timeSlotEfficiency = timeSlots.length - uniqueTimeSlots.size
   score += timeSlotEfficiency * 200 // 세 번째 우선순위
   
   // 4. 같은 장비 보너스 (네 번째 우선순위)
-  const equipments = scenes.map(scene => extractEquipmentFromConte(scene))
+  const equipments = scenes.map(scene => extractEquipmentFromScene(scene))
   const uniqueEquipments = new Set(equipments)
   score += (scenes.length - uniqueEquipments.size) * 100 // 네 번째 우선순위
   
   // 5. 복잡도 보너스 (다섯 번째 우선순위)
-  const totalDuration = scenes.reduce((total, scene) => total + (scene.estimatedDuration || 5), 0)
+  const totalDuration = scenes.reduce((total, scene) => total + parseDurationToMinutes(scene.estimatedDuration || '5분'), 0)
   if (totalDuration >= 360 && totalDuration <= 480) { // 6-8시간을 분 단위로 변환
     score += 50 // 적절한 작업량 보너스
   }
@@ -1014,9 +1023,9 @@ const calculateOptimizationScore = (days) => {
   let efficiency = 0
   
   if (days.length === 1 && days[0].scenes && days[0].scenes.length === 1) {
-    // 단일 씬인 경우: 기본 효율성 60% + 추가 보너스
+    // 단일 Scene인 경우: 기본 효율성 60% + 추가 보너스
     const singleScene = days[0].scenes[0]
-    const duration = singleScene.estimatedDuration || 5
+    const duration = parseDurationToMinutes(singleScene.estimatedDuration || '5분')
     
     // 촬영 시간에 따른 효율성 조정
     if (duration >= 30 && duration <= 60) {
@@ -1027,16 +1036,16 @@ const calculateOptimizationScore = (days) => {
       efficiency = 60 // 짧은 촬영 시간
     }
     
-    console.log(`📊 단일 씬 효율성 계산:`, {
+    console.log(`📊 단일 Scene 효율성 계산:`, {
       duration: `${duration}분`,
       efficiency: `${efficiency}%`
     });
   } else {
-    // 다중 씬인 경우: 기존 계산 방식 사용
+    // 다중 Scene인 경우: 기존 계산 방식 사용
     const maxPossibleScore = 2000 // 최대 가능한 점수
     efficiency = Math.min(100, Math.round((averageScore / maxPossibleScore) * 100))
     
-    console.log(`📊 다중 씬 최적화 점수 계산:`, {
+    console.log(`📊 다중 Scene 최적화 점수 계산:`, {
       totalScore,
       averageScore,
       maxPossibleScore,
@@ -1067,7 +1076,7 @@ const chunkArray = (array, chunkSize) => {
 
 /**
  * 필요한 인력 계산
- * @param {Array} scenes - 씬 배열
+ * @param {Array} scenes - Scene 배열
  * @returns {Array} 필요한 인력 리스트
  */
 const getRequiredCrew = (scenes) => {
@@ -1094,7 +1103,7 @@ const getRequiredCrew = (scenes) => {
 
 /**
  * 필요한 장비 계산
- * @param {Array} scenes - 씬 배열
+ * @param {Array} scenes - Scene 배열
  * @returns {Array} 필요한 장비 리스트
  */
 const getRequiredEquipment = (scenes) => {
@@ -1121,7 +1130,7 @@ const getRequiredEquipment = (scenes) => {
 
 /**
  * 안전한 촬영 시간 계산 (실제 촬영 시간 고려)
- * @param {Object} scene - 씬 객체
+ * @param {Object} scene - Scene 객체
  * @returns {number} 실제 촬영 시간 (분)
  */
 function getSafeDuration(scene) {
@@ -1218,7 +1227,7 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
   let isLateStart = false;
   if ((timeOfDay === '낮' || timeOfDay === 'day') && allScenesInLocation) {
     isLateStart = allScenesInLocation.some(s => {
-      const t = extractTimeSlotFromConte(s);
+      const t = extractTimeSlotFromScene(s);
       return t === '밤' || t === 'night';
     });
   }
@@ -1229,7 +1238,7 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
     console.log(`📍 같은 장소의 모든 씬들:`, allScenesInLocation.map(s => ({
       scene: s.scene,
       title: s.title,
-      timeOfDay: extractTimeSlotFromConte(s)
+      timeOfDay: extractTimeSlotFromScene(s)
     })));
   }
   
@@ -1414,10 +1423,10 @@ const generateTimeSlots = (scenes) => {
 
 /**
  * 브레이크다운 생성
- * @param {Array} conteData - 콘티 데이터
+ * @param {Array} sceneData - Scene 데이터
  * @returns {Object} 브레이크다운 데이터
  */
-export const generateBreakdown = (conteData) => {
+export const generateBreakdown = (sceneData) => {
   try {
     const breakdown = {
       locations: {},
@@ -1430,72 +1439,72 @@ export const generateBreakdown = (conteData) => {
       cameras: {} // 카메라 정보 추가
     }
     
-    conteData.forEach(conte => {
+    sceneData.forEach(scene => {
       // 1. 장소별 분류 (최우선)
-      const location = extractLocationFromConte(conte)
+      const location = extractLocationFromScene(scene)
       if (!breakdown.locations[location]) {
         breakdown.locations[location] = []
       }
-      breakdown.locations[location].push(conte)
+      breakdown.locations[location].push(scene)
       
       // 2. 배우별 분류 (두 번째 우선순위)
-      const actors = extractActorsFromConte(conte)
+      const actors = extractActorsFromScene(scene)
       actors.forEach(actor => {
         if (!breakdown.actors[actor]) {
           breakdown.actors[actor] = []
         }
-        breakdown.actors[actor].push(conte)
+        breakdown.actors[actor].push(scene)
       })
       
       // 3. 시간대별 분류 (세 번째 우선순위)
-      const timeSlot = extractTimeSlotFromConte(conte)
+      const timeSlot = extractTimeSlotFromScene(scene)
       if (!breakdown.timeSlots[timeSlot]) {
         breakdown.timeSlots[timeSlot] = []
       }
-      breakdown.timeSlots[timeSlot].push(conte)
+      breakdown.timeSlots[timeSlot].push(scene)
       
       // 4. 장비별 분류 (네 번째 우선순위)
-      const equipment = extractEquipmentFromConte(conte)
+      const equipment = extractEquipmentFromScene(scene)
       if (!breakdown.equipment[equipment]) {
         breakdown.equipment[equipment] = []
       }
-      breakdown.equipment[equipment].push(conte)
+      breakdown.equipment[equipment].push(scene)
       
       // 5. 인력별 분류
-      const crew = extractCrewFromConte(conte)
+      const crew = extractCrewFromScene(scene)
       crew.forEach(member => {
         if (!breakdown.crew[member]) {
           breakdown.crew[member] = []
         }
-        breakdown.crew[member].push(conte)
+        breakdown.crew[member].push(scene)
       })
       
       // 6. 소품별 분류
-      const props = extractPropsFromConte(conte)
+      const props = extractPropsFromScene(scene)
       props.forEach(prop => {
         if (!breakdown.props[prop]) {
           breakdown.props[prop] = []
         }
-        breakdown.props[prop].push(conte)
+        breakdown.props[prop].push(scene)
       })
       
       // 7. 의상별 분류
-      const costumes = extractCostumesFromConte(conte)
+      const costumes = extractCostumesFromScene(scene)
       costumes.forEach(costume => {
         if (!breakdown.costumes[costume]) {
           breakdown.costumes[costume] = []
         }
-        breakdown.costumes[costume].push(conte)
+        breakdown.costumes[costume].push(scene)
       })
       
       // 8. 카메라별 분류
-      const cameraInfo = extractCameraFromConte(conte)
+      const cameraInfo = extractCameraFromScene(scene)
       const cameraKey = `${cameraInfo.model} - ${cameraInfo.lens}`
       if (!breakdown.cameras[cameraKey]) {
         breakdown.cameras[cameraKey] = []
       }
       breakdown.cameras[cameraKey].push({
-        ...conte,
+        ...scene,
         cameraInfo: cameraInfo
       })
     })
@@ -1508,62 +1517,81 @@ export const generateBreakdown = (conteData) => {
 }
 
 /**
- * 콘티에서 인력 정보 추출 (개선된 버전)
- * @param {Object} conte - 콘티 객체
+ * Scene에서 인력 정보 추출 (Scene 스키마 기반)
+ * @param {Object} scene - Scene 객체
  * @returns {Array} 추출된 인력 리스트
  */
-const extractCrewFromConte = (conte) => {
+const extractCrewFromScene = (scene) => {
   console.log('👥 인력 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasScheduling: !!conte.scheduling,
-    hasKeywords: !!conte.keywords
+    id: scene._id,
+    title: scene.title,
+    hasCrew: !!scene.crew
   });
   
   const crew = [];
   
-  // 1. 스케줄링 데이터에서 상세 인력 정보 추출
-  if (conte.scheduling && conte.scheduling.crew) {
-    const crewData = conte.scheduling.crew;
-    
-    // 필수 인력 추가
-    if (crewData.director && crewData.director !== '감독') {
-      crew.push(crewData.director);
-    }
-    if (crewData.cinematographer && crewData.cinematographer !== '촬영감독') {
-      crew.push(crewData.cinematographer);
-    }
-    if (crewData.cameraOperator && crewData.cameraOperator !== '카메라맨') {
-      crew.push(crewData.cameraOperator);
-    }
-    if (crewData.lightingDirector && crewData.lightingDirector !== '조명감독') {
-      crew.push(crewData.lightingDirector);
-    }
-    if (crewData.makeupArtist && crewData.makeupArtist !== '메이크업') {
-      crew.push(crewData.makeupArtist);
-    }
-    if (crewData.costumeDesigner && crewData.costumeDesigner !== '의상') {
-      crew.push(crewData.costumeDesigner);
-    }
-    if (crewData.soundEngineer && crewData.soundEngineer !== '음향감독') {
-      crew.push(crewData.soundEngineer);
-    }
-    if (crewData.artDirector && crewData.artDirector !== '미술감독') {
-      crew.push(crewData.artDirector);
+  // Scene 스키마의 crew 구조 사용
+  if (scene.crew) {
+    // 연출부
+    if (scene.crew.direction) {
+      const direction = scene.crew.direction;
+      if (direction.director) crew.push(direction.director);
+      if (direction.assistantDirector) crew.push(direction.assistantDirector);
+      if (direction.scriptSupervisor) crew.push(direction.scriptSupervisor);
+      if (direction.continuity) crew.push(direction.continuity);
     }
     
-    // 추가 인력
-    if (crewData.additionalCrew && Array.isArray(crewData.additionalCrew)) {
-      crew.push(...crewData.additionalCrew);
+    // 제작부
+    if (scene.crew.production) {
+      const production = scene.crew.production;
+      if (production.producer) crew.push(production.producer);
+      if (production.lineProducer) crew.push(production.lineProducer);
+      if (production.productionManager) crew.push(production.productionManager);
+      if (production.productionAssistant) crew.push(production.productionAssistant);
+    }
+    
+    // 촬영부
+    if (scene.crew.cinematography) {
+      const cinematography = scene.crew.cinematography;
+      if (cinematography.cinematographer) crew.push(cinematography.cinematographer);
+      if (cinematography.cameraOperator) crew.push(cinematography.cameraOperator);
+      if (cinematography.firstAssistant) crew.push(cinematography.firstAssistant);
+      if (cinematography.secondAssistant) crew.push(cinematography.secondAssistant);
+      if (cinematography.dollyGrip) crew.push(cinematography.dollyGrip);
+    }
+    
+    // 조명부
+    if (scene.crew.lighting) {
+      const lighting = scene.crew.lighting;
+      if (lighting.gaffer) crew.push(lighting.gaffer);
+      if (lighting.bestBoy) crew.push(lighting.bestBoy);
+      if (lighting.electrician) crew.push(lighting.electrician);
+      if (lighting.generatorOperator) crew.push(lighting.generatorOperator);
+    }
+    
+    // 음향부
+    if (scene.crew.sound) {
+      const sound = scene.crew.sound;
+      if (sound.soundMixer) crew.push(sound.soundMixer);
+      if (sound.boomOperator) crew.push(sound.boomOperator);
+      if (sound.soundAssistant) crew.push(sound.soundAssistant);
+      if (sound.utility) crew.push(sound.utility);
+    }
+    
+    // 미술부
+    if (scene.crew.art) {
+      const art = scene.crew.art;
+      if (art.productionDesigner) crew.push(art.productionDesigner);
+      if (art.artDirector) crew.push(art.artDirector);
+      if (art.setDecorator) crew.push(art.setDecorator);
+      if (art.propMaster) crew.push(art.propMaster);
+      if (art.makeupArtist) crew.push(art.makeupArtist);
+      if (art.costumeDesigner) crew.push(art.costumeDesigner);
+      if (art.hairStylist) crew.push(art.hairStylist);
     }
   }
   
-  // 2. keywords.cast에서 배우 정보 추가
-  if (conte.keywords && conte.keywords.cast && Array.isArray(conte.keywords.cast)) {
-    crew.push(...conte.keywords.cast);
-  }
-  
-  // 3. 기본 인력 추가 (정보가 없는 경우)
+  // 기본 인력 추가 (정보가 없는 경우)
   if (crew.length === 0) {
     crew.push('감독', '촬영감독', '카메라맨');
   }
@@ -1573,229 +1601,134 @@ const extractCrewFromConte = (conte) => {
 }
 
 /**
- * 콘티에서 소품 정보 추출
- * @param {Object} conte - 콘티 객체
- * @returns {Array} 추출된 소품 리스트 (반드시 keywords.props 기반)
+ * Scene에서 소품 정보 추출
+ * @param {Object} scene - Scene 객체
+ * @returns {Array} 추출된 소품 리스트
  */
-const extractPropsFromConte = (conte) => {
-  // 반드시 keywords.props만 사용 (description fallback 제거)
-  if (conte.keywords && conte.keywords.props && Array.isArray(conte.keywords.props)) {
-    return conte.keywords.props
-  }
-  // 정보가 없으면 빈 배열 반환
-  return []
-}
-
-/**
- * 두 씬이 같은 배우를 가지고 있는지 확인
- * @param {Object} scene1 - 첫 번째 씬
- * @param {Object} scene2 - 두 번째 씬
- * @returns {boolean} 같은 배우가 있는지 여부
- */
-const hasSameActors = (scene1, scene2) => {
-  const actors1 = extractActorsFromConte(scene1)
-  const actors2 = extractActorsFromConte(scene2)
-  
-  console.log('🎭 배우 비교:', {
-    scene1: { id: scene1.id, title: scene1.title, actors: actors1 },
-    scene2: { id: scene2.id, title: scene2.title, actors: actors2 }
+const extractPropsFromScene = (scene) => {
+  console.log('🎭 소품 추출:', {
+    id: scene._id,
+    title: scene.title,
+    props: scene.props
   });
   
-  return actors1.some(actor => actors2.includes(actor))
+  // Scene 스키마의 props 배열 사용
+  if (scene.props && Array.isArray(scene.props)) {
+    return scene.props;
+  }
+  
+  // 기본 소품 추가 (정보가 없는 경우)
+  return ['기본 소품'];
 }
 
 /**
- * 콘티에서 배우 정보 추출
- * @param {Object} conte - 콘티 객체
+ * Scene에서 배우 정보 추출
+ * @param {Object} scene - Scene 객체
  * @returns {Array} 배우 배열
  */
-const extractActorsFromConte = (conte) => {
+const extractActorsFromScene = (scene) => {
   console.log('🎭 배우 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsCast: conte.keywords?.cast,
-    fallbackCast: conte.cast
+    id: scene._id,
+    title: scene.title,
+    cast: scene.cast
   });
   
-  if (conte.keywords && conte.keywords.cast && Array.isArray(conte.keywords.cast)) {
-    return conte.keywords.cast
+  // Scene 스키마의 cast 배열 사용
+  if (scene.cast && Array.isArray(scene.cast)) {
+    return scene.cast;
   }
-  return []
+  
+  return [];
 }
 
 /**
- * 두 씬이 같은 시간대를 가지고 있는지 확인
- * @param {Object} scene1 - 첫 번째 씬
- * @param {Object} scene2 - 두 번째 씬
- * @returns {boolean} 같은 시간대인지 여부
- */
-const hasSameTimeSlot = (scene1, scene2) => {
-  const time1 = extractTimeSlotFromConte(scene1)
-  const time2 = extractTimeSlotFromConte(scene2)
-  
-  console.log('⏰ 시간대 비교:', {
-    scene1: { id: scene1.id, title: scene1.title, time: time1 },
-    scene2: { id: scene2.id, title: scene2.title, time: time2 }
-  });
-  
-  return time1 === time2
-}
-
-/**
- * 콘티에서 시간대 정보 추출
- * @param {Object} conte - 콘티 객체
+ * Scene에서 시간대 정보 추출
+ * @param {Object} scene - Scene 객체
  * @returns {string} 시간대 정보
  */
-const extractTimeSlotFromConte = (conte) => {
+const extractTimeSlotFromScene = (scene) => {
   console.log('⏰ 시간대 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasKeywords: !!conte.keywords,
-    keywordsTimeOfDay: conte.keywords?.timeOfDay,
-    fallbackTimeOfDay: conte.timeOfDay
+    id: scene._id,
+    title: scene.title,
+    timeOfDay: scene.timeOfDay
   });
   
-  if (conte.keywords && conte.keywords.timeOfDay) {
-    return conte.keywords.timeOfDay
+  // Scene 스키마의 timeOfDay 사용
+  if (scene.timeOfDay) {
+    return scene.timeOfDay;
   }
-  return '오후' // 기본값
+  
+  return '오후'; // 기본값
 }
 
 /**
- * 콘티에서 의상 정보 추출
- * @param {Object} conte - 콘티 객체
- * @returns {Array} 추출된 의상 리스트
- */
-const extractCostumesFromConte = (conte) => {
-  const description = conte.description || ''
-  const costumes = []
-  
-  const costumeKeywords = [
-    '정장', '캐주얼', '유니폼', '드레스', '셔츠', '바지',
-    'suit', 'casual', 'uniform', 'dress', 'shirt', 'pants'
-  ]
-  
-  costumeKeywords.forEach(keyword => {
-    if (description.toLowerCase().includes(keyword.toLowerCase())) {
-      costumes.push(keyword)
-    }
-  })
-  
-  return costumes
-}
-
-/**
- * 스케줄 데이터를 CSV 형태로 변환
- * @param {Object} scheduleData - 스케줄 데이터
- * @returns {string} CSV 문자열
- */
-export const generateScheduleCSV = (scheduleData) => {
-  let csv = 'Day,Date,Location,Scenes,Estimated Duration,Crew,Equipment\n'
-  
-  scheduleData.days.forEach(day => {
-    csv += `${day.day},${day.date},${day.location},${day.totalScenes},${day.estimatedDuration}분,${day.crew.join(', ')},${day.equipment.join(', ')}\n`
-  })
-  
-  return csv
-}
-
-/**
- * 브레이크다운 데이터를 CSV 형태로 변환
- * @param {Object} breakdownData - 브레이크다운 데이터
- * @returns {string} CSV 문자열
- */
-export const generateBreakdownCSV = (breakdownData) => {
-  let csv = 'Category,Item,Scenes,Count\n'
-  
-  // 장소별
-  Object.entries(breakdownData.locations).forEach(([location, scenes]) => {
-    csv += `Location,${location},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
-  })
-  
-  // 장비별
-  Object.entries(breakdownData.equipment).forEach(([equipment, scenes]) => {
-    csv += `Equipment,${equipment},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
-  })
-  
-  // 인력별
-  Object.entries(breakdownData.crew).forEach(([crew, scenes]) => {
-    csv += `Crew,${crew},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
-  })
-  
-  return csv
-}
-
-/**
- * 콘티에서 장비 정보 추출 (개선된 버전)
- * @param {Object} conte - 콘티 객체
+ * Scene에서 장비 정보 추출 (Scene 스키마 기반)
+ * @param {Object} scene - Scene 객체
  * @returns {Array} 추출된 장비 리스트
  */
-const extractEquipmentFromConte = (conte) => {
+const extractEquipmentFromScene = (scene) => {
   console.log('🎥 장비 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasScheduling: !!conte.scheduling,
-    hasKeywords: !!conte.keywords
+    id: scene._id,
+    title: scene.title,
+    hasEquipment: !!scene.equipment
   });
   
   const equipment = [];
   
-  // 1. 스케줄링 데이터에서 상세 장비 정보 추출
-  if (conte.scheduling && conte.scheduling.equipment) {
-    const equipData = conte.scheduling.equipment;
-    
-    // 카메라 장비
-    if (equipData.cameras && Array.isArray(equipData.cameras)) {
-      equipment.push(...equipData.cameras);
+  // Scene 스키마의 equipment 구조 사용
+  if (scene.equipment) {
+    // 연출부 장비
+    if (scene.equipment.direction) {
+      equipment.push(...scene.equipment.direction.monitors || []);
+      equipment.push(...scene.equipment.direction.communication || []);
+      equipment.push(...scene.equipment.direction.scriptBoards || []);
     }
     
-    // 렌즈
-    if (equipData.lenses && Array.isArray(equipData.lenses)) {
-      equipment.push(...equipData.lenses);
+    // 제작부 장비
+    if (scene.equipment.production) {
+      equipment.push(...scene.equipment.production.scheduling || []);
+      equipment.push(...scene.equipment.production.safety || []);
+      equipment.push(...scene.equipment.production.transportation || []);
     }
     
-    // 조명 장비
-    if (equipData.lighting && Array.isArray(equipData.lighting)) {
-      equipment.push(...equipData.lighting);
+    // 촬영부 장비
+    if (scene.equipment.cinematography) {
+      equipment.push(...scene.equipment.cinematography.cameras || []);
+      equipment.push(...scene.equipment.cinematography.lenses || []);
+      equipment.push(...scene.equipment.cinematography.supports || []);
+      equipment.push(...scene.equipment.cinematography.filters || []);
+      equipment.push(...scene.equipment.cinematography.accessories || []);
     }
     
-    // 음향 장비
-    if (equipData.audio && Array.isArray(equipData.audio)) {
-      equipment.push(...equipData.audio);
+    // 조명부 장비
+    if (scene.equipment.lighting) {
+      equipment.push(...scene.equipment.lighting.keyLights || []);
+      equipment.push(...scene.equipment.lighting.fillLights || []);
+      equipment.push(...scene.equipment.lighting.backLights || []);
+      equipment.push(...scene.equipment.lighting.backgroundLights || []);
+      equipment.push(...scene.equipment.lighting.specialEffectsLights || []);
+      equipment.push(...scene.equipment.lighting.softLights || []);
+      equipment.push(...scene.equipment.lighting.power || []);
     }
     
-    // 그립 장비
-    if (equipData.grip && Array.isArray(equipData.grip)) {
-      equipment.push(...equipData.grip);
+    // 음향부 장비
+    if (scene.equipment.sound) {
+      equipment.push(...scene.equipment.sound.microphones || []);
+      equipment.push(...scene.equipment.sound.recorders || []);
+      equipment.push(...scene.equipment.sound.wireless || []);
+      equipment.push(...scene.equipment.sound.monitoring || []);
     }
     
-    // 특수 장비
-    if (equipData.special && Array.isArray(equipData.special)) {
-      equipment.push(...equipData.special);
+    // 미술부 장비
+    if (scene.equipment.art) {
+      equipment.push(...scene.equipment.art.setConstruction || []);
+      equipment.push(...scene.equipment.art.setDressing || []);
+      equipment.push(...scene.equipment.art.costumes || []);
+      equipment.push(...scene.equipment.art.specialEffects || []);
     }
   }
   
-  // 2. 스케줄링 카메라 정보 추가
-  if (conte.scheduling && conte.scheduling.camera) {
-    const cameraData = conte.scheduling.camera;
-    if (cameraData.model && cameraData.model !== '기본 카메라') {
-      equipment.push(cameraData.model);
-    }
-    if (cameraData.lens && cameraData.lens !== '기본 렌즈') {
-      equipment.push(cameraData.lens);
-    }
-    if (cameraData.movement && cameraData.movement !== '고정') {
-      equipment.push(cameraData.movement);
-    }
-  }
-  
-  // 3. keywords.equipment 추가
-  if (conte.keywords && conte.keywords.equipment && conte.keywords.equipment !== '기본 장비') {
-    equipment.push(conte.keywords.equipment);
-  }
-  
-  // 4. 기본 장비 추가 (정보가 없는 경우)
+  // 기본 장비 추가 (정보가 없는 경우)
   if (equipment.length === 0) {
     equipment.push('카메라', '조명', '마이크');
   }
@@ -1805,16 +1738,15 @@ const extractEquipmentFromConte = (conte) => {
 }
 
 /**
- * 콘티에서 카메라 정보 추출 (개선된 버전)
- * @param {Object} conte - 콘티 객체
+ * Scene에서 카메라 정보 추출 (Scene 스키마 기반)
+ * @param {Object} scene - Scene 객체
  * @returns {Object} 추출된 카메라 정보
  */
-const extractCameraFromConte = (conte) => {
+const extractCameraFromScene = (scene) => {
   console.log('📹 카메라 정보 추출:', {
-    id: conte.id,
-    title: conte.title,
-    hasScheduling: !!conte.scheduling,
-    hasKeywords: !!conte.keywords
+    id: scene._id,
+    title: scene.title,
+    hasEquipment: !!scene.equipment
   });
   
   const cameraInfo = {
@@ -1826,34 +1758,37 @@ const extractCameraFromConte = (conte) => {
     work: ''
   };
   
-  // 1. 스케줄링 카메라 정보
-  if (conte.scheduling && conte.scheduling.camera) {
-    const cameraData = conte.scheduling.camera;
-    if (cameraData.model && cameraData.model !== '기본 카메라') {
-      cameraInfo.model = cameraData.model;
+  // Scene 스키마의 cinematography 장비에서 카메라 정보 추출
+  if (scene.equipment && scene.equipment.cinematography) {
+    const cinematography = scene.equipment.cinematography;
+    
+    // 카메라 모델
+    if (cinematography.cameras && cinematography.cameras.length > 0) {
+      cameraInfo.model = cinematography.cameras[0];
     }
-    if (cameraData.lens && cameraData.lens !== '기본 렌즈') {
-      cameraInfo.lens = cameraData.lens;
+    
+    // 렌즈 정보
+    if (cinematography.lenses && cinematography.lenses.length > 0) {
+      cameraInfo.lens = cinematography.lenses[0];
     }
-    if (cameraData.settings && cameraData.settings !== '기본 설정') {
-      cameraInfo.settings = cameraData.settings;
+    
+    // 필터 정보
+    if (cinematography.filters && cinematography.filters.length > 0) {
+      cameraInfo.settings = cinematography.filters.join(', ');
     }
-    if (cameraData.movement && cameraData.movement !== '고정') {
-      cameraInfo.movement = cameraData.movement;
+    
+    // 지지대 정보 (카메라 워크)
+    if (cinematography.supports && cinematography.supports.length > 0) {
+      cameraInfo.movement = cinematography.supports[0];
     }
   }
   
-  // 2. 기본 카메라 정보 (cameraAngle, cameraWork)
-  if (conte.cameraAngle) {
-    cameraInfo.angle = conte.cameraAngle;
+  // Scene의 기본 카메라 정보
+  if (scene.cameraAngle) {
+    cameraInfo.angle = scene.cameraAngle;
   }
-  if (conte.cameraWork) {
-    cameraInfo.work = conte.cameraWork;
-  }
-  
-  // 3. 렌즈 사양
-  if (conte.lensSpecs) {
-    cameraInfo.lens = conte.lensSpecs;
+  if (scene.cameraWork) {
+    cameraInfo.work = scene.cameraWork;
   }
   
   console.log('✅ 추출된 카메라 정보:', cameraInfo);
@@ -1862,15 +1797,15 @@ const extractCameraFromConte = (conte) => {
 
 /**
  * 프로젝트 촬영 스케쥴을 생성한다 (새 알고리즘)
- * @param {Array} contes - 씬(콘티) 목록
+ * @param {Array} scenes - Scene 목록
  * @param {Array} realLocations - 실제 장소 목록
  * @param {Array} groups - 그룹(건물) 목록
  * @param {string} projectId - 프로젝트 ID
  * @returns {Object} schedule - 스케쥴 결과(날짜별 씬 배치, 안내문 등 포함)
  */
-export async function scheduleShooting(contes, realLocations, groups, projectId) {
+export async function scheduleShooting(scenes, realLocations, groups, projectId) {
   let messages = [];
-  let updatedContes = [...contes];
+  let updatedScenes = [...scenes];
   let updatedRealLocations = [...realLocations];
   let updatedGroups = [...groups];
 
@@ -1885,14 +1820,14 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
     };
     updatedRealLocations.push(emptyRealLocation);
   }
-  let contesWithNoLocation = updatedContes.filter(c => !c.keywords?.realLocationId);
-  if (contesWithNoLocation.length > 0) {
-    updatedContes = updatedContes.map(c =>
-      c.keywords?.realLocationId
-        ? c
-        : { ...c, keywords: { ...c.keywords, realLocationId: emptyRealLocation._id } }
+  let scenesWithNoLocation = updatedScenes.filter(s => !s.location?.realLocationId);
+  if (scenesWithNoLocation.length > 0) {
+    updatedScenes = updatedScenes.map(s =>
+      s.location?.realLocationId
+        ? s
+        : { ...s, location: { ...s.location, realLocationId: emptyRealLocation._id } }
     );
-    messages.push('촬영 위치가 지정되지 않은 씬이 있습니다. "빈 realLocation"이 자동 할당되었습니다. 촬영 위치를 채워주세요.');
+    messages.push('촬영 위치가 지정되지 않은 Scene이 있습니다. "빈 realLocation"이 자동 할당되었습니다. 촬영 위치를 채워주세요.');
   }
 
   // 2. 빈 group 자동 할당
@@ -1917,20 +1852,20 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
   }
 
   // [낮/밤 분리 로직 추가]
-  const isDay = (conte) => {
-    const t = conte.keywords?.timeOfDay;
+  const isDay = (scene) => {
+    const t = scene.timeOfDay;
     return t === '아침' || t === '오후' || t === '낮';
   };
-  const isNight = (conte) => {
-    const t = conte.keywords?.timeOfDay;
+  const isNight = (scene) => {
+    const t = scene.timeOfDay;
     return t === '저녁' || t === '밤' || t === '새벽';
   };
-  const dayContes = contes.filter(isDay);
-  const nightContes = contes.filter(isNight);
+  const dayScenes = scenes.filter(isDay);
+  const nightScenes = scenes.filter(isNight);
 
-  // 2, 3단계: realLocation별 → 씬 리스트로 묶기 → 그룹별 구간을 하루 6/3시간(360/180분) 이내로 분배
-  const dayDays = splitContesByLocationAndTime(dayContes, 360, updatedRealLocations);
-  const nightDays = splitContesByLocationAndTime(nightContes, 180, updatedRealLocations);
+  // 2, 3단계: realLocation별 → Scene 리스트로 묶기 → 그룹별 구간을 하루 6/3시간(360/180분) 이내로 분배
+  const dayDays = splitScenesByLocationAndTime(dayScenes, 360, updatedRealLocations);
+  const nightDays = splitScenesByLocationAndTime(nightScenes, 180, updatedRealLocations);
 
   const maxLen = Math.max(dayDays.length, nightDays.length);
 
@@ -1939,15 +1874,15 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
   for(let i = 0; i < maxLen; i++) {
     const day = dayDays[i] || { sections: [], totalMinutes: 0 };
     const night = nightDays[i] || { sections: [], totalMinutes: 0 };
-    const dayScenes = day.sections.map((section, idx) => {
+    const daySceneItems = day.sections.map((section, idx) => {
       return {type: '촬영', duration: section.totalMinutes, scene: section};
     });
-    const nightScenes = night.sections.map((section, idx) => {
+    const nightSceneItems = night.sections.map((section, idx) => {
       return {type: '촬영', duration: section.totalMinutes, scene: section};
     });
     const nightTimeline = [];
     for(let j = 0; j < nightScenes.length; j++) {
-        if( j === 0 || nightScenes[j].scene.keywords?.realLocationId !== nightScenes[j-1].scene.keywords?.realLocationId) {
+        if( j === 0 || nightScenes[j].scene.location?.realLocationId !== nightScenes[j-1].scene.location?.realLocationId) {
             nightTimeline.push({type: ( j === 0 ? '밤 세팅' : '장소 이동 및 세팅'), duration: 60});
             nightTimeline.push({type: '리허설', duration: 30});
         }
@@ -1955,7 +1890,7 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
     }
     let dayTimeline = [];
     for(let j = 0; j < dayScenes.length; j++) {
-        if(j === 0 || dayScenes[j].scene.keywords?.realLocationId !== dayScenes[j-1].scene.keywords?.realLocationId) {
+        if(j === 0 || dayScenes[j].scene.location?.realLocationId !== dayScenes[j-1].scene.location?.realLocationId) {
             dayTimeline.push({type: (j === 0 ? '세팅' : '장소 이동 및 세팅'), duration: 60});
             dayTimeline.push({type: '리허설', duration: 30});
         }
@@ -2054,18 +1989,18 @@ export async function scheduleShooting(contes, realLocations, groups, projectId)
 }
 
 /**
- * contes를 realLocationId 기준으로 정렬한 뒤, maxTime(분) 단위로 Day 배열로 분할
- * @param {Conte[]} contes - 콘티(씬) 목록
+ * scenes를 realLocationId 기준으로 정렬한 뒤, maxTime(분) 단위로 Day 배열로 분할
+ * @param {Scene[]} scenes - Scene 목록
  * @param {number} maxTime - 한 Day의 최대 촬영 시간(분)
- * @returns {Array<{ contes: Conte[], totalMinutes: number }>} Day 배열
+ * @returns {Array<{ scenes: Scene[], totalMinutes: number }>} Day 배열
  */
-export function splitContesByLocationAndTime(contes, maxTime, realLocations) {
+export function splitScenesByLocationAndTime(scenes, maxTime, realLocations) {
   // 1. realLocationId 기준으로 정렬
-  const sorted = [...contes].sort((a, b) => {
-    const groupA = realLocations.find(loc => loc._id === a.keywords?.realLocationId)?.groupId;
-    const groupB = realLocations.find(loc => loc._id === b.keywords?.realLocationId)?.groupId;
-    const locA = a.keywords?.realLocationId || '';
-    const locB = b.keywords?.realLocationId || '';
+  const sorted = [...scenes].sort((a, b) => {
+    const groupA = realLocations.find(loc => loc._id === a.location?.realLocationId)?.groupId;
+    const groupB = realLocations.find(loc => loc._id === b.location?.realLocationId)?.groupId;
+    const locA = a.location?.realLocationId || '';
+    const locB = b.location?.realLocationId || '';
     if(groupA === groupB) {
         if (locA < locB) return -1;
         if (locA > locB) return 1;
@@ -2081,10 +2016,10 @@ export function splitContesByLocationAndTime(contes, maxTime, realLocations) {
   // 2. maxTime 단위로 Day 분배
   const days = [];
   let currentDay = { sections: [], totalMinutes: 0 };
-  for (const conte of sorted) {
+  for (const scene of sorted) {
     // estimatedDuration이 '3분' 등 문자열일 수 있으므로 숫자만 추출
     let min = 0;
-    const est = conte.estimatedDuration;
+    const est = scene.estimatedDuration;
     if (typeof est === 'string') {
       const match = est.match(/\d+/);
       min = match ? Number(match[0]) : 0;
@@ -2099,11 +2034,116 @@ export function splitContesByLocationAndTime(contes, maxTime, realLocations) {
       currentDay = { sections: [], totalMinutes: 0 };
     }
     currentDay.sections.push({
-        ...conte,
+        ...scene,
         totalMinutes: actualMin
     });
     currentDay.totalMinutes += actualMin;
   }
   if (currentDay.sections.length > 0) days.push(currentDay);
   return days;
+}
+
+/**
+ * 두 Scene이 같은 배우를 가지고 있는지 확인
+ * @param {Object} scene1 - 첫 번째 Scene
+ * @param {Object} scene2 - 두 번째 Scene
+ * @returns {boolean} 같은 배우가 있는지 여부
+ */
+const hasSameActors = (scene1, scene2) => {
+  const actors1 = extractActorsFromScene(scene1)
+  const actors2 = extractActorsFromScene(scene2)
+  
+  console.log('🎭 배우 비교:', {
+    scene1: { id: scene1._id, title: scene1.title, actors: actors1 },
+    scene2: { id: scene2._id, title: scene2.title, actors: actors2 }
+  });
+  
+  return actors1.some(actor => actors2.includes(actor))
+}
+
+/**
+ * 두 Scene이 같은 시간대를 가지고 있는지 확인
+ * @param {Object} scene1 - 첫 번째 Scene
+ * @param {Object} scene2 - 두 번째 Scene
+ * @returns {boolean} 같은 시간대인지 여부
+ */
+const hasSameTimeSlot = (scene1, scene2) => {
+  const time1 = extractTimeSlotFromScene(scene1)
+  const time2 = extractTimeSlotFromScene(scene2)
+  
+  console.log('⏰ 시간대 비교:', {
+    scene1: { id: scene1._id, title: scene1.title, time: time1 },
+    scene2: { id: scene2._id, title: scene2.title, time: time2 }
+  });
+  
+  return time1 === time2
+}
+
+/**
+ * Scene에서 의상 정보 추출
+ * @param {Object} scene - Scene 객체
+ * @returns {Array} 추출된 의상 리스트
+ */
+const extractCostumesFromScene = (scene) => {
+  console.log('👗 의상 추출:', {
+    id: scene._id,
+    title: scene.title,
+    hasEquipment: !!scene.equipment
+  });
+  
+  const costumes = [];
+  
+  // Scene 스키마의 art 장비에서 의상 정보 추출
+  if (scene.equipment && scene.equipment.art && scene.equipment.art.costumes) {
+    costumes.push(...scene.equipment.art.costumes);
+  }
+  
+  // 기본 의상 추가 (정보가 없는 경우)
+  if (costumes.length === 0) {
+    costumes.push('기본 의상');
+  }
+  
+  console.log('✅ 추출된 의상:', costumes);
+  return costumes;
+}
+
+/**
+ * 스케줄 데이터를 CSV 형태로 변환
+ * @param {Object} scheduleData - 스케줄 데이터
+ * @returns {string} CSV 문자열
+ */
+export const generateScheduleCSV = (scheduleData) => {
+  let csv = 'Day,Date,Location,Scenes,Estimated Duration,Crew,Equipment\n'
+  
+  scheduleData.days.forEach(day => {
+    csv += `${day.day},${day.date},${day.location},${day.totalScenes},${day.estimatedDuration}분,${day.crew.join(', ')},${day.equipment.join(', ')}\n`
+  })
+  
+  return csv
+}
+
+/**
+ * 브레이크다운 데이터를 CSV 형태로 변환
+ * @param {Object} breakdownData - 브레이크다운 데이터
+ * @returns {string} CSV 문자열
+ */
+export const generateBreakdownCSV = (breakdownData) => {
+  let csv = 'Category,Item,Scenes,Count\n'
+  
+  // 장소별
+  Object.entries(breakdownData.locations).forEach(([location, scenes]) => {
+    csv += `Location,${location},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
+  })
+  
+  // 장비별
+  Object.entries(breakdownData.equipment).forEach(([equipment, scenes]) => {
+    csv += `Equipment,${equipment},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
+  })
+  
+  // 인력별
+  Object.entries(breakdownData.crew).forEach(([crew, scenes]) => {
+    csv += `Crew,${crew},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
+  })
+  
+  return csv
 }

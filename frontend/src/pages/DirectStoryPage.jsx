@@ -49,7 +49,7 @@ import useProjectStore from '../stores/projectStore'
 import useTimelineStore from '../stores/timelineStore' // 타임라인 스토어 추가
 import { shouldUseDevImages, shouldShowDevBadge, getAppName, getCurrentMode } from '../config/appConfig'
 import { adaptConteForBackend, validateConteData } from '../utils/conteDataAdapter'
-import CommonHeader from '../components/CommonHeader'
+import { CommonHeader } from '../components/common'
 
 /**
  * 직접 스토리 작성 페이지

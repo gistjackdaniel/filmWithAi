@@ -51,7 +51,7 @@ import { autoSaveProject } from '../services/projectApi'
 import api from '../services/api'
 import useStoryGenerationStore from '../stores/storyGenerationStore'
 import useStoryHistoryStore from '../stores/storyHistoryStore'
-import CommonHeader from '../components/CommonHeader'
+import { CommonHeader } from '../components/common'
 
 /**
  * AI 콘티 생성 페이지 컴포넌트

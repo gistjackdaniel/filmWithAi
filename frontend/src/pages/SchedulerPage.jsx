@@ -47,8 +47,8 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { generateOptimalSchedule, generateBreakdown, generateScheduleCSV, generateBreakdownCSV } from '../services/schedulerService'
-import ConteDetailModal from '../components/story/ConteDetailModal'
-import CommonHeader from '../components/CommonHeader'
+import { SceneDetailModal } from '../components/scene'
+import { CommonHeader } from '../components/common'
 
 /**
  * 스케줄러 페이지 컴포넌트
@@ -960,11 +960,11 @@ const SchedulerPage = (props) => {
         )}
       </Container>
 
-      {/* 콘티 상세 모달 (공통 컴포넌트 사용) */}
-      <ConteDetailModal
+      {/* 씬 상세 모달 (공통 컴포넌트 사용) */}
+      <SceneDetailModal
         open={conteModalOpen}
         onClose={() => setConteModalOpen(false)}
-        conte={selectedConte}
+        scene={selectedConte}
         onEdit={null} // 스케줄표에서는 편집 기능 비활성화
         onImageRetry={null} // 스케줄표에서는 이미지 재시도 기능 비활성화
         imageLoadErrors={{}}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, MenuItem, List, Box, Chip, IconButton, Typography, Checkbox, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import api from '../services/api';
+import api from '../../services/api';
 
 const RealLocationDetailModal = ({ open, onClose, realLocation, projectId }) => {
   const [name, setName] = useState(realLocation?.name || '');

@@ -36,11 +36,11 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import ConteDetailModal from '../components/story/ConteDetailModal';
+import { SceneDetailModal } from '../components/scene';
 import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토리 생성 스토어 추가
 import { getProject } from '../services/projectApi';
-import CommonHeader from '../components/CommonHeader';
-import LocationManagerModal from '../components/LocationManagerModal';
+import { CommonHeader } from '../components/common';
+import { LocationManagerModal } from '../components/schedule';
 import api from '../services/api';
 import { scheduleShooting } from '../services/schedulerService';
 
@@ -865,11 +865,11 @@ const SimpleSchedulePage = () => {
         </Grid>
       )}
 
-      {/* 콘티 상세 모달 (공통 컴포넌트 사용) */}
-      <ConteDetailModal
+      {/* 씬 상세 모달 (공통 컴포넌트 사용) */}
+      <SceneDetailModal
         open={conteModalOpen}
         onClose={() => setConteModalOpen(false)}
-        conte={selectedConte}
+        scene={selectedConte}
         onEdit={null} // SimpleSchedulePage에서는 편집 기능 비활성화
         onImageRetry={null} // SimpleSchedulePage에서는 이미지 재시도 기능 비활성화
         imageLoadErrors={{}}
