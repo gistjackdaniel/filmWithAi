@@ -56,16 +56,14 @@ export const generateOptimalSchedule = (sceneData) => {
       });
     });
     
-    // 장소별로 그룹화
-    const locationGroups = groupByLocation(scenes)
-    console.log('🎬 장소별 그룹화 결과:', Object.keys(locationGroups));
+    // 가중치 기반 최적화 (그룹화 없이 직접 계산)
+    const optimizedSchedule = optimizeScheduleWithWeights(scenes)
     
-    // 장비별로 그룹화
-    const equipmentGroups = groupByEquipment(scenes)
-    console.log('🎬 장비별 그룹화 결과:', Object.keys(equipmentGroups));
-    
-    // 가중치 계산 및 최적화
-    const optimizedSchedule = optimizeScheduleWithWeights(scenes, locationGroups, equipmentGroups)
+    console.log('✅ 스케줄러 완료:', {
+      totalDays: optimizedSchedule.totalDays,
+      totalScenes: optimizedSchedule.totalScenes,
+      estimatedDuration: optimizedSchedule.estimatedTotalDuration
+    });
     
     console.log('✅ 스케줄러 완료:', {
       totalDays: optimizedSchedule.totalDays,
@@ -81,94 +79,19 @@ export const generateOptimalSchedule = (sceneData) => {
 }
 
 /**
- * 장소별 그룹화
- * @param {Array} sceneData - Scene 데이터
- * @returns {Object} 장소별 그룹화된 데이터
- */
-const groupByLocation = (sceneData) => {
-  const groups = {}
-  
-  sceneData.forEach(scene => {
-    // Scene에서 장소 정보 추출
-    const location = extractLocationFromScene(scene) || '미정'
-    
-    if (!groups[location]) {
-      groups[location] = []
-    }
-    groups[location].push(scene)
-  })
-  
-  return groups
-}
-
-/**
- * Scene에서 장소 정보 추출
- * @param {Object} scene - Scene 객체
- * @returns {string} 추출된 장소 정보
- */
-const extractLocationFromScene = (scene) => {
-  console.log('📍 장소 추출:', {
-    id: scene._id,
-    scene: scene.scene,
-    title: scene.title,
-    locationName: scene.location?.name,
-    realLocationId: scene.location?.realLocationId
-  });
-  
-  // Scene의 location.name 사용
-  if (scene.location && scene.location.name && scene.location.name !== '') {
-    return scene.location.name
-  }
-  // 정보가 없으면 '미정' 반환
-  return '미정'
-}
-
-/**
- * 장비별 그룹화 (Scene 스키마 기반)
- * @param {Array} sceneData - Scene 데이터
- * @returns {Object} 장비별 그룹화된 데이터
- */
-const groupByEquipment = (sceneData) => {
-  const groups = {}
-  
-  sceneData.forEach(scene => {
-    // Scene에서 장비 정보 추출 (배열로 반환됨)
-    const equipmentList = extractEquipmentFromScene(scene)
-    
-    // 각 장비별로 그룹화
-    equipmentList.forEach(equipment => {
-      if (!groups[equipment]) {
-        groups[equipment] = []
-      }
-      // 중복 방지
-      if (!groups[equipment].find(s => s._id === scene._id)) {
-        groups[equipment].push(scene)
-      }
-    })
-  })
-  
-  return groups
-}
-
-/**
  * 가중치 기반 스케줄 최적화
  * @param {Array} allScenes - 모든 Scene 데이터
- * @param {Object} locationGroups - 장소별 그룹
- * @param {Object} equipmentGroups - 장비별 그룹
  * @returns {Object} 최적화된 스케줄
  */
-const optimizeScheduleWithWeights = (allScenes, locationGroups, equipmentGroups) => {
+const optimizeScheduleWithWeights = (allScenes) => {
   // 각 Scene에 대한 가중치 계산
   const scenesWithWeights = allScenes.map(scene => ({
     ...scene,
     weight: calculateSceneWeight(scene, allScenes)
   }))
   
-  // 가중치 기반으로 Scene들을 최적화된 순서로 정렬
-  const optimizedScenes = optimizeSceneOrder(scenesWithWeights)
-  
-  // 최적화된 Scene들을 일정으로 배치
-  const days = createScheduleFromOptimizedScenes(optimizedScenes)
+  // 가중치가 추가된 Scene들을 일정으로 배치 (모든 그룹화와 정렬은 createScheduleFromOptimizedScenes에서 처리)
+  const days = createScheduleFromOptimizedScenes(scenesWithWeights)
   
   return {
     days,
@@ -180,56 +103,102 @@ const optimizeScheduleWithWeights = (allScenes, locationGroups, equipmentGroups)
 }
 
 /**
- * Scene의 가중치 계산 (우선순위 기반)
+ * Scene의 가중치 계산 (다차원 우선순위 기반)
  * @param {Object} scene - Scene 객체
  * @param {Array} allScenes - 모든 Scene 배열
- * @returns {number} 가중치 점수
+ * @returns {Object} 다차원 가중치 객체
  */
 const calculateSceneWeight = (scene, allScenes) => {
-  let weight = 0
-  
-  // 1. 장소 가중치 (최우선) - 같은 장소의 Scene이 많을수록 높은 가중치
+  // 1. 장소 가중치 (최우선)
   const sameLocationScenes = allScenes.filter(s => 
     extractLocationFromScene(s) === extractLocationFromScene(scene)
   )
-  weight += sameLocationScenes.length * 1000 // 최우선 가중치
+  const locationWeight = sameLocationScenes.length * 1000
   
-  // 2. 배우 가중치 (두 번째 우선순위) - 같은 배우가 나오는 Scene이 많을수록 높은 가중치
-  const sameActorScenes = allScenes.filter(s => 
-    hasSameActors(s, scene)
-  )
-  weight += sameActorScenes.length * 500 // 두 번째 우선순위
+  // 2. 배우 가중치 (두 번째 우선순위) - 배우별 대기시간 최적화
+  const actorWeight = calculateActorWaitingTimeWeight(scene, allScenes)
   
-  // 3. 촬영 시간대 가중치 (세 번째 우선순위) - 같은 시간대 촬영이 많을수록 높은 가중치
+  // 3. 시간대 가중치 (세 번째 우선순위)
   const sameTimeSlotScenes = allScenes.filter(s => 
     hasSameTimeSlot(s, scene)
   )
-  weight += sameTimeSlotScenes.length * 200 // 세 번째 우선순위
+  const timeSlotWeight = sameTimeSlotScenes.length * 200
   
-  // 4. 장비 가중치 (네 번째 우선순위) - 같은 장비의 Scene이 많을수록 높은 가중치
+  // 4. 장비 가중치 (네 번째 우선순위)
   const sameEquipmentScenes = allScenes.filter(s => 
     extractEquipmentFromScene(s) === extractEquipmentFromScene(scene)
   )
-  weight += sameEquipmentScenes.length * 100 // 네 번째 우선순위
+  const equipmentWeight = sameEquipmentScenes.length * 100
   
-  // 5. 복잡도 가중치 (다섯 번째 우선순위) - 긴 Scene은 높은 가중치
+  // 5. 복잡도 가중치 (다섯 번째 우선순위)
   const duration = scene.estimatedDuration || '5분'
   const durationMinutes = parseDurationToMinutes(duration)
-  weight += durationMinutes * 10 // 복잡도는 낮은 우선순위
+  const complexityWeight = durationMinutes * 10
   
   // 6. 우선순위 가중치 (Scene 번호가 낮을수록 높은 가중치)
   const sceneNumber = scene.scene || 1
-  weight += (100 - sceneNumber) * 1
+  const priorityWeight = (100 - sceneNumber) * 1
   
-  // 7. Scene 우선순위 가중치 (Scene 스키마의 priorities 사용)
-  if (scene.priorities) {
-    weight += scene.priorities.location * 50
-    weight += scene.priorities.cast * 30
-    weight += scene.priorities.time * 20
-    weight += scene.priorities.equipment * 10
+  return {
+    totalWeight: locationWeight + actorWeight + timeSlotWeight + equipmentWeight + complexityWeight + priorityWeight,
+    locationWeight,
+    actorWeight,
+    timeSlotWeight,
+    equipmentWeight,
+    complexityWeight,
+    priorityWeight,
+    // 원본 데이터
+    location: extractLocationFromScene(scene),
+    actors: extractActorsFromScene(scene),
+    timeOfDay: extractTimeSlotFromScene(scene),
+    equipment: extractEquipmentFromScene(scene),
+    duration: durationMinutes,
+    sceneNumber
   }
+}
+
+/**
+ * 배우별 대기시간 최적화 가중치 계산
+ * @param {Object} scene - 현재 씬
+ * @param {Array} allScenes - 모든 씬 배열
+ * @returns {number} 배우별 대기시간 최적화 가중치
+ */
+const calculateActorWaitingTimeWeight = (scene, allScenes) => {
+  let totalWeight = 0
+  const sceneActors = extractActorsFromScene(scene)
   
-  return weight
+  // 각 배우별로 대기시간 최적화 가중치 계산
+  sceneActors.forEach(actor => {
+    // 해당 배우가 나오는 모든 씬들 찾기
+    const actorScenes = allScenes.filter(s => 
+      extractActorsFromScene(s).includes(actor)
+    )
+    
+    // 배우별 씬 개수에 따른 가중치 (많을수록 대기시간 최적화 필요)
+    const actorSceneCount = actorScenes.length
+    totalWeight += actorSceneCount * 300
+    
+    // 주연배우 보너스 (더 많은 씬에 나오는 배우 = 주연배우일 가능성)
+    if (actorSceneCount >= 3) {
+      totalWeight += 200 // 주연배우 보너스
+    }
+    
+    // 배우별 씬 분산도 계산 (같은 장소/시간대에 몰려있으면 대기시간 최적화 필요)
+    const sameLocationActorScenes = actorScenes.filter(s => 
+      extractLocationFromScene(s) === extractLocationFromScene(scene)
+    )
+    const sameTimeSlotActorScenes = actorScenes.filter(s => 
+      extractTimeSlotFromScene(s) === extractTimeSlotFromScene(scene)
+    )
+    
+    // 같은 장소에 몰려있으면 높은 가중치 (연속 촬영 가능)
+    totalWeight += sameLocationActorScenes.length * 100
+    
+    // 같은 시간대에 몰려있으면 높은 가중치 (연속 촬영 가능)
+    totalWeight += sameTimeSlotActorScenes.length * 50
+  })
+  
+  return totalWeight
 }
 
 /**
@@ -245,56 +214,7 @@ const parseDurationToMinutes = (duration) => {
   return typeof duration === 'number' ? duration : 5
 }
 
-/**
- * 가중치 기반으로 Scene 순서 최적화
- * @param {Array} scenesWithWeights - 가중치가 포함된 Scene 배열
- * @returns {Array} 최적화된 Scene 순서
- */
-const optimizeSceneOrder = (scenesWithWeights) => {
-  if (scenesWithWeights.length <= 2) {
-    // Scene이 2개 이하일 때는 단순 정렬
-    return [...scenesWithWeights].sort((a, b) => b.weight - a.weight)
-  }
-  
-  // 다중 Scene을 위한 개선된 그리디 알고리즘
-  const optimizedOrder = []
-  const usedScenes = new Set()
-  
-  // 1단계: 우선순위별 그룹화
-  const locationGroups = groupScenesByLocation(scenesWithWeights)
-  const actorGroups = groupScenesByActors(scenesWithWeights)
-  const timeSlotGroups = groupScenesByTimeSlot(scenesWithWeights)
-  const equipmentGroups = groupScenesByEquipment(scenesWithWeights)
-  
-  // 2단계: 우선순위에 따라 그룹 순서 결정
-  const groupOrder = determineGroupOrder(locationGroups, actorGroups, timeSlotGroups, equipmentGroups)
-  
-  // 3단계: 각 그룹 내에서 최적 순서 결정
-  for (const groupKey of groupOrder) {
-    const groupScenes = locationGroups[groupKey] || actorGroups[groupKey] || 
-                       timeSlotGroups[groupKey] || equipmentGroups[groupKey] || []
-    
-    if (groupScenes.length > 0) {
-      // 그룹 내에서 가중치 순으로 정렬
-      const sortedGroupScenes = groupScenes.sort((a, b) => b.weight - a.weight)
-      
-      // 사용되지 않은 Scene들만 추가
-      for (const scene of sortedGroupScenes) {
-        if (!usedScenes.has(scene._id)) {
-          optimizedOrder.push(scene)
-          usedScenes.add(scene._id)
-        }
-      }
-    }
-  }
-  
-  // 4단계: 남은 Scene들을 가중치 순으로 추가
-  const remainingScenes = scenesWithWeights.filter(scene => !usedScenes.has(scene._id))
-  remainingScenes.sort((a, b) => b.weight - a.weight)
-  optimizedOrder.push(...remainingScenes)
-  
-  return optimizedOrder
-}
+
 
 /**
  * 장소별 Scene 그룹화
@@ -377,169 +297,15 @@ const groupScenesByEquipment = (scenes) => {
 }
 
 /**
- * 그룹 순서 결정 (우선순위 기반)
- * @param {Object} locationGroups - 장소별 그룹
- * @param {Object} actorGroups - 배우별 그룹
- * @param {Object} timeSlotGroups - 시간대별 그룹
- * @param {Object} equipmentGroups - 장비별 그룹
- * @returns {Array} 최적화된 그룹 순서
+ * 시간대별 씬 대기열 관리 (FIFO 방식)
+ * @param {Object} pendingScenes - 대기열 객체 {day: [], night: []}
+ * @param {Object} scene - 현재 씬
+ * @param {string} timeSlot - 시간대 ('day' 또는 'night')
  */
-const determineGroupOrder = (locationGroups, actorGroups, timeSlotGroups, equipmentGroups) => {
-  const groupOrder = []
-  
-  // 1. 장소별 그룹 (최우선) - 가장 많은 씬이 있는 장소부터
-  const locationEntries = Object.entries(locationGroups)
-    .sort(([,a], [,b]) => b.length - a.length)
-    .map(([location]) => ({ type: 'location', key: location, priority: 1 }))
-  
-  // 2. 배우별 그룹 (두 번째 우선순위) - 가장 많은 씬이 있는 배우부터
-  const actorEntries = Object.entries(actorGroups)
-    .sort(([,a], [,b]) => b.length - a.length)
-    .map(([actor]) => ({ type: 'actor', key: actor, priority: 2 }))
-  
-  // 3. 시간대별 그룹 (세 번째 우선순위) - 가장 많은 씬이 있는 시간대부터
-  const timeSlotEntries = Object.entries(timeSlotGroups)
-    .filter(([timeSlot]) => timeSlot !== '미정')
-    .sort(([,a], [,b]) => b.length - a.length)
-    .map(([timeSlot]) => ({ type: 'timeSlot', key: timeSlot, priority: 3 }))
-  
-  // 4. 장비별 그룹 (네 번째 우선순위) - 가장 많은 씬이 있는 장비부터
-  const equipmentEntries = Object.entries(equipmentGroups)
-    .sort(([,a], [,b]) => b.length - a.length)
-    .map(([equipment]) => ({ type: 'equipment', key: equipment, priority: 4 }))
-  
-  // 우선순위에 따라 정렬
-  const allGroups = [...locationEntries, ...actorEntries, ...timeSlotEntries, ...equipmentEntries]
-    .sort((a, b) => a.priority - b.priority)
-  
-  // 그룹 키만 반환
-  return allGroups.map(group => group.key)
-}
-
-/**
- * 그룹 내 씬 순서 최적화
- * @param {Array} groupScenes - 그룹 내 씬들
- * @param {Array} currentOrder - 현재까지의 순서
- * @returns {Array} 최적화된 그룹 내 순서
- */
-const optimizeGroupOrder = (groupScenes, currentOrder) => {
-  if (groupScenes.length <= 1) {
-    return groupScenes
-  }
-  
-  // 그룹 내에서 최적 순서 찾기
-  const optimizedGroupOrder = []
-  const usedInGroup = new Set()
-  
-  while (optimizedGroupOrder.length < groupScenes.length) {
-    let bestScene = null
-    let bestScore = -1
-    
-    for (const scene of groupScenes) {
-      if (usedInGroup.has(scene._id)) continue
-      
-      // 현재 그룹 순서에 씬을 추가했을 때의 점수 계산
-      const score = calculateGroupCombinationScore([...optimizedGroupOrder, scene], currentOrder)
-      
-      if (score > bestScore) {
-        bestScore = score
-        bestScene = scene
-      }
-    }
-    
-    if (bestScene) {
-      optimizedGroupOrder.push(bestScene)
-      usedInGroup.add(bestScene._id)
-    }
-  }
-  
-  return optimizedGroupOrder
-}
-
-/**
- * 그룹 조합 점수 계산
- * @param {Array} groupScenes - 그룹 내 씬들
- * @param {Array} currentOrder - 현재까지의 전체 순서
- * @returns {number} 조합 점수
- */
-const calculateGroupCombinationScore = (groupScenes, currentOrder) => {
-  if (groupScenes.length === 0) return 0
-  
-  let score = 0
-  
-  // 그룹 내 연속성 보너스
-  for (let i = 1; i < groupScenes.length; i++) {
-    score += 100 // 같은 그룹 내 연속 보너스
-  }
-  
-  // 전체 순서와의 조합 점수
-  const combinedOrder = [...currentOrder, ...groupScenes]
-  score += calculateCombinationScore(combinedOrder)
-  
-  return score
-}
-
-/**
- * 씬 조합의 점수 계산 (우선순위 기반)
- * @param {Array} scenes - 씬 배열
- * @returns {number} 조합 점수
- */
-const calculateCombinationScore = (scenes) => {
-  if (scenes.length === 0) return 0
-  
-  let score = 0
-  
-  // 1. 같은 장소의 씬들이 연속되면 최우선 보너스 점수
-  for (let i = 1; i < scenes.length; i++) {
-    const prevLocation = extractLocationFromScene(scenes[i-1])
-    const currLocation = extractLocationFromScene(scenes[i])
-    
-    if (prevLocation === currLocation) {
-      score += 1000 // 최우선 보너스 (같은 장소)
-    }
-  }
-  
-  // 2. 같은 배우의 씬들이 연속되면 두 번째 우선순위 보너스
-  for (let i = 1; i < scenes.length; i++) {
-    if (hasSameActors(scenes[i-1], scenes[i])) {
-      score += 500 // 두 번째 우선순위 보너스 (같은 배우)
-    }
-  }
-  
-  // 3. 같은 시간대의 씬들이 연속되면 세 번째 우선순위 보너스
-  for (let i = 1; i < scenes.length; i++) {
-    const prevTimeSlot = extractTimeSlotFromScene(scenes[i-1])
-    const currTimeSlot = extractTimeSlotFromScene(scenes[i])
-    
-    if (prevTimeSlot === currTimeSlot && prevTimeSlot !== '미정') {
-      score += 200 // 세 번째 우선순위 보너스 (같은 시간대)
-    }
-  }
-  
-  // 4. 같은 장비의 씬들이 연속되면 네 번째 우선순위 보너스
-  for (let i = 1; i < scenes.length; i++) {
-    const prevEquipment = extractEquipmentFromScene(scenes[i-1])
-    const currEquipment = extractEquipmentFromScene(scenes[i])
-    
-    if (prevEquipment === currEquipment) {
-      score += 100 // 네 번째 우선순위 보너스 (같은 장비)
-    }
-  }
-  
-  // 5. 복잡도 보너스 (긴 Scene들이 연속되면 보너스)
-  for (let i = 1; i < scenes.length; i++) {
-    const prevDuration = parseDurationToMinutes(scenes[i-1].estimatedDuration || '5분')
-    const currDuration = parseDurationToMinutes(scenes[i].estimatedDuration || '5분')
-    
-    if (prevDuration >= 8 && currDuration >= 8) {
-      score += 50 // 복잡한 Scene 연속 보너스
-    }
-  }
-  
-  // 전체 가중치 합계
-  score += scenes.reduce((total, scene) => total + (scene.weight || 0), 0)
-  
-  return score
+const addToPendingQueue = (pendingScenes, scene, timeSlot) => {
+  const queueKey = timeSlot === 'night' ? 'night' : 'day'
+  pendingScenes[queueKey].push(scene)
+  console.log(`[SchedulerService] 씬 ${scene.scene}을 ${queueKey} 대기열에 추가`)
 }
 
 /**
@@ -547,18 +313,13 @@ const calculateCombinationScore = (scenes) => {
  * @param {Array} optimizedScenes - 최적화된 씬 배열
  * @returns {Array} 일정 배열
  */
-const createScheduleFromOptimizedScenes = (optimizedScenes) => {
-  console.log('🎬 시간대별 스케줄 생성 시작:', optimizedScenes.length, '개 씬');
+const createScheduleFromOptimizedScenes = (scenesWithWeights) => {
+  console.log('🎬 스케줄 생성 시작:', scenesWithWeights.length, '개 씬');
   
-  // 1. 시간대별로 씬들을 그룹화
-  const timeSlotGroups = groupScenesByTimeSlot(optimizedScenes)
-  
-  console.log('🕐 시간대별 그룹화 결과:', timeSlotGroups);
-  
-  // 2. 장소별로 그룹화하고, 각 장소 내에서 시간대별로 정렬
+  // 1. 장소별로 그룹화
   const locationGroups = {}
   
-  for (const scene of optimizedScenes) {
+  for (const scene of scenesWithWeights) {
     const location = extractLocationFromScene(scene)
     if (!locationGroups[location]) {
       locationGroups[location] = []
@@ -568,7 +329,7 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
   
   console.log('📍 장소별 그룹화 결과:', Object.keys(locationGroups).map(key => `${key}: ${locationGroups[key].length}개`));
   
-  // 3. 각 장소 내에서 시간대별로 정렬
+  // 2. 각 장소 내에서 시간대별로 정렬
   const locationTimeSlotOptimizedScenes = []
   
   for (const [location, scenes] of Object.entries(locationGroups)) {
@@ -583,79 +344,60 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
     // 정의된 순서대로 씬들을 추가
     for (const timeSlot of timeSlotOrder) {
       if (timeSlotGroupsInLocation[timeSlot]) {
-        console.log(`  ⏰ ${timeSlot} 시간대 최적화 시작 (${timeSlotGroupsInLocation[timeSlot].length}개 씬)`);
+        console.log(`  ⏰ ${timeSlot} 시간대 정렬 시작 (${timeSlotGroupsInLocation[timeSlot].length}개 씬)`);
         
-        // 시간대별 최적화 실행 (실제 시간 계산 포함) - 같은 장소의 모든 씬들을 전달
-        const optimizedScenesForTimeSlot = optimizeScenesByTimeSlot(timeSlotGroupsInLocation[timeSlot], timeSlot, scenes)
+        // 시간대별 그룹 내에서 가중치 기반 정렬
+        const sortedScenesForTimeSlot = timeSlotGroupsInLocation[timeSlot].sort((a, b) => {
+          // 1. totalWeight (내림차순) - 가장 높은 가중치부터
+          if (b.weight.totalWeight !== a.weight.totalWeight) {
+            return b.weight.totalWeight - a.weight.totalWeight
+          }
+          
+          // 2. sceneNumber (오름차순) - 같은 가중치일 때
+          return a.weight.sceneNumber - b.weight.sceneNumber
+        })
         
-        console.log(`  🎯 ${timeSlot} 시간대 최적화 결과:`, optimizedScenesForTimeSlot.map(scene => ({
+        console.log(`  🎯 ${timeSlot} 시간대 정렬 결과:`, sortedScenesForTimeSlot.map(scene => ({
           scene: scene.scene,
           title: scene.title,
-          timeSlotDisplay: scene.timeSlotDisplay,
-          sceneStartTime: scene.sceneStartTime,
-          sceneEndTime: scene.sceneEndTime,
-          actualShootingDuration: scene.actualShootingDuration
+          totalWeight: scene.weight.totalWeight,
+          sceneNumber: scene.weight.sceneNumber
         })));
         
-        // 최적화된 씬들을 결과 배열에 추가
-        locationTimeSlotOptimizedScenes.push(...optimizedScenesForTimeSlot)
+        // 정렬된 씬들을 결과 배열에 추가
+        locationTimeSlotOptimizedScenes.push(...sortedScenesForTimeSlot)
         
-        console.log(`  ✅ ${timeSlot} 시간대 최적화 완료 (${optimizedScenesForTimeSlot.length}개 씬)`);
-        
-        // 디버깅: 최적화된 씬들의 시간 정보 확인
-        optimizedScenesForTimeSlot.forEach(scene => {
-          console.log(`    - 씬 ${scene.scene}: ${scene.timeSlotDisplay || scene.timeSlot}`);
-          console.log(`      시작시간: ${scene.sceneStartTime}, 종료시간: ${scene.sceneEndTime}`);
-          console.log(`      촬영시간: ${scene.actualShootingDuration}분`);
-          console.log(`      timeSlotDisplay: ${scene.timeSlotDisplay}`);
-        });
+        console.log(`  ✅ ${timeSlot} 시간대 정렬 완료 (${sortedScenesForTimeSlot.length}개 씬)`);
       }
     }
     
-    // 미정 시간대 씬들은 마지막에 추가 (최적화 없이)
+    // 미정 시간대 씬들은 마지막에 추가 (가중치 기반 정렬)
     if (timeSlotGroupsInLocation['미정']) {
-      console.log(`  ⏰ 미정 시간대 씬들 추가 (${timeSlotGroupsInLocation['미정'].length}개 씬)`);
+      console.log(`  ⏰ 미정 시간대 씬들 정렬 (${timeSlotGroupsInLocation['미정'].length}개 씬)`);
       
-      // 미정 시간대 씬들도 기본 시간 정보 추가
-      const undefinedTimeScenes = timeSlotGroupsInLocation['미정'].map(scene => ({
-        ...scene,
-        timeSlot: '미정',
-        actualShootingDuration: getSafeDuration(scene),
-        sceneStartTime: '10:00', // 기본 시작 시간
-        sceneEndTime: addMinutesToTime('10:00', getSafeDuration(scene)),
-        timeSlotDisplay: `미정 (10:00 ~ ${addMinutesToTime('10:00', getSafeDuration(scene))})`
-      }))
+      const sortedUndefinedTimeScenes = timeSlotGroupsInLocation['미정'].sort((a, b) => {
+        // 1. totalWeight (내림차순)
+        if (b.weight.totalWeight !== a.weight.totalWeight) {
+          return b.weight.totalWeight - a.weight.totalWeight
+        }
+        
+        // 2. sceneNumber (오름차순)
+        return a.weight.sceneNumber - b.weight.sceneNumber
+      })
       
-      locationTimeSlotOptimizedScenes.push(...undefinedTimeScenes)
+      locationTimeSlotOptimizedScenes.push(...sortedUndefinedTimeScenes)
     }
   }
   
-  console.log('🎯 최종 최적화된 씬들:', locationTimeSlotOptimizedScenes.map(scene => ({
+  console.log('🎯 최종 정렬된 씬들:', locationTimeSlotOptimizedScenes.map(scene => ({
     scene: scene.scene,
     title: scene.title,
-    timeSlot: scene.timeSlot,
-    timeSlotDisplay: scene.timeSlotDisplay,
-    sceneStartTime: scene.sceneStartTime,
-    sceneEndTime: scene.sceneEndTime,
-    actualShootingDuration: scene.actualShootingDuration,
-    keywords: scene.keywords
+    timeSlot: extractTimeSlotFromScene(scene),
+    totalWeight: scene.weight.totalWeight,
+    sceneNumber: scene.weight.sceneNumber
   })));
   
-  // 디버깅: 시간대별 최적화 결과 확인
-  locationTimeSlotOptimizedScenes.forEach((scene, index) => {
-    console.log(`[DEBUG] 최종 씬 ${index + 1}:`, {
-      scene: scene.scene,
-      title: scene.title,
-      timeSlot: scene.timeSlot,
-      timeSlotDisplay: scene.timeSlotDisplay,
-      sceneStartTime: scene.sceneStartTime,
-      sceneEndTime: scene.sceneEndTime,
-      actualShootingDuration: scene.actualShootingDuration,
-      keywords: scene.keywords?.timeOfDay
-    });
-  });
-  
-  // 4. 시간대별로 최적화된 씬들을 일정으로 배치 (정확한 촬영시간 반영)
+  // 3. 정렬된 씬들을 일정으로 배치 (FIFO 방식)
   const days = []
   let currentDay = 1
   let currentDayScenes = []
@@ -663,44 +405,88 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
   let currentDayLocation = null
   let currentDayTimeSlot = null
   
+  // 시간 부족으로 새 날이 필요한 씬들을 FIFO로 관리
+  const pendingScenes = {
+    day: [],    // 낮 씬 대기열
+    night: []   // 밤 씬 대기열
+  }
+  
+  // 주간 근로시간 추적 (1주 최대 52시간 제한)
+  let weeklyWorkHours = 0
+  const MAX_WEEKLY_HOURS = 52 * 60 // 52시간을 분으로 변환
+  const MAX_DAILY_HOURS = 8 * 60   // 하루 최대 8시간 (분)
+  
+  // 개선된 주간 스케줄링: Day 1-6은 유동적으로 8-12시간, Day 7은 휴일
+  const MIN_DAY_HOURS = 8 * 60       // 최소 8시간 (분)
+  const MAX_DAY_HOURS = 12 * 60      // 최대 12시간 (분)
+  const REST_DAY = 7                  // 7일째를 휴일로 설정
+  
   // 하루 최대 촬영 시간 (8시간 = 480분)
   const MAX_DAILY_DURATION = 480
   // 씬 간 휴식 시간 (1시간 = 60분)
   const SCENE_BREAK_TIME = 60
   
-  console.log('[SchedulerService] 장소별 시간대별 스케줄 배치 시작:', {
+  console.log('[SchedulerService] 스케줄 배치 시작:', {
     totalScenes: locationTimeSlotOptimizedScenes.length,
     maxDailyDuration: MAX_DAILY_DURATION
   })
   
   for (let i = 0; i < locationTimeSlotOptimizedScenes.length; i++) {
     const scene = locationTimeSlotOptimizedScenes[i]
-    const sceneDuration = scene.actualShootingDuration || getSafeDuration(scene)
+    const sceneDuration = getSafeDuration(scene)
     const sceneLocation = extractLocationFromScene(scene)
     const sceneTimeSlot = extractTimeSlotFromScene(scene)
     
-    // 디버깅: 최적화된 씬 정보 확인
-    console.log(`[SchedulerService] 최적화된 씬 ${i + 1}:`, {
+    // 디버깅: 정렬된 씬 정보 확인
+    console.log(`[SchedulerService] 정렬된 씬 ${i + 1}:`, {
       scene: scene.scene,
       title: scene.title,
-      timeSlot: scene.timeSlot,
-      timeSlotDisplay: scene.timeSlotDisplay,
-      sceneStartTime: scene.sceneStartTime,
-      sceneEndTime: scene.sceneEndTime,
-      actualShootingDuration: scene.actualShootingDuration,
+      timeSlot: sceneTimeSlot,
+      totalWeight: scene.weight.totalWeight,
+      sceneNumber: scene.weight.sceneNumber,
       sceneLocation,
-      sceneTimeSlot
+      currentDay,
+      weekDay: currentWeekDay,
+      isRestDay,
+      maxDailyHours: Math.round(maxDailyHours / 60 * 10) / 10, // 시간 단위로 변환
+      weeklyWorkHours: Math.round(weeklyWorkHours / 60 * 10) / 10, // 시간 단위로 변환
+      remainingWeeklyHours: Math.round((MAX_WEEKLY_HOURS - weeklyWorkHours) / 60 * 10) / 10 // 시간 단위로 변환
     });
-    
-    // 디버깅: 분량과 실제 촬영 시간 출력
-    console.log(`[DEBUG] 씬 ${scene.scene} - 분량: ${scene.estimatedDuration}, 실제촬영: ${sceneDuration}, 시간대: ${sceneTimeSlot}`);
     
     // 하루에 배치할 수 없는 경우(시간 부족) 다음 날로 넘김
     const wouldExceed = (currentDayDuration + sceneDuration + (currentDayScenes.length > 0 ? SCENE_BREAK_TIME : 0)) > MAX_DAILY_DURATION;
+    
+    // 주간 근로시간 초과 확인 (Day 1-6은 유동적으로 8-12시간, Day 7은 휴일)
+    const currentWeekDay = ((currentDay - 1) % 7) + 1
+    const isRestDay = currentWeekDay === REST_DAY
+    
+    // 현재 날짜의 최대 근로시간 결정 (유동적)
+    let maxDailyHours
+    if (isRestDay) {
+      maxDailyHours = 0 // 휴일
+    } else {
+      // Day 1-6: 유동적으로 8-12시간, 단 주간 총 52시간을 넘지 않도록
+      const remainingWeeklyHours = MAX_WEEKLY_HOURS - weeklyWorkHours
+      const remainingDays = 7 - currentWeekDay // 남은 평일 수 (휴일 제외)
+      
+      if (remainingDays === 0) {
+        // 마지막 평일인 경우
+        maxDailyHours = Math.min(MAX_DAY_HOURS, remainingWeeklyHours)
+      } else {
+        // 남은 평일이 있는 경우: 최소 8시간, 최대 12시간, 단 주간 총 52시간을 넘지 않도록
+        const minRequiredPerDay = Math.ceil(remainingWeeklyHours / remainingDays) // 남은 시간을 균등 분배
+        maxDailyHours = Math.min(MAX_DAY_HOURS, Math.max(MIN_DAY_HOURS, minRequiredPerDay))
+      }
+    }
+    
+    const wouldExceedWeekly = (weeklyWorkHours + sceneDuration + (currentDayScenes.length > 0 ? SCENE_BREAK_TIME : 0)) > maxDailyHours;
+    
     const needsNewDay = (
       currentDayScenes.length === 0 || // 첫 번째 씬
       currentDayLocation !== sceneLocation || // 다른 장소 (최우선 조건)
       wouldExceed || // 시간 초과
+      wouldExceedWeekly || // 주간 근로시간 초과
+      isRestDay || // 휴일인 경우
       currentDayScenes.length >= 6 // 하루 최대 6개 씬
     );
 
@@ -718,23 +504,39 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
       currentDayDuration = 0
       currentDayLocation = null
       currentDayTimeSlot = null
+      
+      // 주간 근로시간 리셋 (7일마다)
+      if (currentDay % 7 === 1) {
+        weeklyWorkHours = 0
+        console.log(`[SchedulerService] 주간 근로시간 리셋: Day ${currentDay}`)
+      }
+      
+      // 휴일인 경우 로깅
+      const nextWeekDay = ((currentDay - 1) % 7) + 1
+      if (nextWeekDay === REST_DAY) {
+        console.log(`[SchedulerService] 휴일 시작: Day ${currentDay} (${nextWeekDay}일차)`)
+      }
     }
 
-    // 만약 시간 부족(wouldExceed)로 인해 새 날이 시작된 경우, 이 씬을 바로 다음 날의 첫 씬으로 배치
-    // (즉, 현재 씬을 건너뛰지 않고 반드시 다음 날에 추가)
-    if (wouldExceed && currentDayScenes.length === 0) {
-      // 새 날의 첫 씬으로 추가
-      currentDayScenes.push(scene)
-      currentDayDuration += sceneDuration
-      currentDayLocation = sceneLocation
-      currentDayTimeSlot = sceneTimeSlot
-      console.log(`[SchedulerService] 시간 부족으로 씬 ${scene.scene}을 다음 날(${currentDay})의 첫 씬으로 배치`);
+    // 시간 부족 또는 휴일로 새 날이 필요한 경우 대기열에 추가
+    if ((wouldExceed || isRestDay) && currentDayScenes.length === 0) {
+      const timeSlotKey = (sceneTimeSlot === '밤' || sceneTimeSlot === 'night') ? 'night' : 'day'
+      const reason = isRestDay ? '휴일' : '시간 부족'
+      addToPendingQueue(pendingScenes, scene, timeSlotKey)
+      console.log(`[SchedulerService] ${reason}로 씬 ${scene.scene}을 대기열에 추가`)
       continue;
     }
 
     // 씬을 현재 날짜에 추가
     currentDayScenes.push(scene)
-    currentDayDuration += sceneDuration + (currentDayScenes.length > 1 ? SCENE_BREAK_TIME : 0)
+    const addedDuration = sceneDuration + (currentDayScenes.length > 1 ? SCENE_BREAK_TIME : 0)
+    currentDayDuration += addedDuration
+    
+    // 휴일이 아닌 경우에만 주간 근로시간에 추가
+    if (!isRestDay) {
+      weeklyWorkHours += addedDuration
+    }
+    
     currentDayLocation = sceneLocation
     currentDayTimeSlot = sceneTimeSlot
 
@@ -744,8 +546,10 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
       timeSlot: sceneTimeSlot,
       duration: sceneDuration,
       totalDuration: currentDayDuration,
+      weeklyWorkHours: Math.round(weeklyWorkHours / 60 * 10) / 10, // 시간 단위로 변환
       scenesCount: currentDayScenes.length,
-      sceneTitle: scene.title
+      sceneTitle: scene.title,
+      isRestDay
     })
   }
   
@@ -760,9 +564,162 @@ const createScheduleFromOptimizedScenes = (optimizedScenes) => {
     ))
   }
   
-  console.log('[SchedulerService] 시간대별 스케줄 생성 완료:', {
+  // 대기열에 있는 씬들을 처리
+  console.log('[SchedulerService] 대기열 처리 시작:', {
+    dayQueue: pendingScenes.day.length,
+    nightQueue: pendingScenes.night.length
+  })
+  
+  // 낮 씬 대기열 처리
+  for (const pendingScene of pendingScenes.day) {
+    const pendingDuration = getSafeDuration(pendingScene)
+    const pendingLocation = extractLocationFromScene(pendingScene)
+    const pendingTimeSlot = extractTimeSlotFromScene(pendingScene)
+    
+    // 주간 근로시간 초과 확인 (Day 1-6은 유동적으로 8-12시간, Day 7은 휴일)
+    const currentWeekDay = ((currentDay - 1) % 7) + 1
+    const isRestDay = currentWeekDay === REST_DAY
+    
+    // 현재 날짜의 최대 근로시간 결정 (유동적)
+    let maxDailyHours
+    if (isRestDay) {
+      maxDailyHours = 0 // 휴일
+    } else {
+      // Day 1-6: 유동적으로 8-12시간, 단 주간 총 52시간을 넘지 않도록
+      const remainingWeeklyHours = MAX_WEEKLY_HOURS - weeklyWorkHours
+      const remainingDays = 7 - currentWeekDay // 남은 평일 수 (휴일 제외)
+      
+      if (remainingDays === 0) {
+        // 마지막 평일인 경우
+        maxDailyHours = Math.min(MAX_DAY_HOURS, remainingWeeklyHours)
+      } else {
+        // 남은 평일이 있는 경우: 최소 8시간, 최대 12시간, 단 주간 총 52시간을 넘지 않도록
+        const minRequiredPerDay = Math.ceil(remainingWeeklyHours / remainingDays) // 남은 시간을 균등 분배
+        maxDailyHours = Math.min(MAX_DAY_HOURS, Math.max(MIN_DAY_HOURS, minRequiredPerDay))
+      }
+    }
+    
+    if (weeklyWorkHours + pendingDuration > maxDailyHours) {
+      const reason = isRestDay ? '휴일' : '주간 근로시간 초과'
+      console.log(`[SchedulerService] ${reason}로 대기열 낮 씬 ${pendingScene.scene} 처리 중단`)
+      break
+    }
+    
+    // 새 날짜 시작
+    if (currentDayScenes.length > 0) {
+      days.push(createDaySchedule(
+        currentDay,
+        currentDayScenes,
+        currentDayDuration,
+        currentDayLocation,
+        currentDayTimeSlot
+      ))
+      currentDay++
+      
+      // 주간 근로시간 리셋 (7일마다)
+      if (currentDay % 7 === 1) {
+        weeklyWorkHours = 0
+        console.log(`[SchedulerService] 주간 근로시간 리셋: Day ${currentDay}`)
+      }
+    }
+    
+    currentDayScenes = [pendingScene]
+    currentDayDuration = pendingDuration
+    
+    // 휴일이 아닌 경우에만 주간 근로시간에 추가
+    if (!isRestDay) {
+      weeklyWorkHours += pendingDuration
+    }
+    
+    currentDayLocation = pendingLocation
+    currentDayTimeSlot = pendingTimeSlot
+    
+    console.log(`[SchedulerService] 대기열 낮 씬 ${pendingScene.scene} 처리: Day ${currentDay}, 주간 근로시간: ${Math.round(weeklyWorkHours / 60 * 10) / 10}시간, 휴일: ${isRestDay}`)
+  }
+  
+  // 밤 씬 대기열 처리
+  for (const pendingScene of pendingScenes.night) {
+    const pendingDuration = getSafeDuration(pendingScene)
+    const pendingLocation = extractLocationFromScene(pendingScene)
+    const pendingTimeSlot = extractTimeSlotFromScene(pendingScene)
+    
+    // 주간 근로시간 초과 확인 (Day 1-6은 유동적으로 8-12시간, Day 7은 휴일)
+    const currentWeekDay = ((currentDay - 1) % 7) + 1
+    const isRestDay = currentWeekDay === REST_DAY
+    
+    // 현재 날짜의 최대 근로시간 결정 (유동적)
+    let maxDailyHours
+    if (isRestDay) {
+      maxDailyHours = 0 // 휴일
+    } else {
+      // Day 1-6: 유동적으로 8-12시간, 단 주간 총 52시간을 넘지 않도록
+      const remainingWeeklyHours = MAX_WEEKLY_HOURS - weeklyWorkHours
+      const remainingDays = 7 - currentWeekDay // 남은 평일 수 (휴일 제외)
+      
+      if (remainingDays === 0) {
+        // 마지막 평일인 경우
+        maxDailyHours = Math.min(MAX_DAY_HOURS, remainingWeeklyHours)
+      } else {
+        // 남은 평일이 있는 경우: 최소 8시간, 최대 12시간, 단 주간 총 52시간을 넘지 않도록
+        const minRequiredPerDay = Math.ceil(remainingWeeklyHours / remainingDays) // 남은 시간을 균등 분배
+        maxDailyHours = Math.min(MAX_DAY_HOURS, Math.max(MIN_DAY_HOURS, minRequiredPerDay))
+      }
+    }
+    
+    if (weeklyWorkHours + pendingDuration > maxDailyHours) {
+      const reason = isRestDay ? '휴일' : '주간 근로시간 초과'
+      console.log(`[SchedulerService] ${reason}로 대기열 밤 씬 ${pendingScene.scene} 처리 중단`)
+      break
+    }
+    
+    // 새 날짜 시작
+    if (currentDayScenes.length > 0) {
+      days.push(createDaySchedule(
+        currentDay,
+        currentDayScenes,
+        currentDayDuration,
+        currentDayLocation,
+        currentDayTimeSlot
+      ))
+      currentDay++
+      
+      // 주간 근로시간 리셋 (7일마다)
+      if (currentDay % 7 === 1) {
+        weeklyWorkHours = 0
+        console.log(`[SchedulerService] 주간 근로시간 리셋: Day ${currentDay}`)
+      }
+    }
+    
+    currentDayScenes = [pendingScene]
+    currentDayDuration = pendingDuration
+    
+    // 휴일이 아닌 경우에만 주간 근로시간에 추가
+    if (!isRestDay) {
+      weeklyWorkHours += pendingDuration
+    }
+    
+    currentDayLocation = pendingLocation
+    currentDayTimeSlot = pendingTimeSlot
+    
+    console.log(`[SchedulerService] 대기열 밤 씬 ${pendingScene.scene} 처리: Day ${currentDay}, 주간 근로시간: ${Math.round(weeklyWorkHours / 60 * 10) / 10}시간, 휴일: ${isRestDay}`)
+  }
+  
+  // 마지막 대기열 날짜 추가
+  if (currentDayScenes.length > 0) {
+    days.push(createDaySchedule(
+      currentDay,
+      currentDayScenes,
+      currentDayDuration,
+      currentDayLocation,
+      currentDayTimeSlot
+    ))
+  }
+  
+  console.log('[SchedulerService] 스케줄 생성 완료:', {
     totalDays: days.length,
-    totalScenes: days.reduce((total, day) => total + day.totalScenes, 0)
+    totalScenes: days.reduce((total, day) => total + day.totalScenes, 0),
+    pendingDayScenes: pendingScenes.day.length,
+    pendingNightScenes: pendingScenes.night.length
   })
   
   return days
@@ -2147,3 +2104,26 @@ export const generateBreakdownCSV = (breakdownData) => {
   
   return csv
 }
+
+/**
+ * Scene에서 장소 정보 추출
+ * @param {Object} scene - Scene 객체
+ * @returns {string} 추출된 장소 정보
+ */
+const extractLocationFromScene = (scene) => {
+  console.log('📍 장소 추출:', {
+    id: scene._id,
+    scene: scene.scene,
+    title: scene.title,
+    locationName: scene.location?.name,
+    realLocationId: scene.location?.realLocationId
+  });
+  
+  // Scene의 location.name 사용
+  if (scene.location && scene.location.name && scene.location.name !== '') {
+    return scene.location.name
+  }
+  // 정보가 없으면 '미정' 반환
+  return '미정'
+}
+

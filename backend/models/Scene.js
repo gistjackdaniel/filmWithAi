@@ -235,16 +235,16 @@ const sceneSchema = new mongoose.Schema({
     maxlength: 500
   },
   
-  // 스토리 상의 장소
-  storyPlace: {
+  // 씬 상의 장소
+  scenePlace: {
     type: String,
     default: '',
     trim: true,
     maxlength: 200
   },
   
-  // 스토리 상의 시간
-  storyDateTime: {
+  // 씬 상의 시간
+  sceneDateTime: {
     type: String,
     default: '',
     trim: true,
@@ -434,23 +434,12 @@ const sceneSchema = new mongoose.Schema({
     }
   },
   
-  // 출연진 및 소품
+  // 출연진 
   cast: [{ type: String, trim: true }],
-  props: [{ type: String, trim: true }],
   
   // 특별 요구사항
   specialRequirements: [{ type: String, trim: true }],
   
-  // 스케줄링 우선순위 (1-5)
-  priorities: {
-    location: { type: Number, default: 1, min: 1, max: 5 },
-    equipment: { type: Number, default: 1, min: 1, max: 5 },
-    cast: { type: Number, default: 1, min: 1, max: 5 },
-    time: { type: Number, default: 1, min: 1, max: 5 }
-  },
-  
-  // 편집 권한
-  canEdit: { type: Boolean, default: true },
   
   // 수정 기록
   lastModified: { type: Date, default: Date.now },
