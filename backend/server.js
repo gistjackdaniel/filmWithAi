@@ -1242,7 +1242,7 @@ app.post('/api/cut-image/generate', async (req, res) => {
  */
 app.post('/api/story/generate', async (req, res) => {
   try {
-    const { synopsis, maxLength = 3000, genre = '일반' } = req.body
+    const { synopsis, maxLength = 3000, genre = '일반', templatePrompt } = req.body
 
     // 입력 검증
     if (!synopsis || !synopsis.trim()) {
@@ -1252,10 +1252,21 @@ app.post('/api/story/generate', async (req, res) => {
       })
     }
 
-    console.log('🎬 AI 스토리 생성 요청:', { synopsis: synopsis.substring(0, 100) + '...', maxLength, genre })
+    console.log('🎬 AI 스토리 생성 요청:', { synopsis: synopsis.substring(0, 100) + '...', maxLength, genre, hasTemplatePrompt: !!templatePrompt })
 
-    // OpenAI GPT-4o API 호출
-    const prompt = `
+    // 템플릿 프롬프트가 있으면 사용, 없으면 기본 프롬프트 사용
+    let prompt
+    if (templatePrompt) {
+      // 템플릿 프롬프트에서 변수 치환 (안전한 방식)
+      prompt = templatePrompt
+        .replace(/{synopsis}/g, synopsis || '')
+        .replace(/{maxLength}/g, maxLength || 3000)
+        .replace(/{genre}/g, genre || '일반')
+      
+      console.log('🎭 템플릿 프롬프트 사용:', { genre, hasTemplatePrompt: true })
+    } else {
+      // 기본 프롬프트 사용
+      prompt = `
 다음 시놉시스를 바탕으로 영화 스토리를 생성해주세요.
 
 시놉시스: ${synopsis}
@@ -1270,6 +1281,7 @@ app.post('/api/story/generate', async (req, res) => {
 
 한국어로 자연스럽게 작성해주세요.
 `
+    }
 
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -1580,39 +1592,147 @@ app.post('/api/conte/generate', async (req, res) => {
     const validatedMaxScenes = Math.min(Math.max(parseInt(maxScenes) || 2, 1), 10)
     console.log('✅ 검증된 maxScenes:', validatedMaxScenes)
 
-    // OpenAI GPT-4o API 호출 - 캡션 카드 구조에 맞춘 상세한 콘티 생성
+    // OpenAI GPT-4o API 호출 - 새로운 Scene 스키마에 맞춘 1개씩 씬 생성
     const prompt = `
-다음 스토리를 바탕으로 영화 캡션 카드를 생성해주세요.
+다음 스토리를 바탕으로 영화 씬을 1개 생성해주세요.
 
-스토리: ${story}
-장르: ${genre}
-최대 씬 수: ${validatedMaxScenes}
+**이전 씬 컨텍스트:**
+${previousSceneContext}
 
-**중요: 정확히 ${validatedMaxScenes}개의 씬만 생성해주세요. 더 많거나 적게 생성하지 마세요.**
+**현재 생성할 씬 정보:**
+- 씬 번호: ${sceneNumber}
+- 총 씬 수: ${totalScenes}
+- 스토리: ${story}
+- 장르: ${genre}
 
-각 캡션 카드는 다음 12개 구성 요소를 모두 포함해야 합니다:
+**중요: 정확히 1개의 씬만 생성해주세요.**
 
-1. **인물들이 처한 상황에 대한 대략적인 설명**: 등장인물들의 현재 상황과 감정 상태
-2. **해당 장면을 대표하는 대사**: 장면의 전체 시간 동안 나올 모든 대사, 내레이션, 음성 효과를 포함 (예상 시간에 맞는 충분한 대사량)
-3. **카메라/그림 앵글과 구도를 설명하는 배치도**: 카메라 위치, 앵글, 구도 설명
-4. **카메라 워크 및 그림의 장면 전환을 설명하는 화살표들**: 카메라 이동과 전환 효과
-5. **인물 배치도와 인물의 동선을 설명하는 화살표**: 등장인물들의 위치와 움직임
-6. **소품 배치**: 장면에 필요한 소품들의 배치와 사용법
-7. **날씨와 지형**: 촬영 환경의 날씨 조건과 지형적 특징
-8. **조명**: 조명 설정, 분위기, 조명 효과
-9. **각 장면과 시퀀스를 직관적으로 이해시킬 대표적인 그림 설명**: 시각적 묘사
-10. **장면, 시퀀스의 전환점**: 이전/다음 장면과의 연결성
-11. **렌즈 길이, 요구되는 카메라의 특성 등 촬영 방식**: 기술적 촬영 정보
-12. **사용할 그래픽 툴, 넣어야하는 시각효과**: 후반 작업 정보
+**연속성 보장 지침:**
+- 이전 씬의 마지막 상황에서 자연스럽게 이어지는 씬을 생성해주세요
+- 등장인물들의 감정 상태와 상황이 이전 씬에서 자연스럽게 발전해야 합니다
+- 장소, 시간, 분위기가 이전 씬과 연결되도록 해주세요
+- 스토리의 흐름이 끊어지지 않도록 주의해주세요
+- 이전 씬의 결말이 다음 씬의 시작점이 되도록 구성해주세요
 
-그리고 각 카드의 타입을 다음 기준에 따라 분류해주세요:
+새로운 Scene 스키마에 따라 다음 필드들을 포함해야 합니다:
 
+**기본 정보:**
+1. **scene**: 씬 번호 (숫자)
+2. **title**: 씬 제목 (문자열)
+3. **description**: 씬 설명 - 인물들의 상황, 감정, 배경 설명 (1000자 이내)
+
+**대화 및 환경:**
+4. **dialogues**: 씬 전체 대사 배열 (선택적)
+   - character: 대사하는 인물
+   - text: 대사 내용 (500자 이내)
+5. **weather**: 날씨 조건 (문자열)
+6. **visualDescription**: 시각적 묘사 (500자 이내)
+
+**조명 설정:**
+7. **lighting**: 조명 설정 객체
+   - description: 조명 묘사 (200자 이내)
+   - setup: 상세 조명 설정
+     * keyLight: 메인광 (type, equipment, intensity)
+     * fillLight: 보조광 (type, equipment, intensity)
+     * backLight: 배경광 (type, equipment, intensity)
+     * backgroundLight: 배경조명 (type, equipment, intensity)
+     * specialEffects: 특수조명 (type, equipment, intensity)
+     * softLight: 부드러운광 (type, equipment, intensity)
+     * gripModifier: 보조도구 (flags, diffusion, reflectors, colorGels)
+     * overall: 전체설정 (colorTemperature, mood)
+
+**스케줄링 정보:**
+8. **location**: 촬영 장소
+   - name: 장소명 (200자 이내)
+   - realLocationId: 실제 장소 ID (선택적)
+9. **timeOfDay**: 촬영 시간대 (enum: ['새벽', '아침', '오후', '저녁', '밤', '낮'])
+10. **estimatedDuration**: 예상 지속시간 (문자열, 예: "5분")
+
+**인력 구성:**
+11. **crew**: 필요 인력 수 (부서별, 숫자로 명시)
+    - direction: 연출부 필요 인원 수 (director, assistantDirector, scriptSupervisor, continuity)
+    - production: 제작부 필요 인원 수 (producer, lineProducer, productionManager, productionAssistant)
+    - cinematography: 촬영부 필요 인원 수 (cinematographer, cameraOperator, firstAssistant, secondAssistant, dollyGrip)
+    - lighting: 조명부 필요 인원 수 (gaffer, bestBoy, electrician, generatorOperator)
+    - sound: 음향부 필요 인원 수 (soundMixer, boomOperator, soundAssistant, utility)
+    - art: 미술부 필요 인원 수 (productionDesigner, artDirector, setDecorator, propMaster, makeupArtist, costumeDesigner, hairStylist)
+
+**장비 구성:**
+12. **equipment**: 필요 장비 (부서별, 씬 특성에 맞는 장비 선택)
+
+**씬 특성별 장비 선택 기준:**
+
+**카메라 선택 기준:**
+- **액션/빠른 움직임**: RED Komodo 6K (고프레임레이트), Sony FX6 (안정화)
+- **정적인 대화**: Canon C300 Mark III (고품질), ARRI Alexa Mini (영화감)
+- **야외 촬영**: Sony FX6 (가벼움), Canon C300 Mark III (내구성)
+- **실내 촬영**: RED Komodo 6K (고해상도), ARRI Alexa Mini (색감)
+
+**렌즈 선택 기준:**
+- **와이드 쇼트 (풍경, 실내)**: Zeiss CP.3 24mm T2.1, Canon CN-E 16-35mm T2.8
+- **미디엄 쇼트 (대화, 중간거리)**: Zeiss CP.3 50mm T2.1, Canon CN-E 24-70mm T2.8
+- **클로즈업 (감정표현)**: Sigma Cine 85mm T1.5, Zeiss CP.3 100mm T2.1
+- **액션/움직임**: Canon CN-E 24-70mm T2.8 (줌), Sigma Cine 50mm T1.5 (빠른 조리개)
+
+**지지대 선택 기준:**
+- **정적 촬영**: Manfrotto 504HD (안정성), Sachtler Video 18 (부드러움)
+- **움직임 촬영**: DJI RS 3 Pro (짐벌), Steadicam (손촬영)
+- **야외 촬영**: Sachtler Video 18 (내구성), Manfrotto 504HD (무게)
+- **실내 촬영**: Manfrotto 504HD (정밀도), DJI RS 3 Pro (유연성)
+
+**필터 선택 기준:**
+- **야외 촬영**: Tiffen Variable ND (노출 조절), Polarizing Filter (반사 제거)
+- **인물 촬영**: Black Pro-Mist 1/4 (부드러운 피부), Tiffen Soft/FX (미스트)
+- **액션 촬영**: Tiffen Variable ND (빠른 조절), Polarizing Filter (선명도)
+- **분위기 촬영**: Black Pro-Mist 1/4 (로맨틱), Tiffen Warm Pro-Mist (따뜻함)
+
+**액세서리 선택 기준:**
+- **액션 촬영**: Teradek Bolt 4K (무선 모니터링), DJI Focus Motor (자동 포커스)
+- **정적 촬영**: SmallHD 7" Monitor (정밀 모니터링), DJI Focus Motor (수동 포커스)
+- **야외 촬영**: Teradek Bolt 4K (원격 모니터링), DJI Focus Motor (안정성)
+- **실내 촬영**: SmallHD 7" Monitor (색감 확인), DJI Focus Motor (정밀도)
+
+**조명 장비 선택 기준:**
+- **야외 촬영**: HMI 조명 (자연광 보조), LED 패널 (휴대성)
+- **실내 촬영**: Tungsten 조명 (따뜻한 색감), LED 조명 (에너지 효율)
+- **액션 촬영**: LED 조명 (빠른 설정), HMI 조명 (강한 빛)
+- **인물 촬영**: Softbox (부드러운 빛), Ring Light (균등한 조명)
+
+**음향 장비 선택 기준:**
+- **대화 촬영**: Sennheiser MKH416 (클로즈업 마이크), Shure SM7B (보이스)
+- **액션 촬영**: 무선 마이크 (움직임), Boom 마이크 (자유도)
+- **야외 촬영**: Wind Shield (바람 차단), 무선 마이크 (거리)
+- **실내 촬영**: Boom 마이크 (품질), 클로즈업 마이크 (정밀도)
+
+**미술 장비 선택 기준:**
+- **실내 세트**: Set Construction 도구, Set Dressing 소품
+- **야외 촬영**: Portable Set Dressing, Weather Protection
+- **액션 촬영**: Safety Equipment, Stunt Props
+- **인물 촬영**: Makeup Station, Costume Dressing Room
+
+**씬 분석 후 장비 선택:**
+- 씬의 내용, 분위기, 촬영 환경을 분석하여 적합한 장비 선택
+- 예산과 시간을 고려한 현실적인 장비 구성
+- 씬의 특성에 맞는 최적의 장비 조합 제시
+
+**출연진:**
+13. **cast**: 출연진 정보 (배열)
+    - 주인공: 필요 인원 수 (숫자)
+    - 조연: 필요 인원 수 (숫자)
+    - 단역 및 보조출연: "역할명:명수" 형식 (문자열, 예: "경찰관:3", "웨이터:2", "행인:10" 등)
+
+**특별 요구사항:**
+14. **specialRequirements**: 특별 요구사항 배열 (문자열 배열)
+15. **vfxRequired**: VFX 필요 여부 (boolean)
+16. **sfxRequired**: SFX 필요 여부 (boolean)
+
+**분류 기준:**
 **"generated_video" (AI 생성 비디오)로 분류하는 경우:**
 - 특수효과나 CG가 필요한 장면
-- 환상적이거나 초자연적인 요소가 포함된 장면 (마법, 미래, 우주, 초자연적 현상 등)
+- 환상적이거나 초자연적인 요소가 포함된 장면
 - AI 시각효과가 포함된 장면
 - 실제로 촬영하기 어려운 장면들
-- 단순한 자연 풍경 장면 (하늘, 바다, 자연 풍경)
+- 단순한 자연 풍경 장면
 
 **"live_action" (실사 촬영)로 분류하는 경우:**
 - 실제 배우의 연기가 중요한 장면
@@ -1620,8 +1740,6 @@ app.post('/api/conte/generate', async (req, res) => {
 - 자연광이나 실제 조명 효과가 중요한 장면
 - 특정 실제 장소에서 촬영이 필요한 장면
 - 실제 감정 표현이나 인간적 상호작용이 중심인 장면
-
-분류 시 각 장면의 특성을 분석하여 가장 적합한 방식을 선택해주세요.
 
 **예상 시간 계산 기준:**
 - 기본 시간: 2분
@@ -1644,80 +1762,186 @@ app.post('/api/conte/generate', async (req, res) => {
 - 대사는 자연스러운 대화 흐름을 따라야 합니다
 - 내레이션, 음성 효과, 배경 음성도 포함해주세요
 - 대사가 없는 장면도 있지만, 대부분의 장면에는 적절한 대사가 있어야 합니다
-- 대사 형식 예시:
-  * "안녕하세요, 어떻게 지내세요?" (대화)
-  * "그 순간, 모든 것이 바뀌었다..." (내레이션)
-  * "[배경음: 차량 소음]" (음성 효과)
-  * "아... 정말 힘들어..." (감정 표현)
-
-**필요인력 및 필요장비 정보:**
-- **필요인력**: 각 장면에 필요한 인력 구성 (예: "감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명")
-- **필요장비**: 각 장면에 필요한 장비 목록 (예: "카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개")
-- **카메라 정보**: C1부터 C20까지의 카메라 중 해당 장면에 적합한 카메라 지정 (예: "C1", "C2", "C3" 등)
 
 **시간대 구분:**
-- **낮**: 해가 떠있는 시간대 (오전 6시 ~ 오후 6시)
-- **밤**: 해가 진 시간대 (오후 6시 ~ 오전 6시)
+- **새벽**: 오전 3시 ~ 6시
+- **아침**: 오전 6시 ~ 9시
+- **오후**: 오전 9시 ~ 오후 6시
+- **저녁**: 오후 6시 ~ 9시
+- **밤**: 오후 9시 ~ 오전 3시
+- **낮**: 해가 떠있는 시간대 (아침 + 오후)
 
 **중요:**
-- 반드시 각 콘티의 keywords에 timeOfDay(촬영 시간대)를 포함해야 하며,
-  "낮" 또는 "밤" 중 하나로 명확히 작성해야 합니다.
-- timeOfDay가 누락된 콘티는 절대 생성하지 마세요.
-- 누락 시 전체 응답을 다시 생성하세요.
+- 반드시 timeOfDay(촬영 시간대)를 명확히 설정해야 합니다
+- 이전 씬과의 연속성을 고려하여 자연스러운 흐름을 만들어주세요
+- 각 필드의 길이 제한을 준수해주세요
 
 반드시 다음 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요:
 
 {
-  "conteList": [
-    {
-      "id": "scene_1",
+  "scene": {
       "scene": 1,
       "title": "씬 제목",
-      "description": "인물들이 처한 상황에 대한 대략적인 설명",
-      "dialogue": "해당 장면을 대표하는 대사",
-      "cameraAngle": "카메라/그림 앵글과 구도를 설명하는 배치도",
-      "cameraWork": "카메라 워크 및 그림의 장면 전환을 설명하는 화살표들",
-      "characterLayout": "인물 배치도와 인물의 동선을 설명하는 화살표",
-      "props": "소품 배치",
-      "weather": "날씨와 지형",
-      "lighting": "조명",
-      "visualDescription": "각 장면과 시퀀스를 직관적으로 이해시킬 대표적인 그림 설명",
-      "transition": "장면, 시퀀스의 전환점",
-      "lensSpecs": "렌즈 길이, 요구되는 카메라의 특성 등 촬영 방식",
-      "visualEffects": "사용할 그래픽 툴, 넣어야하는 시각효과",
-      "type": "generated_video",
-      "typeReason": "AI 시각효과와 특수효과가 필요한 장면으로 판단됨",
-      "estimatedDuration": "3분",
-      "requiredPersonnel": "감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명",
-      "requiredEquipment": "카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개",
-      "camera": "C1",
-      "keywords": {
-        "userInfo": "기본 사용자",
-        "location": "기본 장소",
-        "date": "2024-01-01",
-        "equipment": "기본 장비",
-        "cast": ["주인공", "조연"],
-        "props": ["기본 소품"],
-        "lighting": "기본 조명",
+    "description": "인물들이 처한 상황에 대한 대략적인 설명 (1000자 이내)",
+    "dialogues": [
+      {
+        "character": "주인공",
+        "text": "대사 내용 (500자 이내)"
+      }
+    ],
         "weather": "맑음",
-        "timeOfDay": "낮", // 반드시 "낮" 또는 "밤"으로 포함!
-        "specialRequirements": []
+    "visualDescription": "시각적 묘사 (500자 이내)",
+    "lighting": {
+      "description": "조명 묘사 (200자 이내)",
+      "setup": {
+        "keyLight": {
+          "type": "메인광 타입",
+          "equipment": "장비명",
+          "intensity": "강도"
+        },
+        "fillLight": {
+          "type": "보조광 타입",
+          "equipment": "장비명",
+          "intensity": "강도"
+        },
+        "backLight": {
+          "type": "배경광 타입",
+          "equipment": "장비명",
+          "intensity": "강도"
+        },
+        "backgroundLight": {
+          "type": "배경조명 타입",
+          "equipment": "장비명",
+          "intensity": "강도"
+        },
+        "specialEffects": {
+          "type": "특수조명 타입",
+          "equipment": "장비명",
+          "intensity": "강도"
       },
-      "weights": {
-        "locationPriority": 1,
-        "equipmentPriority": 1,
-        "castPriority": 1,
-        "timePriority": 1,
-        "complexity": 1
+        "softLight": {
+          "type": "부드러운광 타입",
+          "equipment": "장비명",
+          "intensity": "강도"
+        },
+        "gripModifier": {
+          "flags": ["빛 차단 도구"],
+          "diffusion": ["빛 확산 도구"],
+          "reflectors": ["반사판"],
+          "colorGels": ["색상 필터"]
+        },
+        "overall": {
+          "colorTemperature": "색온도",
+          "mood": "분위기"
+        }
+      }
+    },
+    "location": {
+      "name": "촬영 장소명",
+      "realLocationId": null
+    },
+    "timeOfDay": "오후",
+    "estimatedDuration": "5분",
+         "crew": {
+       "direction": {
+         "director": 1,
+         "assistantDirector": 1,
+         "scriptSupervisor": 1,
+         "continuity": 1
+       },
+       "production": {
+         "producer": 1,
+         "lineProducer": 1,
+         "productionManager": 1,
+         "productionAssistant": 2
+       },
+       "cinematography": {
+         "cinematographer": 1,
+         "cameraOperator": 2,
+         "firstAssistant": 1,
+         "secondAssistant": 1,
+         "dollyGrip": 1
+       },
+       "lighting": {
+         "gaffer": 1,
+         "bestBoy": 1,
+         "electrician": 3,
+         "generatorOperator": 1
+       },
+       "sound": {
+         "soundMixer": 1,
+         "boomOperator": 1,
+         "soundAssistant": 1,
+         "utility": 1
+       },
+       "art": {
+         "productionDesigner": 1,
+         "artDirector": 1,
+         "setDecorator": 2,
+         "propMaster": 1,
+         "makeupArtist": 2,
+         "costumeDesigner": 1,
+         "hairStylist": 1
+       }
       },
-      "canEdit": true,
-      "lastModified": "",
-      "modifiedBy": ""
-    }
-  ]
+    "equipment": {
+      "direction": {
+        "monitors": ["모니터링 시스템"],
+        "communication": ["통신 장비"],
+        "scriptBoards": ["스크립트 보드"]
+      },
+      "production": {
+        "scheduling": ["스케줄링 도구"],
+        "safety": ["안전 장비"],
+        "transportation": ["운송 장비"]
+      },
+             "cinematography": {
+         "cameras": ["씬 특성에 맞는 카메라 선택"],
+         "lenses": ["씬 특성에 맞는 렌즈 선택"],
+         "supports": ["씬 특성에 맞는 지지대 선택"],
+         "filters": ["씬 특성에 맞는 필터 선택"],
+         "accessories": ["씬 특성에 맞는 액세서리 선택"]
+       },
+      "lighting": {
+        "keyLights": ["메인광 장비"],
+        "fillLights": ["보조광 장비"],
+        "backLights": ["배경광 장비"],
+        "backgroundLights": ["배경조명 장비"],
+        "specialEffectsLights": ["특수조명 장비"],
+        "softLights": ["부드러운광 장비"],
+        "gripModifiers": {
+          "flags": ["빛 차단 도구"],
+          "diffusion": ["빛 확산 도구"],
+          "reflectors": ["반사판"],
+          "colorGels": ["색상 필터"]
+        },
+        "power": ["전원 장비"]
+      },
+      "sound": {
+        "microphones": ["마이크"],
+        "recorders": ["녹음기"],
+        "wireless": ["무선 장비"],
+        "monitoring": ["모니터링"]
+      },
+      "art": {
+        "setConstruction": ["세트 제작 도구"],
+        "props": {
+          "characterProps": ["인물 소품"],
+          "setProps": ["공간 소품"]
+        },
+        "setDressing": ["세트 드레싱"],
+        "costumes": ["의상"],
+        "specialEffects": ["특수효과"]
+      }
+    },
+         "cast": [1, 2, "경찰관:3", "웨이터:2", "행인:10"],
+    "specialRequirements": ["특별 요구사항"],
+    "vfxRequired": false,
+    "sfxRequired": false
+  }
 }
 
-**반드시 모든 콘티에 timeOfDay가 포함되어야 하며, 누락 시 전체 응답을 다시 생성하세요.**
+**반드시 모든 필수 필드가 포함되어야 하며, 누락 시 전체 응답을 다시 생성하세요.**
 
 JSON 이외의 텍스트는 포함하지 마세요.
 한국어로 자연스럽게 작성해주세요.

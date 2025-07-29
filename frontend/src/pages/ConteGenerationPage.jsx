@@ -52,6 +52,7 @@ import api from '../services/api'
 import useStoryGenerationStore from '../stores/storyGenerationStore'
 import useStoryHistoryStore from '../stores/storyHistoryStore'
 import { CommonHeader } from '../components/common'
+import { genreTemplates } from '../data/storyTemplates'
 
 /**
  * AI 콘티 생성 페이지 컴포넌트
@@ -383,11 +384,24 @@ const ConteGenerationPage = () => {
     const startTime = Date.now()
     
     try {
+      // 선택된 장르에 따른 템플릿 프롬프트 가져오기
+      let templatePrompt = null
+      if (storySettings.genre && storySettings.genre !== '일반') {
+        const selectedTemplate = genreTemplates[storySettings.genre]
+        if (selectedTemplate) {
+          templatePrompt = selectedTemplate.prompt
+        }
+      }
+      
+      // lengthPresets의 maxLength 값을 백엔드로 전송
+      const maxLength = storySettings.maxLength || 600
+      
       // AI 스토리 생성 API 호출
       const response = await generateStoryWithRetry({
         synopsis: synopsisText,
-        maxLength: storySettings.maxLength,
-        genre: storySettings.genre
+        maxLength: maxLength,  // ← lengthPresets에서 설정된 maxLength 값
+        genre: storySettings.genre,
+        templatePrompt: templatePrompt
       })
       
       const generationTime = Math.round((Date.now() - startTime) / 1000)

@@ -37,13 +37,7 @@ const projectSchema = new mongoose.Schema({
     trim: true,
     maxlength: 10000
   },
-  
-  // 프로젝트 상태 (6단계로 간략화)
-  status: {
-    type: String,
-    enum: ['draft', 'story_ready', 'conte_ready', 'cut_generating', 'cut_generated', 'production_ready'],
-    default: 'draft'
-  },
+
   
   // 프로젝트 설정
   settings: {

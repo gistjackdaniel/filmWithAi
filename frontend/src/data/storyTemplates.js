@@ -21,10 +21,15 @@ export const genreTemplates = {
 - 인간관계의 복잡성과 화해의 가능성을 다룸
 - 최대 {maxLength}자로 작성
 
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
+
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 800,
-      tone: '감정적',
       focus: '인간관계'
     }
   },
@@ -43,10 +48,15 @@ export const genreTemplates = {
 - 시각적이고 역동적인 묘사
 - 최대 {maxLength}자로 작성
 
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
+
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 700,
-      tone: '긴장감',
       focus: '액션'
     }
   },
@@ -65,10 +75,15 @@ export const genreTemplates = {
 - 해피엔딩으로 마무리
 - 최대 {maxLength}자로 작성
 
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
+
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 600,
-      tone: '유머러스',
       focus: '재미'
     }
   },
@@ -80,83 +95,76 @@ export const genreTemplates = {
     prompt: `다음 시놉시스를 바탕으로 감성적이고 로맨틱한 스토리를 작성해주세요.
 
 요구사항:
-- 두 사람의 만남과 사랑의 발전 과정
-- 감정적 깊이와 공감할 수 있는 상황
-- 로맨틱한 순간들과 감동적인 결말
-- 사랑의 어려움과 극복 과정
-- 따뜻하고 감성적인 톤
+- 사랑과 관계의 복잡성과 아름다움을 다룸
+- 감성적이고 공감할 수 있는 상황 설정
+- 로맨틱한 순간과 갈등의 균형
+- 캐릭터의 감정적 성장을 포함
+- 따뜻하고 희망적인 메시지
 - 최대 {maxLength}자로 작성
+
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
 
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 750,
-      tone: '감성적',
       focus: '사랑'
-    }
-  },
-
-  // SF 템플릿
-  scifi: {
-    name: 'SF',
-    description: '미래와 과학을 배경으로 한 상상력 풍부한 스토리',
-    prompt: `다음 시놉시스를 바탕으로 상상력 풍부한 SF 스토리를 작성해주세요.
-
-요구사항:
-- 미래적이고 혁신적인 설정
-- 과학적 요소와 인간적 감정의 조화
-- 새로운 기술이나 세계관의 설명
-- 인류의 미래와 가능성에 대한 탐구
-- 시각적이고 임팩트 있는 묘사
-- 최대 {maxLength}자로 작성
-
-시놉시스: {synopsis}`,
-    settings: {
-      maxLength: 900,
-      tone: '상상력',
-      focus: '미래'
     }
   },
 
   // 스릴러 템플릿
   thriller: {
     name: '스릴러',
-    description: '긴장감과 미스터리를 담은 스토리',
+    description: '긴장감과 서스펜스를 담은 스토리',
     prompt: `다음 시놉시스를 바탕으로 긴장감 넘치는 스릴러 스토리를 작성해주세요.
 
 요구사항:
-- 미스터리와 서스펜스를 중심으로 구성
-- 예상치 못한 반전과 긴장감
+- 긴장감과 서스펜스를 유지하는 구성
+- 예상치 못한 반전과 임팩트
 - 독자의 추리를 자극하는 요소들
-- 긴박한 상황과 시간 압박
-- 명확한 목표와 위험 요소
+- 강렬한 클라이맥스와 해결
+- 시각적이고 임팩트 있는 묘사
 - 최대 {maxLength}자로 작성
+
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
 
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 800,
-      tone: '긴장감',
-      focus: '미스터리'
+      focus: '긴장감'
     }
   },
 
   // 판타지 템플릿
   fantasy: {
     name: '판타지',
-    description: '마법과 상상의 세계를 배경으로 한 스토리',
-    prompt: `다음 시놉시스를 바탕으로 마법과 상상력이 가득한 판타지 스토리를 작성해주세요.
+    description: '상상력과 마법을 담은 환상적 스토리',
+    prompt: `다음 시놉시스를 바탕으로 상상력 넘치는 판타지 스토리를 작성해주세요.
 
 요구사항:
-- 마법적 요소와 신비로운 세계관
-- 영웅의 여정과 성장 스토리
-- 상상력 풍부한 설정과 캐릭터
-- 선과 악의 대립과 모험
-- 시각적이고 임팩트 있는 묘사
+- 독창적이고 신비로운 세계관 설정
+- 마법과 초자연적 요소들의 자연스러운 통합
+- 영웅의 여정과 성장을 포함
+- 시각적이고 몰입감 있는 묘사
+- 희망과 모험의 메시지
 - 최대 {maxLength}자로 작성
+
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
 
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 850,
-      tone: '신비로움',
       focus: '모험'
     }
   }
@@ -189,37 +197,6 @@ export const lengthPresets = {
     description: '매우 상세하고 긴 스토리',
     maxLength: 1500,
     estimatedTime: '8-10분'
-  }
-}
-
-/**
- * 스토리 톤 프리셋
- */
-export const tonePresets = {
-  formal: {
-    name: '격식있는',
-    description: '정중하고 격식있는 어조',
-    keywords: ['정중', '격식', '공식적']
-  },
-  casual: {
-    name: '친근한',
-    description: '편안하고 친근한 어조',
-    keywords: ['친근', '편안', '일상적']
-  },
-  dramatic: {
-    name: '극적인',
-    description: '강렬하고 극적인 어조',
-    keywords: ['강렬', '극적', '임팩트']
-  },
-  poetic: {
-    name: '시적인',
-    description: '아름답고 시적인 어조',
-    keywords: ['아름다움', '시적', '감성적']
-  },
-  humorous: {
-    name: '유머러스',
-    description: '재미있고 유머러스한 어조',
-    keywords: ['재미', '유머', '가벼운']
   }
 }
 
@@ -272,78 +249,62 @@ export const customTemplates = {
   update: (templateId, updates) => {
     const templates = customTemplates.get()
     const updated = templates.map(t => 
-      t.id === templateId ? { ...t, ...updates } : t
+      t.id === templateId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
     )
     return customTemplates.save(updated)
   }
 }
 
 /**
- * 프롬프트 템플릿 렌더링 함수
- * @param {string} template - 템플릿 문자열
- * @param {Object} variables - 변수 객체
- * @returns {string} 렌더링된 프롬프트
+ * 템플릿 렌더링 함수
+ * 변수를 템플릿에 적용
  */
 export const renderTemplate = (template, variables) => {
-  let rendered = template
+  let result = template
   
-  // 변수 치환
   Object.entries(variables).forEach(([key, value]) => {
-    const placeholder = `{${key}}`
-    rendered = rendered.replace(new RegExp(placeholder, 'g'), value)
+    const regex = new RegExp(`{${key}}`, 'g')
+    result = result.replace(regex, value || '')
   })
   
-  return rendered
+  return result
 }
 
 /**
- * 템플릿 추천 시스템
- * @param {string} synopsis - 시놉시스
- * @returns {Array} 추천 템플릿 목록
+ * 시놉시스 기반 추천 템플릿
  */
 export const getRecommendedTemplates = (synopsis) => {
   const recommendations = []
+  
+  if (!synopsis) return recommendations
+  
   const lowerSynopsis = synopsis.toLowerCase()
   
   // 키워드 기반 추천
-  const keywordMap = {
-    '사랑': 'romance',
-    '로맨스': 'romance',
-    '연애': 'romance',
-    '액션': 'action',
-    '싸움': 'action',
-    '전투': 'action',
-    '웃음': 'comedy',
-    '재미': 'comedy',
-    '유머': 'comedy',
-    '드라마': 'drama',
-    '감정': 'drama',
-    '미래': 'scifi',
-    '과학': 'scifi',
-    '우주': 'scifi',
-    '미스터리': 'thriller',
-    '범죄': 'thriller',
-    '추리': 'thriller',
-    '마법': 'fantasy',
-    '판타지': 'fantasy',
-    '모험': 'fantasy'
+  if (lowerSynopsis.includes('사랑') || lowerSynopsis.includes('연애') || lowerSynopsis.includes('로맨스')) {
+    recommendations.push('romance')
   }
   
-  Object.entries(keywordMap).forEach(([keyword, genre]) => {
-    if (lowerSynopsis.includes(keyword)) {
-      recommendations.push(genreTemplates[genre])
-    }
-  })
+  if (lowerSynopsis.includes('액션') || lowerSynopsis.includes('싸움') || lowerSynopsis.includes('전투')) {
+    recommendations.push('action')
+  }
   
-  // 중복 제거
-  return [...new Set(recommendations)]
-}
-
-export default {
-  genreTemplates,
-  lengthPresets,
-  tonePresets,
-  customTemplates,
-  renderTemplate,
-  getRecommendedTemplates
+  if (lowerSynopsis.includes('웃음') || lowerSynopsis.includes('재미') || lowerSynopsis.includes('코미디')) {
+    recommendations.push('comedy')
+  }
+  
+  if (lowerSynopsis.includes('긴장') || lowerSynopsis.includes('스릴') || lowerSynopsis.includes('미스터리')) {
+    recommendations.push('thriller')
+  }
+  
+  if (lowerSynopsis.includes('판타지') || lowerSynopsis.includes('마법') || lowerSynopsis.includes('환상')) {
+    recommendations.push('fantasy')
+    }
+  
+  // 기본 추천
+  if (recommendations.length === 0) {
+    recommendations.push('drama')
+  }
+  
+  return recommendations
 } 

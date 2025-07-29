@@ -35,7 +35,6 @@ import {
 import { 
   genreTemplates, 
   lengthPresets, 
-  tonePresets, 
   customTemplates,
   getRecommendedTemplates 
 } from '../../data/storyTemplates'
@@ -44,7 +43,7 @@ import toast from 'react-hot-toast'
 
 /**
  * 스토리 템플릿 선택 컴포넌트
- * 장르별 템플릿, 길이 프리셋, 톤 프리셋, 사용자 정의 템플릿 선택 기능
+ * 장르별 템플릿, 길이 프리셋, 사용자 정의 템플릿 선택 기능
  * PRD 2.1.2 AI 스토리 생성 기능의 템플릿 시스템
  */
 const TemplateSelector = ({ 
@@ -75,7 +74,6 @@ const TemplateSelector = ({
     prompt: '',
     settings: {
       maxLength: 600,
-      tone: '',
       focus: ''
     }
   })
@@ -104,28 +102,25 @@ const TemplateSelector = ({
   }, [synopsis])
 
   /**
-   * 템플릿 선택 핸들러
+   * 장르 템플릿 선택 핸들러
    * @param {Object} template - 선택된 템플릿
    */
   const handleTemplateSelect = (template) => {
     // 스토어 상태 업데이트
     finalUpdateTemplateSelection({
-      selectedGenre: template.key || '',
+      selectedGenre: template.name,
       activeTab: 0
     })
     
-    // 설정 업데이트
     const newSettings = {
       ...currentSettings,
-      genre: template.key,
-      maxLength: template.settings?.maxLength || 600,
-      tone: template.settings?.tone || '',
-      focus: template.settings?.focus || ''
+      genre: template.name,
+      maxLength: template.settings.maxLength,
+      focus: template.settings.focus
     }
     
-    onSettingsChange(newSettings)
     onTemplateSelect(template)
-    
+    onSettingsChange(newSettings)
     // toast 제거 - 부모 컴포넌트에서 처리
   }
 
@@ -144,29 +139,7 @@ const TemplateSelector = ({
     
     const newSettings = {
       ...currentSettings,
-      maxLength: preset.maxLength
-    }
-    
-    onSettingsChange(newSettings)
-    // toast 제거 - 부모 컴포넌트에서 처리
-  }
-
-  /**
-   * 톤 프리셋 선택 핸들러
-   * @param {string} toneKey - 선택된 톤 키
-   */
-  const handleToneSelect = (toneKey) => {
-    // 스토어 상태 업데이트
-    finalUpdateTemplateSelection({
-      selectedTone: toneKey,
-      activeTab: 2
-    })
-    
-    const preset = tonePresets[toneKey]
-    
-    const newSettings = {
-      ...currentSettings,
-      tone: preset.name
+      maxLength: preset.maxLength  // ← lengthPresets의 maxLength 값을 백엔드로 전송
     }
     
     onSettingsChange(newSettings)
@@ -201,7 +174,6 @@ const TemplateSelector = ({
         prompt: '',
         settings: {
           maxLength: 600,
-          tone: '',
           focus: ''
         }
       })
@@ -256,7 +228,7 @@ const TemplateSelector = ({
                 <Card 
                   sx={{ 
                     cursor: 'pointer',
-                    border: finalTemplateSelection.selectedGenre === template.key ? '2px solid var(--color-accent)' : '1px solid #444',
+                    border: finalTemplateSelection.selectedGenre === template.name ? '2px solid var(--color-accent)' : '1px solid #444',
                     '&:hover': {
                       borderColor: 'var(--color-accent)',
                       backgroundColor: 'rgba(212, 175, 55, 0.1)'
@@ -278,7 +250,7 @@ const TemplateSelector = ({
                         sx={{ mr: 1 }}
                       />
                       <Chip 
-                        label={template.settings?.tone} 
+                        label={template.settings?.focus} 
                         size="small" 
                         variant="outlined"
                       />
@@ -299,7 +271,6 @@ const TemplateSelector = ({
       >
         <Tab label="장르 템플릿" />
         <Tab label="길이 설정" />
-        <Tab label="톤 설정" />
         <Tab label="사용자 템플릿" />
       </Tabs>
 
@@ -317,7 +288,7 @@ const TemplateSelector = ({
                     backgroundColor: 'rgba(212, 175, 55, 0.1)'
                   }
                 }}
-                onClick={() => handleTemplateSelect({ ...template, key })}
+                onClick={() => handleTemplateSelect({ ...template, name: key })}
               >
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -333,7 +304,7 @@ const TemplateSelector = ({
                       sx={{ mr: 1 }}
                     />
                     <Chip 
-                      label={template.settings?.tone} 
+                      label={template.settings?.focus} 
                       size="small" 
                       variant="outlined"
                     />
@@ -400,48 +371,8 @@ const TemplateSelector = ({
         </Grid>
       )}
 
-      {/* 톤 설정 탭 */}
-      {finalTemplateSelection.activeTab === 2 && (
-        <Grid container spacing={2}>
-          {Object.entries(tonePresets).map(([key, preset]) => (
-            <Grid item xs={12} sm={6} md={4} key={key}>
-              <Card 
-                sx={{ 
-                  cursor: 'pointer',
-                  border: finalTemplateSelection.selectedTone === key ? '2px solid var(--color-accent)' : '1px solid #444',
-                  '&:hover': {
-                    borderColor: 'var(--color-accent)',
-                    backgroundColor: 'rgba(212, 175, 55, 0.1)'
-                  }
-                }}
-                onClick={() => handleToneSelect(key)}
-              >
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {preset.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {preset.description}
-                  </Typography>
-                  <Box sx={{ mt: 1 }}>
-                    {preset.keywords.map((keyword, index) => (
-                      <Chip 
-                        key={index}
-                        label={keyword} 
-                        size="small" 
-                        sx={{ mr: 0.5, mb: 0.5 }}
-                      />
-                    ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
       {/* 사용자 템플릿 탭 */}
-      {finalTemplateSelection.activeTab === 3 && (
+      {finalTemplateSelection.activeTab === 2 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">
@@ -483,7 +414,7 @@ const TemplateSelector = ({
                           sx={{ mr: 1 }}
                         />
                         <Chip 
-                          label={template.settings?.tone} 
+                          label={template.settings?.focus} 
                           size="small" 
                           variant="outlined"
                         />
@@ -554,7 +485,7 @@ const TemplateSelector = ({
               fullWidth
               multiline
               rows={8}
-              placeholder="다음 시놉시스를 바탕으로 스토리를 작성해주세요...&#10;&#10;요구사항:&#10;- {maxLength}자로 작성&#10;- {tone} 톤으로 작성&#10;&#10;시놉시스: {synopsis}"
+              placeholder="다음 시놉시스를 바탕으로 스토리를 작성해주세요...&#10;&#10;요구사항:&#10;- {maxLength}자로 작성&#10;- {focus} 톤으로 작성&#10;&#10;시놉시스: {synopsis}"
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <FormControl fullWidth>
@@ -575,10 +506,10 @@ const TemplateSelector = ({
               <FormControl fullWidth>
                 <InputLabel>톤</InputLabel>
                 <Select
-                  value={newTemplate.settings.tone}
+                  value={newTemplate.settings.focus}
                   onChange={(e) => setNewTemplate({
                     ...newTemplate,
-                    settings: { ...newTemplate.settings, tone: e.target.value }
+                    settings: { ...newTemplate.settings, focus: e.target.value }
                   })}
                 >
                   <MenuItem value="격식있는">격식있는</MenuItem>

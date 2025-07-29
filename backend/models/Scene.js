@@ -268,25 +268,7 @@ const sceneSchema = new mongoose.Schema({
   estimatedDuration: {
     type: String,
     default: '5분'
-  },
-  
-  // 이미지(스토리보드, AI 생성 이미지)
-  imageUrl: {
-    type: String,
-    default: null,
-    trim: true
-  },
-  
-  imageModel: {
-    type: String,
-    default: null,
-    trim: true
-  },
-  
-  isFreeTier: {
-    type: Boolean,
-    default: false
-  },
+  }, 
   
   // === 스케줄링 정보 (고정 자원 중심) ===
   // 촬영 장소

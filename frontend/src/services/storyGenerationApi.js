@@ -85,6 +85,7 @@ export const generateStory = async (requestData) => {
       synopsis: requestData.synopsis.trim(),
       maxLength: maxLength,
       genre: requestData.genre || '일반',
+      templatePrompt: requestData.templatePrompt || null, // 템플릿 프롬프트 추가
       model: 'gpt-4o', // GPT-4o 모델 사용
       isFreeTier: false // OpenAI는 유료 서비스
     }

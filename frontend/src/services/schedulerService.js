@@ -5,15 +5,20 @@
  */
 
 /**
- * Scene 데이터를 바탕으로 최적의 촬영 스케줄 생성
+ * 최적화된 촬영 스케줄 생성 (장소 관리 + 타임라인 생성 통합)
  * @param {Array} sceneData - Scene 데이터 배열
+ * @param {Array} realLocations - 실제 촬영 장소 배열 (선택사항)
+ * @param {Array} groups - 그룹 배열 (선택사항)
+ * @param {string} projectId - 프로젝트 ID (선택사항)
  * @returns {Object} 최적화된 스케줄 데이터
  */
-export const generateOptimalSchedule = (sceneData) => {
+export const generateOptimalSchedule = (sceneData, realLocations = [], groups = [], projectId = null) => {
   try {
     console.log('🎬 스케줄러 시작 - 입력 데이터:', {
       totalCount: sceneData?.length || 0,
       isArray: Array.isArray(sceneData),
+      realLocationsCount: realLocations?.length || 0,
+      groupsCount: groups?.length || 0,
       firstItem: sceneData?.[0] ? {
         id: sceneData[0]._id,
         scene: sceneData[0].scene,
@@ -24,11 +29,61 @@ export const generateOptimalSchedule = (sceneData) => {
     });
     
     // 모든 Scene을 사용 (Scene은 기본적으로 실사 촬영용)
-    const scenes = sceneData;
+    let scenes = [...sceneData];
+    let updatedRealLocations = [...realLocations];
+    let updatedGroups = [...groups];
+    let messages = [];
+
+    // 장소 관리 기능 (realLocations와 groups가 제공된 경우)
+    if (realLocations.length > 0 && groups.length > 0 && projectId) {
+      // 1. 빈 realLocation 자동 할당
+      let emptyRealLocation = updatedRealLocations.find(loc => loc.name === '빈 realLocation' && loc.projectId === projectId);
+      if (!emptyRealLocation) {
+        emptyRealLocation = {
+          _id: 'empty_realLocation',
+          projectId,
+          name: '빈 realLocation',
+          groupId: null
+        };
+        updatedRealLocations.push(emptyRealLocation);
+      }
+      let scenesWithNoLocation = scenes.filter(s => !s.location?.realLocationId);
+      if (scenesWithNoLocation.length > 0) {
+        scenes = scenes.map(s =>
+          s.location?.realLocationId
+            ? s
+            : { ...s, location: { ...s.location, realLocationId: emptyRealLocation._id } }
+        );
+        messages.push('촬영 위치가 지정되지 않은 Scene이 있습니다. "빈 realLocation"이 자동 할당되었습니다. 촬영 위치를 채워주세요.');
+      }
+
+      // 2. 빈 group 자동 할당
+      let emptyGroup = updatedGroups.find(g => g.name === '빈 group' && g.projectId === projectId);
+      if (!emptyGroup) {
+        emptyGroup = {
+          _id: 'empty_group',
+          projectId,
+          name: '빈 group',
+          address: ''
+        };
+        updatedGroups.push(emptyGroup);
+      }
+      let realLocationsWithNoGroup = updatedRealLocations.filter(loc => !loc.groupId);
+      if (realLocationsWithNoGroup.length > 0) {
+        updatedRealLocations = updatedRealLocations.map(loc =>
+          loc.groupId
+            ? loc
+            : { ...loc, groupId: emptyGroup._id }
+        );
+        messages.push('그룹이 없는 장소가 있습니다. "빈 group"이 자동 할당되었습니다. 그룹을 할당해주세요.');
+      }
+    }
     
     console.log('🎬 Scene 데이터 처리 결과:', {
-      total: sceneData.length,
-      scenes: scenes.length
+      total: scenes.length,
+      realLocationsCount: updatedRealLocations.length,
+      groupsCount: updatedGroups.length,
+      messages: messages
     });
     
     if (scenes.length === 0) {
@@ -38,7 +93,8 @@ export const generateOptimalSchedule = (sceneData) => {
         totalDays: 0,
         totalScenes: 0,
         estimatedTotalDuration: 0,
-        message: 'Scene이 없습니다.'
+        message: 'Scene이 없습니다.',
+        messages: messages
       }
     }
     
@@ -57,21 +113,19 @@ export const generateOptimalSchedule = (sceneData) => {
     });
     
     // 가중치 기반 최적화 (그룹화 없이 직접 계산)
-    const optimizedSchedule = optimizeScheduleWithWeights(scenes)
+    const optimizedSchedule = optimizeScheduleWithWeights(scenes, updatedRealLocations)
     
     console.log('✅ 스케줄러 완료:', {
       totalDays: optimizedSchedule.totalDays,
       totalScenes: optimizedSchedule.totalScenes,
-      estimatedDuration: optimizedSchedule.estimatedTotalDuration
+      estimatedDuration: optimizedSchedule.estimatedTotalDuration,
+      messages: messages
     });
     
-    console.log('✅ 스케줄러 완료:', {
-      totalDays: optimizedSchedule.totalDays,
-      totalScenes: optimizedSchedule.totalScenes,
-      estimatedDuration: optimizedSchedule.estimatedTotalDuration
-    });
-    
-    return optimizedSchedule
+    return {
+      ...optimizedSchedule,
+      messages: messages
+    }
   } catch (error) {
     console.error('❌ 스케줄 생성 중 오류:', error)
     throw new Error('스케줄 생성에 실패했습니다.')
@@ -79,26 +133,60 @@ export const generateOptimalSchedule = (sceneData) => {
 }
 
 /**
- * 가중치 기반 스케줄 최적화
+ * 가중치 기반 스케줄 최적화 (장소 관리 + 타임라인 생성 통합)
  * @param {Array} allScenes - 모든 Scene 데이터
+ * @param {Array} realLocations - 실제 촬영 장소 배열
  * @returns {Object} 최적화된 스케줄
  */
-const optimizeScheduleWithWeights = (allScenes) => {
+const optimizeScheduleWithWeights = (allScenes, realLocations = []) => {
   // 각 Scene에 대한 가중치 계산
   const scenesWithWeights = allScenes.map(scene => ({
     ...scene,
     weight: calculateSceneWeight(scene, allScenes)
   }))
   
-  // 가중치가 추가된 Scene들을 일정으로 배치 (모든 그룹화와 정렬은 createScheduleFromOptimizedScenes에서 처리)
-  const days = createScheduleFromOptimizedScenes(scenesWithWeights)
+  // 장소 관리 기능이 있는 경우 (realLocations가 제공된 경우)
+  if (realLocations.length > 0) {
+    // 모든 씬을 하나로 통합하여 유동적으로 처리 (낮/밤 고정 분리 제거)
+    const allScenesWithWeights = scenesWithWeights;
+    
+    // realLocation별 → Scene 리스트로 묶기 (유동적 시간 분배)
+    // 하루 최대 12시간(720분)으로 설정하여 유동적 처리
+    const sceneDays = splitScenesByLocationAndTime(allScenesWithWeights, 720, realLocations);
+    
+    // 각 날에 대해 타임라인 생성
+    const scheduledDays = [];
+    for(let i = 0; i < sceneDays.length; i++) {
+      const day = sceneDays[i] || { sections: [], totalMinutes: 0 };
+      
+      // 통합 타임라인 생성 (낮/밤 구분 없이)
+      const timeline = createUnifiedTimeline(day.sections);
+      
+      scheduledDays.push({
+        day: i + 1,
+        timeline: timeline,
+        sections: day.sections,
+        totalMinutes: day.totalMinutes,
+        totalScenes: day.sections.length
+      });
+    }
+    
+    return {
+      days: scheduledDays,
+      totalDays: scheduledDays.length,
+      totalScenes: scheduledDays.reduce((total, day) => total + day.totalScenes, 0),
+      estimatedTotalDuration: scheduledDays.reduce((total, day) => total + day.totalMinutes, 0)
+    }
+  } else {
+    // 기존 가중치 기반 최적화 (장소 관리 없이)
+    const days = createScheduleFromOptimizedScenes(scenesWithWeights, realLocations)
   
   return {
     days,
     totalDays: days.length,
     totalScenes: days.reduce((total, day) => total + day.totalScenes, 0),
-    estimatedTotalDuration: days.reduce((total, day) => total + day.estimatedDuration, 0),
-    optimizationScore: calculateOptimizationScore(days)
+      estimatedTotalDuration: days.reduce((total, day) => total + day.estimatedDuration, 0)
+    }
   }
 }
 
@@ -313,7 +401,7 @@ const addToPendingQueue = (pendingScenes, scene, timeSlot) => {
  * @param {Array} optimizedScenes - 최적화된 씬 배열
  * @returns {Array} 일정 배열
  */
-const createScheduleFromOptimizedScenes = (scenesWithWeights) => {
+const createScheduleFromOptimizedScenes = (scenesWithWeights, realLocations = []) => {
   console.log('🎬 스케줄 생성 시작:', scenesWithWeights.length, '개 씬');
   
   // 1. 장소별로 그룹화
@@ -423,8 +511,8 @@ const createScheduleFromOptimizedScenes = (scenesWithWeights) => {
   
   // 하루 최대 촬영 시간 (8시간 = 480분)
   const MAX_DAILY_DURATION = 480
-  // 씬 간 휴식 시간 (1시간 = 60분)
-  const SCENE_BREAK_TIME = 60
+  // 씬 간 휴식 시간 (30분 = 30분)
+  const SCENE_BREAK_TIME = 30
   
   console.log('[SchedulerService] 스케줄 배치 시작:', {
     totalScenes: locationTimeSlotOptimizedScenes.length,
@@ -483,7 +571,7 @@ const createScheduleFromOptimizedScenes = (scenesWithWeights) => {
     
     const needsNewDay = (
       currentDayScenes.length === 0 || // 첫 번째 씬
-      currentDayLocation !== sceneLocation || // 다른 장소 (최우선 조건)
+      shouldStartNewDayForLocation(currentDayLocation, sceneLocation, currentDayScenes, realLocations) || // 개선된 장소 변경 조건
       wouldExceed || // 시간 초과
       wouldExceedWeekly || // 주간 근로시간 초과
       isRestDay || // 휴일인 경우
@@ -744,8 +832,62 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
     sceneTitles: scenes.map(scene => scene.title || `씬 ${scene.scene}`)
   })
   
-  // 시간대별 시간 범위 설정
-  const timeRange = timeSlot ? getTimeSlotRange(timeSlot) : null
+  // 시간대별 시간 범위 설정 (낮/밤 씬 비율에 따른 유동적 시작시간)
+  const timeRange = scenes.length > 0 ? (() => {
+    // 낮/밤 씬 분류 및 시간 계산
+    const dayScenes = []
+    const nightScenes = []
+    let dayTotalDuration = 0
+    let nightTotalDuration = 0
+    
+    scenes.forEach((scene, index) => {
+      const sceneDuration = getSafeDuration(scene)
+      const breakTime = index > 0 ? 30 : 0
+      const totalSceneTime = sceneDuration + breakTime
+      
+      const timeOfDay = scene.timeOfDay
+      if (timeOfDay === '아침' || timeOfDay === '오후' || timeOfDay === '낮' || timeOfDay === 'M' || timeOfDay === 'D') {
+        dayScenes.push(scene)
+        dayTotalDuration += totalSceneTime
+      } else if (timeOfDay === '저녁' || timeOfDay === '밤' || timeOfDay === '새벽' || timeOfDay === 'N') {
+        nightScenes.push(scene)
+        nightTotalDuration += totalSceneTime
+      } else {
+        // 미정인 경우 낮 씬으로 처리
+        dayScenes.push(scene)
+        dayTotalDuration += totalSceneTime
+      }
+    })
+    
+    // 시작 시간 결정 (낮/밤 씬 비율에 따라)
+    let startTime = '09:00' // 기본값
+    
+    if (dayScenes.length > 0 && nightScenes.length > 0) {
+      // 낮/밤 씬이 모두 있는 경우
+      if (nightTotalDuration > dayTotalDuration) {
+        // 밤 씬이 더 많은 경우: 늦게 시작 (14:00)
+        startTime = '14:00'
+      } else {
+        // 낮 씬이 더 많은 경우: 일찍 시작 (06:00)
+        startTime = '06:00'
+      }
+    } else if (dayScenes.length > 0) {
+      // 낮 씬만 있는 경우: 일찍 시작 (06:00)
+      startTime = '06:00'
+    } else if (nightScenes.length > 0) {
+      // 밤 씬만 있는 경우: 늦게 시작 (18:00)
+      startTime = '18:00'
+    }
+    
+    // 전체 소요시간 계산
+    const totalDuration = dayTotalDuration + nightTotalDuration
+    const endTime = addMinutesToTime(startTime, totalDuration)
+    
+    return {
+      start: startTime,
+      end: endTime
+    }
+  })() : null
   
   // 디버깅: 씬들의 시간 정보 확인
   console.log(`[SchedulerService] Day ${dayNumber} 씬들의 시간 정보:`, scenes.map(scene => ({
@@ -758,277 +900,35 @@ const createDaySchedule = (dayNumber, scenes, duration, location, timeSlot = nul
     actualShootingDuration: scene.actualShootingDuration
   })));
   
-  // 각 씬에 상세 정보 추가
+  // 스케줄 표시용 핵심 정보만 추출
   const scenesWithDetails = scenes.map(scene => ({
-    ...scene,
-    // 상세 카메라 정보 추가
-    cameraDetails: extractCameraFromScene(scene),
-    // 상세 인력 정보 추가
-    crewDetails: extractCrewFromScene(scene),
-    // 상세 장비 정보 추가
-    equipmentDetails: extractEquipmentFromScene(scene)
+    scene: scene.scene,
+    title: scene.title,
+    description: scene.description,
+    location: scene.location,
+    timeOfDay: scene.timeOfDay,
+    cast: scene.cast,
+    estimatedDuration: scene.estimatedDuration,
+    // 미술부 정보 (의상, 소품)
+    costumes: scene.equipment?.art?.costumes || [],
+    props: scene.equipment?.art?.props || {
+      characterProps: [],
+      setProps: []
+    }
   }));
   
   // 스케줄 row 반환
   return {
     day: dayNumber,
     date: `Day ${dayNumber}`,
-    location: location,
-    timeSlot: timeSlot,
     timeRange: timeRange,
     scenes: scenesWithDetails, // 상세 정보가 포함된 씬들
     totalScenes: scenes.length,
     estimatedDuration: duration,
     crew: getRequiredCrew(scenes),
     equipment: getRequiredEquipment(scenes),
-    timeSlots: generateTimeSlots(scenes),
-    optimizationScore: calculateDayOptimizationScore(scenes),
-    efficiency: calculateDayEfficiency(scenes, duration)
+    timeSlots: generateTimeSlots(scenes, timeRange)
   }
-}
-
-/**
- * 일일 효율성 계산
- * @param {Array} scenes - 씬 배열
- * @param {number} duration - 총 시간
- * @returns {number} 효율성 점수
- */
-const calculateDayEfficiency = (scenes, duration) => {
-  // scenes의 duration을 안전하게 합산
-  const safeDuration = typeof duration === 'number' && !isNaN(duration) && duration > 0
-    ? duration
-    : scenes.reduce((total, scene) => total + getSafeDuration(scene), 0);
-  if (scenes.length === 0) return 0;
-  
-  // 단일 씬인 경우 특별 처리
-  if (scenes.length === 1) {
-    const singleScene = scenes[0]
-    const sceneDuration = getSafeDuration(singleScene)
-    
-    // 단일 씬 효율성: 기본 60% + 촬영시간에 따른 보너스
-    let efficiency = 60 // 기본 효율성
-    
-    // 촬영시간에 따른 조정
-    if (sceneDuration >= 30 && sceneDuration <= 60) {
-      efficiency += 10 // 적절한 촬영시간 보너스
-    } else if (sceneDuration > 60) {
-      efficiency += 20 // 긴 촬영시간 보너스
-    } else if (sceneDuration < 30) {
-      efficiency -= 10 // 짧은 촬영시간 페널티
-    }
-    
-    console.log(`📊 단일 씬 효율성 계산:`, {
-      scene: singleScene.scene,
-      duration: `${sceneDuration}분`,
-      efficiency: `${efficiency}%`
-    });
-    
-    return Math.min(100, Math.max(0, efficiency))
-  }
-  
-  // 다중 씬인 경우 기존 계산 방식 사용
-  // 장소 효율성 (같은 장소에서 연속 촬영 시 100% 효율성)
-  const locations = scenes.map(scene => extractLocationFromScene(scene))
-  const uniqueLocations = new Set(locations)
-  
-  // 같은 장소에서 연속 촬영 시 100% 효율성, 다른 장소가 있으면 비례 계산
-  const locationEfficiency = uniqueLocations.size === 1 ? 1 : (scenes.length - uniqueLocations.size) / scenes.length
-  
-  // 시간 효율성 (6-8시간이 가장 효율적) - 분 단위로 변환
-  const timeEfficiency = safeDuration >= 360 && safeDuration <= 480 ? 1 : 
-                        safeDuration >= 240 && safeDuration <= 600 ? 0.7 : 0.3
-  
-  // 배우 효율성 (같은 배우들이 연속 출연하는 경우 100% 효율성)
-  const allActors = scenes.map(scene => extractActorsFromScene(scene))
-  
-  let actorEfficiency = 0 // 변수를 블록 외부에서 선언
-  
-  if (allActors.length > 0) {
-    // 모든 씬에서 동일한 배우들이 나오는지 확인
-    const firstActors = new Set(allActors[0])
-    const allActorsSets = allActors.map(actors => new Set(actors))
-    
-    // 모든 씬에서 동일한 배우들이 나오는지 확인
-    const allSameActors = allActorsSets.every(actorSet => {
-      if (actorSet.size !== firstActors.size) return false
-      return Array.from(actorSet).every(actor => firstActors.has(actor))
-    })
-    
-    // 동일한 배우들이 연속 출연하면 100%, 아니면 비례 계산
-    actorEfficiency = allSameActors ? 1 : 
-      (allActors.flat().length - new Set(allActors.flat()).size) / allActors.flat().length
-  }
-  
-  return Math.round((locationEfficiency * 0.5 + timeEfficiency * 0.3 + actorEfficiency * 0.2) * 100)
-}
-
-/**
- * 일정 최적화 (빈 날 제거, 효율성 개선)
- * @param {Array} days - 일정 배열
- * @returns {Array} 최적화된 일정 배열
- */
-const optimizeScheduleDays = (days) => {
-  if (days.length <= 1) return days
-  
-  const optimizedDays = []
-  let dayCounter = 1
-  
-  for (const day of days) {
-    // 효율성이 너무 낮은 날은 다음 날과 병합 시도
-    if (day.efficiency < 30 && optimizedDays.length > 0) {
-      const lastDay = optimizedDays[optimizedDays.length - 1]
-      const combinedScenes = [...lastDay.scenes, ...day.scenes]
-      const combinedDuration = lastDay.estimatedDuration + day.estimatedDuration
-      
-      // 병합 가능한지 확인 (총 10시간 이하, 8개 씬 이하) - 분 단위로 변환
-      if (combinedDuration <= 600 && combinedScenes.length <= 8) {
-        // 병합
-        optimizedDays[optimizedDays.length - 1] = createDaySchedule(
-          lastDay.day, 
-          combinedScenes, 
-          combinedDuration,
-          lastDay.location // 병합 시 장소 유지
-        )
-        continue
-      }
-    }
-    
-    // 새로운 날로 추가
-    optimizedDays.push({
-      ...day,
-      day: dayCounter
-    })
-    dayCounter++
-  }
-  
-  return optimizedDays
-}
-
-/**
- * 가장 많이 사용된 장소 찾기
- * @param {Array} scenes - 씬 배열
- * @returns {string} 가장 많이 사용된 장소
- */
-const getMostCommonLocation = (scenes) => {
-  const locationCount = {}
-  
-  scenes.forEach(scene => {
-    const location = extractLocationFromScene(scene)
-    locationCount[location] = (locationCount[location] || 0) + 1
-  })
-  
-  return Object.entries(locationCount)
-    .sort(([,a], [,b]) => b - a)[0][0]
-}
-
-/**
- * 일일 최적화 점수 계산 (우선순위 기반)
- * @param {Array} scenes - 씬 배열
- * @returns {number} 최적화 점수
- */
-const calculateDayOptimizationScore = (scenes) => {
-  if (scenes.length === 0) return 0
-  
-  let score = 0
-  
-  // 1. 같은 장소 보너스 (최우선)
-  const locations = scenes.map(scene => extractLocationFromScene(scene))
-  const uniqueLocations = new Set(locations)
-  score += (scenes.length - uniqueLocations.size) * 1000 // 최우선 가중치
-  
-  // 2. 같은 배우 보너스 (두 번째 우선순위)
-  const actors = scenes.map(scene => extractActorsFromScene(scene)).flat()
-  const uniqueActors = new Set(actors)
-  const actorEfficiency = actors.length - uniqueActors.size
-  score += actorEfficiency * 500 // 두 번째 우선순위
-  
-  // 3. 같은 시간대 보너스 (세 번째 우선순위)
-  const timeSlots = scenes.map(scene => extractTimeSlotFromScene(scene))
-  const uniqueTimeSlots = new Set(timeSlots.filter(slot => slot !== '미정'))
-  const timeSlotEfficiency = timeSlots.length - uniqueTimeSlots.size
-  score += timeSlotEfficiency * 200 // 세 번째 우선순위
-  
-  // 4. 같은 장비 보너스 (네 번째 우선순위)
-  const equipments = scenes.map(scene => extractEquipmentFromScene(scene))
-  const uniqueEquipments = new Set(equipments)
-  score += (scenes.length - uniqueEquipments.size) * 100 // 네 번째 우선순위
-  
-  // 5. 복잡도 보너스 (다섯 번째 우선순위)
-  const totalDuration = scenes.reduce((total, scene) => total + parseDurationToMinutes(scene.estimatedDuration || '5분'), 0)
-  if (totalDuration >= 360 && totalDuration <= 480) { // 6-8시간을 분 단위로 변환
-    score += 50 // 적절한 작업량 보너스
-  }
-  
-  // 6. 효율성 보너스
-  if (scenes.length >= 3 && score > 1000) {
-    score += 100 // 높은 효율성 보너스
-  }
-  
-  return score
-}
-
-/**
- * 전체 스케줄의 최적화 점수 계산
- * @param {Array} days - 일정 배열
- * @returns {number} 전체 최적화 점수
- */
-const calculateOptimizationScore = (days) => {
-  const totalScore = days.reduce((total, day) => total + (day.optimizationScore || 0), 0)
-  const averageScore = totalScore / days.length
-  
-  // 효율성 계산 개선: 단일 씬과 다중 씬을 구분하여 계산
-  let efficiency = 0
-  
-  if (days.length === 1 && days[0].scenes && days[0].scenes.length === 1) {
-    // 단일 Scene인 경우: 기본 효율성 60% + 추가 보너스
-    const singleScene = days[0].scenes[0]
-    const duration = parseDurationToMinutes(singleScene.estimatedDuration || '5분')
-    
-    // 촬영 시간에 따른 효율성 조정
-    if (duration >= 30 && duration <= 60) {
-      efficiency = 70 // 적절한 촬영 시간
-    } else if (duration > 60) {
-      efficiency = 80 // 긴 촬영 시간 (집중 촬영)
-    } else {
-      efficiency = 60 // 짧은 촬영 시간
-    }
-    
-    console.log(`📊 단일 Scene 효율성 계산:`, {
-      duration: `${duration}분`,
-      efficiency: `${efficiency}%`
-    });
-  } else {
-    // 다중 Scene인 경우: 기존 계산 방식 사용
-    const maxPossibleScore = 2000 // 최대 가능한 점수
-    efficiency = Math.min(100, Math.round((averageScore / maxPossibleScore) * 100))
-    
-    console.log(`📊 다중 Scene 최적화 점수 계산:`, {
-      totalScore,
-      averageScore,
-      maxPossibleScore,
-      efficiency: `${efficiency}%`
-    });
-  }
-  
-  return {
-    total: totalScore,
-    average: averageScore,
-    efficiency: efficiency // 개선된 효율성 백분율
-  }
-}
-
-/**
- * 배열을 청크로 분할
- * @param {Array} array - 분할할 배열
- * @param {number} chunkSize - 청크 크기
- * @returns {Array} 분할된 배열들
- */
-const chunkArray = (array, chunkSize) => {
-  const chunks = []
-  for (let i = 0; i < array.length; i += chunkSize) {
-    chunks.push(array.slice(i, i + chunkSize))
-  }
-  return chunks
 }
 
 /**
@@ -1109,69 +1009,7 @@ function getSafeDuration(scene) {
   return actualDuration;
 }
 
-/**
- * 시간대별 실제 촬영 시간 설정 (낮/밤으로 단순화)
- * @param {string} timeOfDay - 시간대 (낮, 밤)
- * @returns {Object} 시작 시간과 종료 시간
- */
-const getTimeSlotRange = (timeOfDay, totalDayScenes = null, isLateStart = false) => {
-  // 낮 씬을 늦은 낮부터 시작해야 하는 경우(같은 장소에 밤 씬이 있는 경우)
-  if ((timeOfDay === '낮' || timeOfDay === 'day') && isLateStart && totalDayScenes && totalDayScenes.length > 0) {
-    // 낮 씬 총 소요시간 계산
-    const totalDuration = totalDayScenes.reduce((sum, scene) => sum + getSafeDuration(scene) + 60, -60); // 씬 간 휴식 포함, 첫 씬은 휴식 없음
-    // 밤 씬 시작 가능 시간(18:00)에서 낮 씬 총 소요시간을 역산 + 두시간 쉬는시간간
-    let lateStartHour = 18 * 60 - totalDuration - 60;
-    if (lateStartHour < 7 * 60) lateStartHour = 7 * 60; // 최소 07:00 이후
-    const lateStart = `${String(Math.floor(lateStartHour / 60)).padStart(2, '0')}:${String(lateStartHour % 60).padStart(2, '0')}`;
-    return {
-      start: '07:00',
-      end: '17:00',
-      label: `낮 (07:00-17:00, 늦은 시작: ${lateStart})`,
-      availableMinutes: 600,
-      optimalStartTime: lateStart,
-      optimalEndTime: '17:00'
-    };
-  }
-  switch (timeOfDay) {
-    case '낮':
-    case '오전':
-    case '오후':
-    case 'day':
-    case 'morning':
-    case 'afternoon':
-      return { 
-        start: '06:00', 
-        end: '18:00', 
-        label: '낮 (06:00-18:00)',
-        availableMinutes: 720, // 12시간 = 720분
-        optimalStartTime: '06:00',
-        optimalEndTime: '18:00'
-      }
-    case '밤':
-    case '저녁':
-    case '새벽':
-    case 'night':
-    case 'evening':
-    case 'dawn':
-      return { 
-        start: '18:00', 
-        end: '06:00', 
-        label: '밤 (18:00-06:00)',
-        availableMinutes: 720, // 12시간 = 720분 (다음날 06:00까지)
-        optimalStartTime: '18:00',
-        optimalEndTime: '06:00'
-      }
-    default:
-      return { 
-        start: '06:00', 
-        end: '18:00', 
-        label: '낮 (06:00-18:00)',
-        availableMinutes: 720, // 12시간 = 720분
-        optimalStartTime: '06:00',
-        optimalEndTime: '18:00'
-      }
-  }
-}
+
 
 /**
  * 시간대별 촬영 시간 최적화 (실제 촬영시간 정확히 반영)
@@ -1199,8 +1037,27 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
     })));
   }
   
-  // 낮 씬이면서 밤 씬이 같은 장소에 있으면 늦은 낮부터 시작
-  const timeRange = getTimeSlotRange(timeOfDay, scenes, isLateStart);
+  // 시간대별 기본 시간 설정 (단순화)
+  const getBasicTimeRange = (timeOfDay) => {
+    const ranges = {
+      'M': { start: '06:00', end: '12:00', availableMinutes: 360 },
+      'D': { start: '12:00', end: '18:00', availableMinutes: 360 },
+      'N': { start: '18:00', end: '06:00', availableMinutes: 720 },
+      'morning': { start: '06:00', end: '12:00', availableMinutes: 360 },
+      'afternoon': { start: '12:00', end: '18:00', availableMinutes: 360 },
+      'night': { start: '18:00', end: '06:00', availableMinutes: 720 },
+      'day': { start: '06:00', end: '18:00', availableMinutes: 720 },
+      '낮': { start: '06:00', end: '18:00', availableMinutes: 720 },
+      '밤': { start: '18:00', end: '06:00', availableMinutes: 720 },
+      '아침': { start: '06:00', end: '12:00', availableMinutes: 360 },
+      '오후': { start: '12:00', end: '18:00', availableMinutes: 360 },
+      '저녁': { start: '18:00', end: '06:00', availableMinutes: 720 },
+      '새벽': { start: '00:00', end: '06:00', availableMinutes: 360 }
+    }
+    return ranges[timeOfDay] || ranges['D']
+  }
+  
+  const timeRange = getBasicTimeRange(timeOfDay)
   console.log(`⏰ 시간대별 최적화: ${timeOfDay} (${scenes.length}개 씬)`);
   
   // 시간대별 시간 범위 설정 (실제 촬영 가능 시간)
@@ -1257,7 +1114,7 @@ const optimizeScenesByTimeSlot = (scenes, timeOfDay, allScenesInLocation = null)
   
   for (const scene of sortedScenes) {
     const sceneDuration = getSafeDuration(scene)
-    const sceneBreakTime = 60 // 씬 간 휴식 시간 (1시간 = 60분)
+    const sceneBreakTime = 30 // 씬 간 휴식 시간 (30분 = 30분)
     const totalSceneTime = sceneDuration + sceneBreakTime
     
     console.log(`  📋 씬 "${scene.title}" 검토:`);
@@ -1326,20 +1183,48 @@ const addMinutesToTime = (time, minutes) => {
 }
 
 /**
- * 시간대별 슬롯 생성 (실제 촬영시간 기준, 정확한 시간 계산)
- * @param {Array} scenes - 씬 배열
- * @returns {Array} 시간대별 슬롯
+ * 시간대별 슬롯 생성 (breakdown.timeTable과 동일한 시간대 사용)
+ * @param {Array} scenes - Scene 배열
+ * @param {Object} timeRange - 시간 범위 (createDaySchedule에서 계산된 값)
+ * @returns {Array} 시간대별 슬롯 배열
  */
-const generateTimeSlots = (scenes) => {
+const generateTimeSlots = (scenes, timeRange = null) => {
   const timeSlots = []
-  let currentTime = '09:00' // 기본 시작 시간 (오전 9시)
+  
+  // breakdown.timeTable과 동일한 시작시간 사용
+  let currentTime = timeRange?.start || '09:00'
   
   console.log('🕐 시간대별 슬롯 생성 시작:', scenes.length, '개 씬');
+  console.log('📍 시작시간:', currentTime);
   
-  scenes.forEach((scene, idx) => {
+  // breakdown.timeTable과 동일한 씬 순서 적용
+  // 낮/밤 씬 분류 및 최적화
+  const dayScenes = []
+  const nightScenes = []
+  
+  scenes.forEach(scene => {
+    const timeOfDay = scene.timeOfDay
+    if (timeOfDay === '아침' || timeOfDay === '오후' || timeOfDay === '낮' || timeOfDay === 'M' || timeOfDay === 'D') {
+      dayScenes.push(scene)
+    } else if (timeOfDay === '저녁' || timeOfDay === '밤' || timeOfDay === '새벽' || timeOfDay === 'N') {
+      nightScenes.push(scene)
+    } else {
+      // 미정인 경우 낮 씬으로 처리
+      dayScenes.push(scene)
+    }
+  })
+  
+  // breakdown.timeTable과 동일한 최적화 적용
+  const optimizedDayScenes = optimizeScenesByTimeSlot(dayScenes, '낮', scenes)
+  const optimizedNightScenes = optimizeScenesByTimeSlot(nightScenes, '밤', scenes)
+  
+  // 낮 씬 먼저, 밤 씬 나중에 배치 (breakdown.timeTable과 동일)
+  const optimizedScenes = [...optimizedDayScenes, ...optimizedNightScenes]
+  
+  optimizedScenes.forEach((scene, idx) => {
     // 실제 촬영시간 사용
     const durationMin = scene.actualShootingDuration || getSafeDuration(scene)
-    const breakTime = 60 // 씬 간 휴식 시간 (1시간 = 60분)
+    const breakTime = 30 // 씬 간 휴식 시간 (30분)
     
     // 씬 시작 시간
     const startTime = currentTime
@@ -1383,20 +1268,106 @@ const generateTimeSlots = (scenes) => {
  * @param {Array} sceneData - Scene 데이터
  * @returns {Object} 브레이크다운 데이터
  */
-export const generateBreakdown = (sceneData) => {
+
+
+/**
+ * 일별 상세 브레이크다운 생성 (집합시간 + Time Table 포함)
+ * @param {Object} daySchedule - 해당 날짜의 스케줄 객체 (generateOptimalSchedule의 days 배열 요소)
+ * @returns {Object} 일별 상세 브레이크다운 데이터
+ */
+export const generateBreakdown = (daySchedule) => {
+  // daySchedule에서 scenes 추출
+  const dayScenes = daySchedule.scenes || []
   try {
     const breakdown = {
+      // 🆕 기본 정보 섹션 추가
+      basicInfo: {
+        projectTitle: daySchedule.projectTitle,        // 프로젝트 제목
+        shootNumber: daySchedule.shootNumber,         // 촬영 회차 (예: "국내 39차 중 11회차")
+        date: daySchedule.date,                // 촬영 날짜
+        dayOfWeek: daySchedule.dayOfWeek,          // 요일
+        weather: daySchedule.weather,             // 날씨 정보
+        temperature: {             // 온도 정보
+          max: daySchedule.temperature.max,               // 최고온도
+          min: daySchedule.temperature.min                // 최저온도
+        },
+        rainProbability: {         // 비올 확률
+          morning: null,           // 오전 확률
+          afternoon: null          // 오후 확률
+        },
+        sunrise: null,             // 일출 시간
+        sunset: null,              // 일몰 시간
+        documentInfo: {            // 문서 정보
+          fix: null,               // 수정 정보
+          writer: null             // 작성자
+        }
+      },
+      // 🆕 연락처 정보 섹션 추가
+      contacts: {
+        producer: { name: null, contact: null },
+        productionManager: { name: null, contact: null },
+        assistantDirector: { name: null, contact: null },
+        director: { name: null, contact: null },
+        // 부서별 연락처
+        departments: {
+          direction: {},      // 연출부 연락처
+          production: {},     // 제작부 연락처
+          art: {},           // 미술부 연락처
+          cinematography: {}, // 촬영부 연락처
+          lighting: {},      // 조명부 연락처
+          sound: {},         // 음향부 연락처
+          costume: {},       // 의상부 연락처
+          makeup: {},        // 분장부 연락처
+          props: {}          // 소품부 연락처
+        }
+      },
+      // 🆕 씬 상세 정보 섹션 추가
+      sceneDetails: {
+        sceneList: [],           // 씬 목록 (S#, 장소, M/D/N, S/O/L, 컷수, 장면내용, 등장인물, 단역, 비고)
+        sceneSummary: {          // 씬 요약
+          totalScenes: 0,
+          totalCuts: 0,
+          locations: [],
+          timeSlots: []
+        }
+      },
+      // 기존 분류 정보
       locations: {},
       actors: {},
       timeSlots: {},
-      equipment: {},
-      crew: {},
+      equipment: {
+        direction: {},      // 연출부 장비
+        production: {},     // 제작부 장비
+        cinematography: {}, // 촬영부 장비
+        lighting: {},       // 조명부 장비
+        sound: {},          // 음향부 장비
+        art: {}             // 미술부 장비
+      },
+      crew: {
+        direction: {},      // 연출부 인력
+        production: {},     // 제작부 인력
+        cinematography: {}, // 촬영부 인력
+        lighting: {},       // 조명부 인력
+        sound: {},          // 음향부 인력
+        art: {}             // 미술부 인력
+      },
       props: {},
       costumes: {},
-      cameras: {} // 카메라 정보 추가
+      cameras: {}, // 카메라 정보 추가
+      summary: {
+        totalScenes: dayScenes.length,
+        totalDuration: 0
+      },
+      // 🆕 집합시간 및 Time Table 정보 추가
+      meetingInfo: {
+        meetingTime: null,        // 집합 시간
+        meetingLocation: null,    // 집합 장소
+        meetingPoints: []         // 여러 집합 지점 (1차, 2차, 3차)
+      },
+      timeTable: []               // 상세 타임 테이블
     }
     
-    sceneData.forEach(scene => {
+    dayScenes.forEach(scene => {
       // 1. 장소별 분류 (최우선)
       const location = extractLocationFromScene(scene)
       if (!breakdown.locations[location]) {
@@ -1420,21 +1391,185 @@ export const generateBreakdown = (sceneData) => {
       }
       breakdown.timeSlots[timeSlot].push(scene)
       
-      // 4. 장비별 분류 (네 번째 우선순위)
-      const equipment = extractEquipmentFromScene(scene)
-      if (!breakdown.equipment[equipment]) {
-        breakdown.equipment[equipment] = []
-      }
-      breakdown.equipment[equipment].push(scene)
-      
-      // 5. 인력별 분류
-      const crew = extractCrewFromScene(scene)
-      crew.forEach(member => {
-        if (!breakdown.crew[member]) {
-          breakdown.crew[member] = []
+      // 4. 장비별 분류 (부서별)
+      if (scene.equipment) {
+        // 연출부 장비
+        if (scene.equipment.direction) {
+          Object.entries(scene.equipment.direction).forEach(([category, items]) => {
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach(item => {
+                if (!breakdown.equipment.direction[item]) {
+                  breakdown.equipment.direction[item] = []
+                }
+                breakdown.equipment.direction[item].push(scene)
+              })
+            }
+          })
         }
-        breakdown.crew[member].push(scene)
-      })
+        
+        // 제작부 장비
+        if (scene.equipment.production) {
+          Object.entries(scene.equipment.production).forEach(([category, items]) => {
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach(item => {
+                if (!breakdown.equipment.production[item]) {
+                  breakdown.equipment.production[item] = []
+                }
+                breakdown.equipment.production[item].push(scene)
+              })
+            }
+          })
+        }
+        
+        // 촬영부 장비
+        if (scene.equipment.cinematography) {
+          Object.entries(scene.equipment.cinematography).forEach(([category, items]) => {
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach(item => {
+                if (!breakdown.equipment.cinematography[item]) {
+                  breakdown.equipment.cinematography[item] = []
+                }
+                breakdown.equipment.cinematography[item].push(scene)
+              })
+            }
+          })
+        }
+        
+        // 조명부 장비
+        if (scene.equipment.lighting) {
+          Object.entries(scene.equipment.lighting).forEach(([category, items]) => {
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach(item => {
+                if (!breakdown.equipment.lighting[item]) {
+                  breakdown.equipment.lighting[item] = []
+                }
+                breakdown.equipment.lighting[item].push(scene)
+              })
+            }
+          })
+        }
+        
+        // 음향부 장비
+        if (scene.equipment.sound) {
+          Object.entries(scene.equipment.sound).forEach(([category, items]) => {
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach(item => {
+                if (!breakdown.equipment.sound[item]) {
+                  breakdown.equipment.sound[item] = []
+                }
+                breakdown.equipment.sound[item].push(scene)
+              })
+            }
+          })
+        }
+        
+        // 미술부 장비
+        if (scene.equipment.art) {
+          Object.entries(scene.equipment.art).forEach(([category, items]) => {
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach(item => {
+                if (!breakdown.equipment.art[item]) {
+                  breakdown.equipment.art[item] = []
+                }
+                breakdown.equipment.art[item].push(scene)
+              })
+            }
+          })
+        }
+      }
+      
+      // 5. 인력별 분류 (부서별)
+      if (scene.crew) {
+        // 연출부 인력
+        if (scene.crew.direction) {
+          Object.entries(scene.crew.direction).forEach(([role, person]) => {
+            if (person && person.trim() !== '') {
+              if (!breakdown.crew.direction[person]) {
+                breakdown.crew.direction[person] = []
+              }
+              breakdown.crew.direction[person].push({
+                ...scene,
+                role: role
+              })
+            }
+          })
+        }
+        
+        // 제작부 인력
+        if (scene.crew.production) {
+          Object.entries(scene.crew.production).forEach(([role, person]) => {
+            if (person && person.trim() !== '') {
+              if (!breakdown.crew.production[person]) {
+                breakdown.crew.production[person] = []
+              }
+              breakdown.crew.production[person].push({
+                ...scene,
+                role: role
+              })
+            }
+          })
+        }
+        
+        // 촬영부 인력
+        if (scene.crew.cinematography) {
+          Object.entries(scene.crew.cinematography).forEach(([role, person]) => {
+            if (person && person.trim() !== '') {
+              if (!breakdown.crew.cinematography[person]) {
+                breakdown.crew.cinematography[person] = []
+              }
+              breakdown.crew.cinematography[person].push({
+                ...scene,
+                role: role
+              })
+            }
+          })
+        }
+        
+        // 조명부 인력
+        if (scene.crew.lighting) {
+          Object.entries(scene.crew.lighting).forEach(([role, person]) => {
+            if (person && person.trim() !== '') {
+              if (!breakdown.crew.lighting[person]) {
+                breakdown.crew.lighting[person] = []
+              }
+              breakdown.crew.lighting[person].push({
+                ...scene,
+                role: role
+              })
+            }
+          })
+        }
+        
+        // 음향부 인력
+        if (scene.crew.sound) {
+          Object.entries(scene.crew.sound).forEach(([role, person]) => {
+            if (person && person.trim() !== '') {
+              if (!breakdown.crew.sound[person]) {
+                breakdown.crew.sound[person] = []
+              }
+              breakdown.crew.sound[person].push({
+                ...scene,
+                role: role
+              })
+            }
+          })
+        }
+        
+        // 미술부 인력
+        if (scene.crew.art) {
+          Object.entries(scene.crew.art).forEach(([role, person]) => {
+            if (person && person.trim() !== '') {
+              if (!breakdown.crew.art[person]) {
+                breakdown.crew.art[person] = []
+              }
+              breakdown.crew.art[person].push({
+                ...scene,
+                role: role
+              })
+            }
+          })
+        }
+      }
       
       // 6. 소품별 분류
       const props = extractPropsFromScene(scene)
@@ -1466,12 +1601,598 @@ export const generateBreakdown = (sceneData) => {
       })
     })
     
+    // 9. 일별 요약 정보 생성
+    breakdown.summary.totalScenes = dayScenes.length
+    breakdown.summary.totalDuration = dayScenes.reduce((total, scene) => {
+      return total + getSafeDuration(scene)
+    }, 0)
+    
+    // 🆕 기본 정보 생성
+    generateBasicInfo(breakdown, daySchedule)
+    
+    // 🆕 연락처 정보 생성
+    generateContactInfo(breakdown, daySchedule)
+    
+    // 🆕 씬 상세 정보 생성
+    generateSceneDetails(breakdown, dayScenes)
+    
+    // 🆕 집합시간 및 Time Table 생성
+    generateMeetingInfoAndTimeTable(breakdown, daySchedule)
+    
     return breakdown
   } catch (error) {
-    console.error('브레이크다운 생성 중 오류:', error)
-    throw new Error('브레이크다운 생성에 실패했습니다.')
+    console.error('일별 브레이크다운 생성 중 오류:', error)
+    throw new Error('일별 브레이크다운 생성에 실패했습니다.')
   }
 }
+
+/**
+ * 기본 정보 생성
+ * @param {Object} breakdown - 브레이크다운 객체
+ * @param {Object} daySchedule - 일별 스케줄 객체
+ */
+const generateBasicInfo = (breakdown, daySchedule) => {
+  try {
+    const { scenes, date } = daySchedule
+    
+    // 프로젝트 제목 (첫 번째 씬에서 추출)
+    if (scenes.length > 0) {
+      breakdown.basicInfo.projectTitle = scenes[0].projectTitle || '프로젝트 제목 미정'
+    }
+    
+    // 촬영 날짜 및 요일
+    const today = new Date()
+    breakdown.basicInfo.date = today.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+    breakdown.basicInfo.dayOfWeek = today.toLocaleDateString('ko-KR', { weekday: 'long' })
+    
+    // 날씨 정보 (첫 번째 씬에서 추출)
+    if (scenes.length > 0) {
+      breakdown.basicInfo.weather = scenes[0].weather || '맑음'
+    }
+    
+    // 온도 정보 (기본값)
+    breakdown.basicInfo.temperature = {
+      max: '28°C',
+      min: '22°C'
+    }
+    
+    // 비올 확률 (기본값)
+    breakdown.basicInfo.rainProbability = {
+      morning: '60%',
+      afternoon: '30%'
+    }
+    
+    // 일출/일몰 시간 (기본값)
+    breakdown.basicInfo.sunrise = '05:20'
+    breakdown.basicInfo.sunset = '20:00'
+    
+    // 문서 정보
+    breakdown.basicInfo.documentInfo = {
+      fix: `${today.getMonth() + 1}월${today.getDate()}일`,
+      writer: '연출부'
+    }
+    
+  } catch (error) {
+    console.error('기본 정보 생성 중 오류:', error)
+  }
+}
+
+/**
+ * 연락처 정보 생성
+ * @param {Object} breakdown - 브레이크다운 객체
+ * @param {Object} daySchedule - 일별 스케줄 객체
+ */
+const generateContactInfo = (breakdown, daySchedule) => {
+  try {
+    const { scenes } = daySchedule
+    
+    // 기본 연락처 정보 (실제로는 DB에서 가져와야 함)
+    breakdown.contacts.producer = { name: '김재홍', contact: '019-334-2180' }
+    breakdown.contacts.productionManager = { name: '백진동', contact: '011-9536-3868' }
+    breakdown.contacts.assistantDirector = { name: '김미선', contact: '011-9927-7879' }
+    breakdown.contacts.director = { name: '이언희', contact: '010-0000-0000' }
+    
+    // 부서별 연락처
+    breakdown.contacts.departments.direction = {
+      '연출부 미술/소품': { name: '안상훈', contact: '019-368-1676' }
+    }
+    
+    breakdown.contacts.departments.production = {
+      '제작부': { name: '유인교', contact: '011-9182-5194' },
+      '라인프로듀서': { name: '온정준', contact: '011-899-0592' }
+    }
+    
+    breakdown.contacts.departments.art = {
+      '소품/특분/CG': { name: '한재빈', contact: '016-650-3048' }
+    }
+    
+    breakdown.contacts.departments.costume = {
+      '의상': { name: '유동식', contact: '016-291-8115' }
+    }
+    
+    breakdown.contacts.departments.makeup = {
+      '분장/헤어': { name: '장형수', contact: '016-272-6030' }
+    }
+    
+  } catch (error) {
+    console.error('연락처 정보 생성 중 오류:', error)
+  }
+}
+
+/**
+ * 씬 상세 정보 생성
+ * @param {Object} breakdown - 브레이크다운 객체
+ * @param {Array} dayScenes - 해당 날짜의 씬 배열
+ */
+const generateSceneDetails = (breakdown, dayScenes) => {
+  try {
+    const sceneList = []
+    let totalCuts = 0
+    const locations = new Set()
+    const timeSlots = new Set()
+    
+    dayScenes.forEach(scene => {
+      // 씬 상세 정보 생성
+      const sceneDetail = {
+        sceneNumber: scene.scene,                    // S#
+        location: scene.location?.name || '미정',    // 장소
+        timeOfDay: scene.timeOfDay || '낮',         // M/D/N
+        sol: scene.sol || 'L',                      // S/O/L (Studio/Outside/Location)
+        cutCount: scene.totalCuts || 1,             // 컷수
+        description: scene.description || '',        // 장면 내용
+        mainCast: extractMainCast(scene),           // 등장인물 (주연)
+        supportingCast: extractSupportingCast(scene), // 조연
+        extras: extractExtras(scene),               // 단역 및 보조출연
+        remarks: scene.specialRequirements || ''     // 비고
+      }
+      
+      sceneList.push(sceneDetail)
+      
+      // 요약 정보 업데이트
+      totalCuts += sceneDetail.cutCount
+      locations.add(sceneDetail.location)
+      timeSlots.add(sceneDetail.timeOfDay)
+    })
+    
+    breakdown.sceneDetails.sceneList = sceneList
+    breakdown.sceneDetails.sceneSummary = {
+      totalScenes: dayScenes.length,
+      totalCuts: totalCuts,
+      locations: Array.from(locations),
+      timeSlots: Array.from(timeSlots)
+    }
+    
+  } catch (error) {
+    console.error('씬 상세 정보 생성 중 오류:', error)
+  }
+}
+
+/**
+ * 주연 배우 추출
+ * @param {Object} scene - 씬 객체
+ * @returns {String} 주연 배우 목록
+ */
+const extractMainCast = (scene) => {
+  if (!scene.cast) return ''
+  
+  const mainActors = scene.cast.filter(actor => 
+    actor.role === '주연' || actor.role === '주인공'
+  ).map(actor => actor.name || actor.role)
+  
+  return mainActors.join(', ')
+}
+
+/**
+ * 조연 배우 추출
+ * @param {Object} scene - 씬 객체
+ * @returns {String} 조연 배우 목록
+ */
+const extractSupportingCast = (scene) => {
+  if (!scene.cast) return ''
+  
+  const supportingActors = scene.cast.filter(actor => 
+    actor.role === '조연' || actor.role === '지원'
+  ).map(actor => actor.name || actor.role)
+  
+  return supportingActors.join(', ')
+}
+
+/**
+ * 단역 및 보조출연 추출
+ * @param {Object} scene - 씬 객체
+ * @returns {String} 단역 및 보조출연 목록
+ */
+const extractExtras = (scene) => {
+  if (!scene.cast) return ''
+  
+  const extras = scene.cast.filter(actor => 
+    actor.role === '단역' || actor.role === '보조출연' || actor.role === '엑스트라'
+  ).map(actor => {
+    if (actor.count) {
+      return `${actor.name || actor.role}:${actor.count}명`
+    }
+    return actor.name || actor.role
+  })
+  
+  return extras.join(', ')
+}
+
+/**
+ * 집합시간 및 Time Table 생성
+ * @param {Object} breakdown - 브레이크다운 객체
+ * @param {Object} daySchedule - 일별 스케줄 객체
+ */
+const generateMeetingInfoAndTimeTable = (breakdown, daySchedule) => {
+  try {
+    const { scenes, timeRange, timeSlots, location, timeSlot } = daySchedule
+    
+    // 1. 집합시간 설정
+    if (timeRange && timeRange.start) {
+      breakdown.meetingInfo.meetingTime = timeRange.start
+      breakdown.meetingInfo.meetingLocation = location || '미정'
+    } else {
+      // 기본 집합시간 설정 (09:00)
+      breakdown.meetingInfo.meetingTime = '09:00'
+      breakdown.meetingInfo.meetingLocation = location || '미정'
+    }
+    
+    // 2. 여러 집합 지점 생성 (1차, 2차, 3차)
+    breakdown.meetingInfo.meetingPoints = generateMeetingPoints(daySchedule)
+    
+    // 3. 상세 Time Table 생성
+    breakdown.timeTable = generateDetailedTimeTable(daySchedule, breakdown)
+    
+  } catch (error) {
+    console.error('집합시간 및 Time Table 생성 중 오류:', error)
+  }
+}
+
+/**
+ * 여러 집합 지점 생성 (location_group 기반, 유동적 시간 계산)
+ * @param {Object} daySchedule - 일별 스케줄 객체
+ * @returns {Array} 집합 지점 배열
+ */
+const generateMeetingPoints = (daySchedule) => {
+  const { scenes, timeRange } = daySchedule
+  const meetingPoints = []
+  
+  // location_group별로 씬 그룹화
+  const groupScenes = {}
+  scenes.forEach(scene => {
+    const group = scene.location?.location_group || '미정'
+    if (!groupScenes[group]) {
+      groupScenes[group] = []
+    }
+    groupScenes[group].push(scene)
+  })
+  
+  // 각 location_group별로 집합 정보 생성
+  const groups = Object.keys(groupScenes)
+  
+  groups.forEach((group, groupIndex) => {
+    const groupScenesList = groupScenes[group]
+    
+    // 해당 그룹의 첫 번째 씬에서 대표 장소명 추출
+    const representativeLocation = groupScenesList[0]?.location?.name || group
+    
+    if (groupIndex === 0) {
+      // 첫 번째 그룹: 1차 집합
+      if (timeRange && timeRange.start) {
+        meetingPoints.push({
+          order: 1,
+          time: timeRange.start,
+          location: representativeLocation,
+          group: group,
+          description: '1차 집합'
+        })
+      }
+      
+      // 2차 집합: 첫 번째 그룹의 촬영 시간을 고려하여 계산
+      if (timeRange && timeRange.start) {
+        const firstGroupDuration = calculateGroupDuration(groupScenesList)
+        const lunchTime = timeToMinutes(timeRange.start) + (4 * 60) // 4시간 후 점심
+        const afterLunchTime = lunchTime + (1 * 60) // 점심 1시간 후
+        
+        // 첫 번째 그룹 촬영이 점심 전에 끝나는지 확인
+        const firstGroupEndTime = timeToMinutes(timeRange.start) + firstGroupDuration
+        
+        let secondMeetingTime
+        if (firstGroupEndTime <= lunchTime) {
+          // 첫 번째 그룹이 점심 전에 끝나는 경우: 점심 후
+          secondMeetingTime = afterLunchTime
+        } else {
+          // 첫 번째 그룹이 점심 후에도 이어지는 경우: 첫 번째 그룹 완료 후
+          secondMeetingTime = firstGroupEndTime + (30 * 60) // 30분 휴식 후
+        }
+        
+        meetingPoints.push({
+          order: 2,
+          time: toTimeStr(secondMeetingTime),
+          location: representativeLocation,
+          group: group,
+          description: '2차 집합 (점심 후)'
+        })
+      }
+      
+      // 3차 집합: 밤 씬이 있는 경우에만 생성
+      const nightScenes = groupScenesList.filter(scene => 
+        scene.timeOfDay === '밤' || scene.timeOfDay === 'night'
+      )
+      
+      if (nightScenes.length > 0) {
+        // 밤 씬들의 시작 시간 계산
+        const dayScenes = groupScenesList.filter(scene => 
+          scene.timeOfDay === '아침' || scene.timeOfDay === '오후' || scene.timeOfDay === '낮' || scene.timeOfDay === 'M' || scene.timeOfDay === 'D'
+        )
+        
+        let nightStartTime
+        if (dayScenes.length > 0) {
+          // 낮 씬이 있는 경우: 낮 씬 완료 후
+          const dayDuration = calculateGroupDuration(dayScenes)
+          nightStartTime = timeToMinutes(timeRange.start) + dayDuration + (30 * 60) // 30분 휴식 후
+        } else {
+          // 밤 씬만 있는 경우: 시작시간 + 2시간 후
+          nightStartTime = timeToMinutes(timeRange.start) + (2 * 60)
+        }
+        
+        meetingPoints.push({
+          order: 3,
+          time: toTimeStr(nightStartTime),
+          location: representativeLocation,
+          group: group,
+          description: '3차 집합 (밤 촬영)'
+        })
+      }
+    } else {
+      // 추가 그룹: 이전 그룹들의 총 촬영 시간을 고려하여 계산
+      const previousGroupsDuration = calculatePreviousGroupsDuration(groups.slice(0, groupIndex), groupScenes)
+      const moveStartTime = timeToMinutes(timeRange?.start || '09:00') + previousGroupsDuration + (30 * 60) // 30분 이동시간
+      
+      meetingPoints.push({
+        order: groupIndex + 1,
+        time: toTimeStr(moveStartTime),
+        location: representativeLocation,
+        group: group,
+        description: `${groupIndex + 1}차 집합 (${groups[groupIndex - 1]} → ${group})`
+      })
+    }
+  })
+  
+  return meetingPoints
+}
+
+/**
+ * 그룹의 총 촬영 시간 계산
+ * @param {Array} groupScenes - 그룹의 씬들
+ * @returns {number} 총 촬영 시간 (분)
+ */
+const calculateGroupDuration = (groupScenes) => {
+  let totalDuration = 0
+  
+  groupScenes.forEach((scene, index) => {
+    const sceneDuration = getSafeDuration(scene)
+    const breakTime = index > 0 ? 30 : 0 // 씬 간 휴식 30분
+    totalDuration += sceneDuration + breakTime
+  })
+  
+  return totalDuration
+}
+
+/**
+ * 이전 그룹들의 총 촬영 시간 계산
+ * @param {Array} previousGroups - 이전 그룹명들
+ * @param {Object} groupScenes - 모든 그룹의 씬들
+ * @returns {number} 총 촬영 시간 (분)
+ */
+const calculatePreviousGroupsDuration = (previousGroups, groupScenes) => {
+  let totalDuration = 0
+  
+  previousGroups.forEach(groupName => {
+    const groupScenesList = groupScenes[groupName] || []
+    totalDuration += calculateGroupDuration(groupScenesList)
+  })
+  
+  return totalDuration
+}
+
+/**
+ * 상세 Time Table 생성 (optimizeScenesByTimeSlot 로직 적용)
+ * @param {Object} daySchedule - 일별 스케줄 객체
+ * @param {Object} breakdown - 브레이크다운 객체
+ * @returns {Array} Time Table 배열
+ */
+const generateDetailedTimeTable = (daySchedule, breakdown) => {
+  const { scenes, timeRange, location } = daySchedule
+  const timeTable = []
+  
+  if (!timeRange || !timeRange.start) {
+    return timeTable
+  }
+  
+  let currentTime = timeToMinutes(timeRange.start)
+  
+  // 낮/밤 씬 분류
+  const dayScenes = []
+  const nightScenes = []
+  
+  scenes.forEach(scene => {
+    const timeOfDay = scene.timeOfDay
+    if (timeOfDay === '아침' || timeOfDay === '오후' || timeOfDay === '낮' || timeOfDay === 'M' || timeOfDay === 'D') {
+      dayScenes.push(scene)
+    } else if (timeOfDay === '저녁' || timeOfDay === '밤' || timeOfDay === '새벽' || timeOfDay === 'N') {
+      nightScenes.push(scene)
+    } else {
+      // 미정인 경우 낮 씬으로 처리
+      dayScenes.push(scene)
+    }
+  })
+  
+  // 1. 집합
+  timeTable.push({
+    startTime: toTimeStr(currentTime),
+    endTime: toTimeStr(currentTime),
+    activity: '집합',
+    details: `${location} 집합`,
+    type: 'meeting'
+  })
+  
+  // 2. 이동 (필요한 경우)
+  if (location !== breakdown.meetingInfo?.meetingLocation) {
+    timeTable.push({
+      startTime: toTimeStr(currentTime),
+      endTime: toTimeStr(currentTime + 60),
+      activity: '이동',
+      details: `${breakdown.meetingInfo?.meetingLocation || '집합장소'} → ${location}`,
+      type: 'movement'
+    })
+    currentTime += 60
+  }
+  
+  // 3. 낮 씬이 있는 경우 낮 타임라인 추가 (optimizeScenesByTimeSlot 로직 적용)
+  if (dayScenes.length > 0) {
+    // 아침식사
+    timeTable.push({
+      startTime: toTimeStr(currentTime),
+      endTime: toTimeStr(currentTime + 40),
+      activity: '아침식사',
+      details: '아침식사',
+      type: 'meal'
+    })
+    currentTime += 40
+    
+    // 셋팅
+    timeTable.push({
+      startTime: toTimeStr(currentTime),
+      endTime: toTimeStr(currentTime + 80),
+      activity: '셋팅',
+      details: '카메라, 조명, 미술 셋팅 / 보조출연 준비',
+      type: 'setup'
+    })
+    currentTime += 80
+    
+    // 리허설
+    timeTable.push({
+      startTime: toTimeStr(currentTime),
+      endTime: toTimeStr(currentTime + 30),
+      activity: '리허설',
+      details: '씬별 리허설',
+      type: 'rehearsal'
+    })
+    currentTime += 30
+    
+    // 낮 씬 최적화 (optimizeScenesByTimeSlot 로직 적용)
+    const optimizedDayScenes = optimizeScenesByTimeSlot(dayScenes, '낮', scenes)
+    
+    // 최적화된 낮 씬 촬영
+    optimizedDayScenes.forEach((scene, index) => {
+      const sceneDuration = getSafeDuration(scene)
+      
+      timeTable.push({
+        startTime: toTimeStr(currentTime),
+        endTime: toTimeStr(currentTime + sceneDuration),
+        activity: '촬영',
+        details: `씬 ${scene.scene}: ${scene.title}`,
+        type: 'shooting',
+        sceneNumber: scene.scene,
+        sceneTitle: scene.title
+      })
+      
+      currentTime += sceneDuration
+      
+      // 씬 간 휴식 (마지막 씬이 아닌 경우)
+      if (index < optimizedDayScenes.length - 1) {
+        timeTable.push({
+          startTime: toTimeStr(currentTime),
+          endTime: toTimeStr(currentTime + 30),
+          activity: '휴식',
+          details: '씬 간 휴식',
+          type: 'break'
+        })
+        currentTime += 30
+      }
+    })
+    
+    // 점심시간 (낮 촬영 중간)
+    const lunchTime = timeToMinutes(timeRange.start) + (4 * 60) // 4시간 후
+    if (currentTime > lunchTime) {
+      const lunchIndex = timeTable.findIndex(item => 
+        timeToMinutes(item.startTime) >= lunchTime
+      )
+      
+      if (lunchIndex !== -1) {
+        timeTable.splice(lunchIndex, 0, {
+          startTime: toTimeStr(lunchTime),
+          endTime: toTimeStr(lunchTime + 60),
+          activity: '점심시간',
+          details: '점심식사',
+          type: 'meal'
+        })
+      }
+    }
+  }
+  
+  // 4. 밤 씬이 있는 경우 밤 타임라인 추가 (optimizeScenesByTimeSlot 로직 적용)
+  if (nightScenes.length > 0) {
+    // 저녁시간
+    timeTable.push({
+      startTime: toTimeStr(currentTime),
+      endTime: toTimeStr(currentTime + 60),
+      activity: '저녁시간',
+      details: '저녁식사',
+      type: 'meal'
+    })
+    currentTime += 60
+    
+    // 밤 씬 최적화 (optimizeScenesByTimeSlot 로직 적용)
+    const optimizedNightScenes = optimizeScenesByTimeSlot(nightScenes, '밤', scenes)
+    
+    // 최적화된 밤 씬 촬영
+    optimizedNightScenes.forEach((scene, index) => {
+      const sceneDuration = getSafeDuration(scene)
+      
+      timeTable.push({
+        startTime: toTimeStr(currentTime),
+        endTime: toTimeStr(currentTime + sceneDuration),
+        activity: '촬영',
+        details: `씬 ${scene.scene}: ${scene.title}`,
+        type: 'shooting',
+        sceneNumber: scene.scene,
+        sceneTitle: scene.title
+      })
+      
+      currentTime += sceneDuration
+      
+      // 씬 간 휴식 (마지막 씬이 아닌 경우)
+      if (index < optimizedNightScenes.length - 1) {
+        timeTable.push({
+          startTime: toTimeStr(currentTime),
+          endTime: toTimeStr(currentTime + 30),
+          activity: '휴식',
+          details: '씬 간 휴식',
+          type: 'break'
+        })
+        currentTime += 30
+      }
+    })
+  }
+  
+  // 5. 철수
+  timeTable.push({
+    startTime: toTimeStr(currentTime),
+    endTime: toTimeStr(currentTime),
+    activity: '철수',
+    details: '촬영 종료 및 철수',
+    type: 'wrap'
+  })
+  
+  return timeTable
+}
+
+
 
 /**
  * Scene에서 인력 정보 추출 (Scene 스키마 기반)
@@ -1760,190 +2481,8 @@ const extractCameraFromScene = (scene) => {
  * @param {string} projectId - 프로젝트 ID
  * @returns {Object} schedule - 스케쥴 결과(날짜별 씬 배치, 안내문 등 포함)
  */
-export async function scheduleShooting(scenes, realLocations, groups, projectId) {
-  let messages = [];
-  let updatedScenes = [...scenes];
-  let updatedRealLocations = [...realLocations];
-  let updatedGroups = [...groups];
-
-  // 1. 빈 realLocation 자동 할당
-  let emptyRealLocation = updatedRealLocations.find(loc => loc.name === '빈 realLocation' && loc.projectId === projectId);
-  if (!emptyRealLocation) {
-    emptyRealLocation = {
-      _id: 'empty_realLocation',
-      projectId,
-      name: '빈 realLocation',
-      groupId: null
-    };
-    updatedRealLocations.push(emptyRealLocation);
-  }
-  let scenesWithNoLocation = updatedScenes.filter(s => !s.location?.realLocationId);
-  if (scenesWithNoLocation.length > 0) {
-    updatedScenes = updatedScenes.map(s =>
-      s.location?.realLocationId
-        ? s
-        : { ...s, location: { ...s.location, realLocationId: emptyRealLocation._id } }
-    );
-    messages.push('촬영 위치가 지정되지 않은 Scene이 있습니다. "빈 realLocation"이 자동 할당되었습니다. 촬영 위치를 채워주세요.');
-  }
-
-  // 2. 빈 group 자동 할당
-  let emptyGroup = updatedGroups.find(g => g.name === '빈 group' && g.projectId === projectId);
-  if (!emptyGroup) {
-    emptyGroup = {
-      _id: 'empty_group',
-      projectId,
-      name: '빈 group',
-      address: ''
-    };
-    updatedGroups.push(emptyGroup);
-  }
-  let realLocationsWithNoGroup = updatedRealLocations.filter(loc => !loc.groupId);
-  if (realLocationsWithNoGroup.length > 0) {
-    updatedRealLocations = updatedRealLocations.map(loc =>
-      loc.groupId
-        ? loc
-        : { ...loc, groupId: emptyGroup._id }
-    );
-    messages.push('그룹이 없는 장소가 있습니다. "빈 group"이 자동 할당되었습니다. 그룹을 할당해주세요.');
-  }
-
-  // [낮/밤 분리 로직 추가]
-  const isDay = (scene) => {
-    const t = scene.timeOfDay;
-    return t === '아침' || t === '오후' || t === '낮';
-  };
-  const isNight = (scene) => {
-    const t = scene.timeOfDay;
-    return t === '저녁' || t === '밤' || t === '새벽';
-  };
-  const dayScenes = scenes.filter(isDay);
-  const nightScenes = scenes.filter(isNight);
-
-  // 2, 3단계: realLocation별 → Scene 리스트로 묶기 → 그룹별 구간을 하루 6/3시간(360/180분) 이내로 분배
-  const dayDays = splitScenesByLocationAndTime(dayScenes, 360, updatedRealLocations);
-  const nightDays = splitScenesByLocationAndTime(nightScenes, 180, updatedRealLocations);
-
-  const maxLen = Math.max(dayDays.length, nightDays.length);
-
-  // 4단계: days 배열의 각 날에 대해 타임라인 생성
-  const scheduledDays = [];
-  for(let i = 0; i < maxLen; i++) {
-    const day = dayDays[i] || { sections: [], totalMinutes: 0 };
-    const night = nightDays[i] || { sections: [], totalMinutes: 0 };
-    const daySceneItems = day.sections.map((section, idx) => {
-      return {type: '촬영', duration: section.totalMinutes, scene: section};
-    });
-    const nightSceneItems = night.sections.map((section, idx) => {
-      return {type: '촬영', duration: section.totalMinutes, scene: section};
-    });
-    const nightTimeline = [];
-    for(let j = 0; j < nightScenes.length; j++) {
-        if( j === 0 || nightScenes[j].scene.location?.realLocationId !== nightScenes[j-1].scene.location?.realLocationId) {
-            nightTimeline.push({type: ( j === 0 ? '밤 세팅' : '장소 이동 및 세팅'), duration: 60});
-            nightTimeline.push({type: '리허설', duration: 30});
-        }
-        nightTimeline.push({type: '촬영', duration: nightScenes[j].duration, scene: nightScenes[j].scene});
-    }
-    let dayTimeline = [];
-    for(let j = 0; j < dayScenes.length; j++) {
-        if(j === 0 || dayScenes[j].scene.location?.realLocationId !== dayScenes[j-1].scene.location?.realLocationId) {
-            dayTimeline.push({type: (j === 0 ? '세팅' : '장소 이동 및 세팅'), duration: 60});
-            dayTimeline.push({type: '리허설', duration: 30});
-        }
-        dayTimeline.push({type: '촬영', duration: dayScenes[j].duration, scene: dayScenes[j].scene});
-    }
-    let currentTime = 0;
-    let lunchIdx = undefined;
-    for(let j = dayTimeline.length - 1; j >= 0; j--) {
-        if(currentTime >= 5 * 60 && dayTimeline[j].type === '촬영') {
-            lunchIdx = j;
-            break;
-        }
-        currentTime += dayTimeline[j].duration;
-    }
-    if(lunchIdx !== undefined) {
-        dayTimeline = [...dayTimeline.slice(0, lunchIdx + 1), {type: '점심', duration: 60}, ...dayTimeline.slice(lunchIdx + 1)];
-    }
 
 
-    const timeline = [
-        {type: '집합', duration: 0}, 
-        {type: '이동', duration: 60},
-        ...dayTimeline, 
-        {type: '저녁', duration: 60}, 
-        ...nightTimeline,
-        {type: '철수', duration: 0}
-    ];
-    currentTime = 7 * 60;
-    let deltaTime = 0;
-    let scheduledDay = timeline.map((block, idx) => {
-      const ret = (idx === 0 || idx === timeline.length - 1) ? {
-        ...block,
-        time: toTimeStr(currentTime),
-      } : {
-        ...block,
-        time: toTimeStr(currentTime) + " ~ " + toTimeStr(currentTime + block.duration),
-      };
-      if(block.type === '저녁') deltaTime = 18 * 60 - currentTime;
-      currentTime += block.duration;
-      return ret;
-    });
-    currentTime = 7 * 60 + deltaTime;
-    scheduledDay = timeline.map((block, idx) => {
-        const ret = (idx === 0 || idx === timeline.length - 1) ? {
-          ...block,
-          time: toTimeStr(currentTime),
-        } : {
-          ...block,
-          time: toTimeStr(currentTime) + " ~ " + toTimeStr(currentTime + block.duration),
-        };
-        currentTime += block.duration;
-        return ret;
-    });
-    scheduledDays.push(scheduledDay);
- }
-
-  // 유틸: 분→HH:MM, HH:MM→분
-  function toTimeStr(mins) {
-    let h = Math.floor(mins / 60);
-    const m = mins % 60;
-    let prefix = '';
-    if (h >= 24) {
-      prefix = '익일 ';
-      h -= 24;
-    }
-    return `${prefix}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  }
-  function timeToMinutes(str) {
-    const [h, m] = str.split(':').map(Number);
-    return h * 60 + m;
-  }
-  // 이후 단계에서 scheduledDays 사용
-  const returnScheduledDays = [];
-  for(let i = 0; i < scheduledDays.length; i++) {
-    const day = scheduledDays[i];
-    const sections = [];
-    let totalTime = 0;
-    day.map((block, idx) => {
-        if(block.type === '촬영') {
-            sections.push(block.scene);
-        }
-        totalTime += block.duration;
-    });
-    returnScheduledDays.push({
-        sections: sections,
-        timeline: day,
-        totalMinutes: totalTime,
-    });
-  }
-
-  // 최종 결과 리턴
-  return {
-    days: returnScheduledDays,
-    messages,
-  };
-}
 
 /**
  * scenes를 realLocationId 기준으로 정렬한 뒤, maxTime(분) 단위로 Day 배열로 분할
@@ -2000,23 +2539,7 @@ export function splitScenesByLocationAndTime(scenes, maxTime, realLocations) {
   return days;
 }
 
-/**
- * 두 Scene이 같은 배우를 가지고 있는지 확인
- * @param {Object} scene1 - 첫 번째 Scene
- * @param {Object} scene2 - 두 번째 Scene
- * @returns {boolean} 같은 배우가 있는지 여부
- */
-const hasSameActors = (scene1, scene2) => {
-  const actors1 = extractActorsFromScene(scene1)
-  const actors2 = extractActorsFromScene(scene2)
-  
-  console.log('🎭 배우 비교:', {
-    scene1: { id: scene1._id, title: scene1.title, actors: actors1 },
-    scene2: { id: scene2._id, title: scene2.title, actors: actors2 }
-  });
-  
-  return actors1.some(actor => actors2.includes(actor))
-}
+
 
 /**
  * 두 Scene이 같은 시간대를 가지고 있는지 확인
@@ -2085,24 +2608,130 @@ export const generateScheduleCSV = (scheduleData) => {
  * @returns {string} CSV 문자열
  */
 export const generateBreakdownCSV = (breakdownData) => {
-  let csv = 'Category,Item,Scenes,Count\n'
-  
-  // 장소별
-  Object.entries(breakdownData.locations).forEach(([location, scenes]) => {
-    csv += `Location,${location},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
-  })
-  
-  // 장비별
-  Object.entries(breakdownData.equipment).forEach(([equipment, scenes]) => {
-    csv += `Equipment,${equipment},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
-  })
-  
-  // 인력별
-  Object.entries(breakdownData.crew).forEach(([crew, scenes]) => {
-    csv += `Crew,${crew},${scenes.map(s => s.scene).join(', ')},${scenes.length}\n`
-  })
-  
-  return csv
+  try {
+    let csv = '일별 브레이크다운\n\n'
+    
+    // 🆕 기본 정보 (이미지 참조)
+    if (breakdownData.basicInfo) {
+      csv += '기본 정보\n'
+      csv += '프로젝트 제목,' + (breakdownData.basicInfo.projectTitle || '미정') + '\n'
+      csv += '촬영 회차,' + (breakdownData.basicInfo.shootNumber || '미정') + '\n'
+      csv += '촬영 날짜,' + (breakdownData.basicInfo.date || '미정') + '\n'
+      csv += '요일,' + (breakdownData.basicInfo.dayOfWeek || '미정') + '\n'
+      csv += '날씨,' + (breakdownData.basicInfo.weather || '미정') + '\n'
+      csv += '최고온도,' + (breakdownData.basicInfo.temperature?.max || '미정') + '\n'
+      csv += '최저온도,' + (breakdownData.basicInfo.temperature?.min || '미정') + '\n'
+      csv += '비올 확률 (오전),' + (breakdownData.basicInfo.rainProbability?.morning || '미정') + '\n'
+      csv += '비올 확률 (오후),' + (breakdownData.basicInfo.rainProbability?.afternoon || '미정') + '\n'
+      csv += '일출,' + (breakdownData.basicInfo.sunrise || '미정') + '\n'
+      csv += '일몰,' + (breakdownData.basicInfo.sunset || '미정') + '\n'
+      csv += '문서 수정,' + (breakdownData.basicInfo.documentInfo?.fix || '미정') + '\n'
+      csv += '작성자,' + (breakdownData.basicInfo.documentInfo?.writer || '미정') + '\n\n'
+    }
+    
+    // 🆕 연락처 정보
+    if (breakdownData.contacts) {
+      csv += '연락처 정보\n'
+      csv += '역할,이름,연락처\n'
+      csv += 'PRODUCER,' + (breakdownData.contacts.producer?.name || '미정') + ',' + (breakdownData.contacts.producer?.contact || '미정') + '\n'
+      csv += '제작부장,' + (breakdownData.contacts.productionManager?.name || '미정') + ',' + (breakdownData.contacts.productionManager?.contact || '미정') + '\n'
+      csv += '조감독,' + (breakdownData.contacts.assistantDirector?.name || '미정') + ',' + (breakdownData.contacts.assistantDirector?.contact || '미정') + '\n'
+      csv += '감독,' + (breakdownData.contacts.director?.name || '미정') + ',' + (breakdownData.contacts.director?.contact || '미정') + '\n\n'
+      
+      // 부서별 연락처
+      Object.entries(breakdownData.contacts.departments).forEach(([department, contacts]) => {
+        Object.entries(contacts).forEach(([role, info]) => {
+          csv += `${department} ${role},${info.name || '미정'},${info.contact || '미정'}\n`
+        })
+      })
+      csv += '\n'
+    }
+    
+    // 🆕 씬 상세 정보
+    if (breakdownData.sceneDetails && breakdownData.sceneDetails.sceneList.length > 0) {
+      csv += '씬 상세 정보\n'
+      csv += 'S#,장소,M/D/N,S/O/L,컷수,장면 내용,등장인물,조연,단역 및 보조출연,비고\n'
+      breakdownData.sceneDetails.sceneList.forEach(scene => {
+        csv += `${scene.sceneNumber},${scene.location},${scene.timeOfDay},${scene.sol},${scene.cutCount},${scene.description},${scene.mainCast},${scene.supportingCast},${scene.extras},${scene.remarks}\n`
+      })
+      csv += '\n'
+    }
+    
+    // 기본 정보 (요약)
+    csv += '요약 정보\n'
+    csv += '총 씬 수,' + breakdownData.summary.totalScenes + '\n'
+    csv += '총 시간,' + breakdownData.summary.totalDuration + '분\n\n'
+    
+    // 🆕 집합시간 정보
+    if (breakdownData.meetingInfo) {
+      csv += '집합시간 정보\n'
+      csv += '차수,시간,장소,설명\n'
+      breakdownData.meetingInfo.meetingPoints.forEach(point => {
+        csv += `${point.order},${point.time},${point.location},${point.description}\n`
+      })
+      csv += '\n'
+    }
+    
+    // 🆕 Time Table
+    if (breakdownData.timeTable && breakdownData.timeTable.length > 0) {
+      csv += 'Time Table\n'
+      csv += '시작시간,종료시간,활동,세부내용\n'
+      breakdownData.timeTable.forEach(item => {
+        csv += `${item.startTime},${item.endTime},${item.activity},${item.details}\n`
+      })
+      csv += '\n'
+    }
+    
+    // 장비 정보 (부서별)
+    csv += '장비 정보 (부서별)\n'
+    csv += '부서,장비명,사용 씬\n'
+    Object.entries(breakdownData.equipment).forEach(([department, equipments]) => {
+      Object.entries(equipments).forEach(([equipment, scenes]) => {
+        csv += department + ',' + equipment + ',' + scenes.map(s => s.scene).join(', ') + '\n'
+      })
+    })
+    csv += '\n'
+    
+    // 인력 정보 (부서별)
+    csv += '인력 정보 (부서별)\n'
+    csv += '부서,이름,역할,담당 씬\n'
+    Object.entries(breakdownData.crew).forEach(([department, crews]) => {
+      Object.entries(crews).forEach(([crew, scenes]) => {
+        scenes.forEach(scene => {
+          csv += department + ',' + crew + ',' + scene.role + ',' + scene.scene + '\n'
+        })
+      })
+    })
+    csv += '\n'
+    
+    // 소품 정보
+    csv += '소품 정보\n'
+    csv += '소품명,사용 씬\n'
+    Object.entries(breakdownData.props).forEach(([prop, scenes]) => {
+      csv += prop + ',' + scenes.map(s => s.scene).join(', ') + '\n'
+    })
+    csv += '\n'
+    
+    // 의상 정보
+    csv += '의상 정보\n'
+    csv += '의상명,사용 씬\n'
+    Object.entries(breakdownData.costumes).forEach(([costume, scenes]) => {
+      csv += costume + ',' + scenes.map(s => s.scene).join(', ') + '\n'
+    })
+    csv += '\n'
+    
+    // 카메라 정보
+    csv += '카메라 정보\n'
+    csv += '카메라/렌즈,사용 씬\n'
+    Object.entries(breakdownData.cameras).forEach(([camera, scenes]) => {
+      csv += camera + ',' + scenes.map(s => s.scene).join(', ') + '\n'
+    })
+    
+    return csv
+  } catch (error) {
+    console.error('CSV 생성 중 오류:', error)
+    throw new Error('CSV 생성에 실패했습니다.')
+  }
 }
 
 /**
@@ -2125,5 +2754,199 @@ const extractLocationFromScene = (scene) => {
   }
   // 정보가 없으면 '미정' 반환
   return '미정'
+}
+
+/**
+ * 장소 변경 시 새 날짜 시작 여부 판단 (Group + RealLocation 고려)
+ * @param {string} currentLocation - 현재 장소명
+ * @param {string} newLocation - 새로운 장소명
+ * @param {Array} currentDayScenes - 현재 날짜의 씬들
+ * @param {Array} realLocations - 실제 장소 배열
+ * @returns {boolean} 새 날짜 시작 여부
+ */
+const shouldStartNewDayForLocation = (currentLocation, newLocation, currentDayScenes, realLocations = []) => {
+  // 첫 번째 씬이거나 현재 장소가 없는 경우
+  if (!currentLocation || currentDayScenes.length === 0) {
+    return false
+  }
+  
+  // 같은 장소인 경우
+  if (currentLocation === newLocation) {
+    return false
+  }
+  
+  // Group 정보 확인
+  const currentRealLocation = realLocations.find(loc => loc.name === currentLocation)
+  const newRealLocation = realLocations.find(loc => loc.name === newLocation)
+  
+  const currentGroupId = currentRealLocation?.groupId
+  const newGroupId = newRealLocation?.groupId
+  
+  // 같은 Group 내 이동인지 확인
+  const isSameGroup = currentGroupId && newGroupId && currentGroupId === newGroupId
+  
+  // 현재 Group의 씬 개수 계산
+  const currentGroupScenes = currentDayScenes.filter(scene => {
+    const sceneLocation = realLocations.find(loc => loc.name === extractLocationFromScene(scene))
+    return sceneLocation?.groupId === currentGroupId
+  })
+  
+  const currentGroupSceneCount = currentGroupScenes.length
+  
+  console.log(`[SchedulerService] 장소 변경 검토:`, {
+    currentLocation,
+    newLocation,
+    currentGroupId,
+    newGroupId,
+    isSameGroup,
+    currentGroupSceneCount
+  })
+  
+  // 1. 같은 Group 내 이동인 경우
+  if (isSameGroup) {
+    // 같은 Group에서 5개 이상 씬을 촬영했으면 새 날짜
+    if (currentGroupSceneCount >= 5) {
+      console.log(`[SchedulerService] 같은 Group에서 ${currentGroupSceneCount}개 씬 완료, 새 날짜 시작`)
+      return true
+    }
+    
+    // 같은 Group 내에서는 효율적으로 계속
+    console.log(`[SchedulerService] 같은 Group 내 이동, 효율적으로 계속`)
+    return false
+  }
+  
+  // 2. 다른 Group으로 이동하는 경우
+  else {
+    // 현재 Group에서 3개 이상 씬을 촬영했으면 새 날짜
+    if (currentGroupSceneCount >= 3) {
+      console.log(`[SchedulerService] 다른 Group으로 이동, 현재 Group에서 ${currentGroupSceneCount}개 씬 완료, 새 날짜 시작`)
+      return true
+    }
+    
+    // 현재 Group에서 씬이 적으면 같은 날에 다른 Group 씬 추가
+    console.log(`[SchedulerService] 다른 Group으로 이동, 현재 Group에서 ${currentGroupSceneCount}개 씬만 있어 효율적으로 계속`)
+    return false
+  }
+}
+
+/**
+ * 타임라인 생성 (세팅, 리허설, 촬영, 점심시간 포함)
+ * @param {Array} sections - 씬 섹션 배열
+ * @param {string} timeType - 'day' 또는 'night'
+ * @returns {Array} 타임라인 배열
+ */
+const createTimeline = (sections, timeType) => {
+  const timeline = [];
+  
+  for(let j = 0; j < sections.length; j++) {
+    const section = sections[j];
+    const prevSection = j > 0 ? sections[j-1] : null;
+    
+    // 장소 변경 시 세팅/이동 시간 추가
+    if(j === 0 || (prevSection && section.location?.realLocationId !== prevSection.location?.realLocationId)) {
+      const setupType = j === 0 ? 
+        (timeType === 'day' ? '세팅' : '밤 세팅') : 
+        '장소 이동 및 세팅';
+      timeline.push({type: setupType, duration: 60});
+      timeline.push({type: '리허설', duration: 30});
+    }
+    
+    // 촬영 시간 추가
+    const duration = section.totalMinutes || parseDurationToMinutes(section.estimatedDuration || '5분') * 20;
+    timeline.push({type: '촬영', duration: duration, scene: section});
+  }
+  
+  // 낮 타임라인의 경우 점심시간 추가
+  if(timeType === 'day' && timeline.length > 0) {
+    let currentTime = 0;
+    let lunchIdx = undefined;
+    
+    // 5시간(300분) 후에 점심시간 배치
+    for(let j = timeline.length - 1; j >= 0; j--) {
+      if(currentTime >= 5 * 60 && timeline[j].type === '촬영') {
+            lunchIdx = j;
+            break;
+        }
+      currentTime += timeline[j].duration;
+    }
+    
+    if(lunchIdx !== undefined) {
+      timeline.splice(lunchIdx + 1, 0, {type: '점심', duration: 60});
+    }
+  }
+  
+  return timeline;
+}
+
+/**
+ * 분을 HH:MM 형식으로 변환
+ * @param {number} mins - 분
+ * @returns {string} HH:MM 형식의 시간 문자열
+ */
+const toTimeStr = (mins) => {
+    let h = Math.floor(mins / 60);
+    const m = mins % 60;
+    let prefix = '';
+    if (h >= 24) {
+      prefix = '익일 ';
+      h -= 24;
+    }
+    return `${prefix}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+/**
+ * HH:MM 형식을 분으로 변환
+ * @param {string} str - HH:MM 형식의 시간 문자열
+ * @returns {number} 분
+ */
+const timeToMinutes = (str) => {
+    const [h, m] = str.split(':').map(Number);
+    return h * 60 + m;
+}
+
+/**
+ * 통합 타임라인 생성 (낮/밤 구분 없이 유동적 처리)
+ * @param {Array} sections - 씬 섹션 배열
+ * @returns {Array} 통합 타임라인 배열
+ */
+const createUnifiedTimeline = (sections) => {
+  const timeline = [];
+  
+  // 낮/밤 씬 분류
+  const daySections = [];
+  const nightSections = [];
+  
+  sections.forEach(section => {
+    const timeOfDay = section.timeOfDay;
+    if (timeOfDay === '아침' || timeOfDay === '오후' || timeOfDay === '낮') {
+      daySections.push(section);
+    } else if (timeOfDay === '저녁' || timeOfDay === '밤' || timeOfDay === '새벽') {
+      nightSections.push(section);
+    } else {
+      // 미정인 경우 낮 씬으로 처리
+      daySections.push(section);
+    }
+  });
+  
+  // 전체 타임라인 구성
+  timeline.push({type: '집합', duration: 0});
+  timeline.push({type: '이동', duration: 60});
+  
+  // 낮 씬이 있는 경우 낮 타임라인 추가
+  if (daySections.length > 0) {
+    const dayTimeline = createTimeline(daySections, 'day');
+    timeline.push(...dayTimeline);
+  }
+  
+  // 밤 씬이 있는 경우 밤 타임라인 추가
+  if (nightSections.length > 0) {
+    timeline.push({type: '저녁', duration: 60});
+    const nightTimeline = createTimeline(nightSections, 'night');
+    timeline.push(...nightTimeline);
+  }
+  
+  timeline.push({type: '철수', duration: 0});
+  
+  return timeline;
 }
 
