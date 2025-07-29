@@ -266,13 +266,18 @@ description - ${scene.description}
 dialogues - ${JSON.stringify(scene.dialogues)}
 sceneDateTime - ${scene.timeOfDay}
 weather - ${scene.weather}
-lighting - ${JSON.stringify(scene.lighting)}
+lighting - ${JSON.stringify({
+  description: scene.lighting.description,
+  colorTemperature: scene.lighting.setup.overall.colorTemperature,
+  mood: scene.lighting.setup.overall.mood
+})}
 place - ${scene.scenePlace}
 cast - ${JSON.stringify(scene.cast)}
 visualDescription - ${scene.visualDescription}
 vfxRequired - ${scene.vfxRequired}
 sfxRequired - ${scene.sfxRequired}
 genre - ${genre.join(', ')}
+estimatedDuration - ${scene.estimatedDuration}
 
 최대 ${maxCuts}개 컷을 다음 형식으로 생성:
 {
@@ -280,7 +285,7 @@ genre - ${genre.join(', ')}
     {
       "order": 1,
       "title": "컷 제목",
-      "description": "촬영 설명",
+      "description": "컷 설명",
       "cameraSetup": {
         "shotSize": "MS",
         "angleDirection": "Eye-level",
@@ -311,7 +316,7 @@ genre - ${genre.join(', ')}
       "estimatedDuration": 8,
       "specialRequirements": {
         "specialCinematography": {
-          "drone": false,
+          "drone": false, 
           "crane": false,
           "jib": false,
           "underwater": false,
@@ -342,17 +347,369 @@ genre - ${genre.join(', ')}
           "requiresFireSafety": false,
           "requiresSafetyOfficer": false
         }
+      },
+      "cutDelta": {
+        "additionalCrew": {
+          "cinematography": {
+            "droneOperator": [],
+            "craneOperator": [],
+            "jibOperator": [],
+            "underwaterOperator": [],
+            "aerialOperator": []
+          },
+          "lighting": {
+            "specialEffectsGaffer": [],
+            "laserOperator": [],
+            "strobeOperator": [],
+            "fogOperator": []
+          },
+          "sound": {
+            "foleyArtist": [],
+            "ambienceRecordist": [],
+            "specialSoundEngineer": []
+          },
+          "art": {
+            "vfxSupervisor": [],
+            "sfxSupervisor": [],
+            "pyrotechnician": [],
+            "stuntCoordinator": [],
+            "animatronicsOperator": [],
+            "prostheticsArtist": [],
+            "bloodEffectsArtist": [],
+            "makeupEffectsArtist": [],
+            "setEffectsArtist": [],
+            "specialPropsMaster": [],
+            "specialCostumeDesigner": []
+          },
+          "production": {
+            "safetySupervisor": [],
+            "fireSafetyOfficer": [],
+            "medic": [],
+            "emergencyCoordinator": []
+          },
+          "etc": []
+        },
+        "additionalEquipment": {
+          "cinematography": {
+            "drones": [],
+            "cranes": [],
+            "jibs": [],
+            "underwaterHousings": [],
+            "aerialRigs": []
+          },
+          "lighting": {
+            "specialKeyLights": [],
+            "specialFillLights": [],
+            "specialBackLights": [],
+            "specialBackgroundLights": [],
+            "specialEffectsLights": [],
+            "specialSoftLights": [],
+            "specialGripModifiers": {
+              "flags": [],
+              "diffusion": [],
+              "reflectors": [],
+              "colorGels": []
+            },
+            "specialPower": []
+          },
+          "sound": {
+            "foleyEquipment": [],
+            "ambienceRecorders": [],
+            "specialMicrophones": [],
+            "soundEffects": []
+          },
+          "art": {
+            "vfxEquipment": [],
+            "pyrotechnics": [],
+            "smokeMachines": [],
+            "fogMachines": [],
+            "windMachines": [],
+            "rainMachines": [],
+            "snowMachines": [],
+            "animatronics": [],
+            "prosthetics": [],
+            "bloodEffects": [],
+            "makeupEffects": [],
+            "setEffects": [],
+            "props": {
+              "characterProps": [],
+              "setProps": []
+            },
+            "costumes": []
+          },
+          "production": {
+            "safetyGear": [],
+            "fireSuppression": [],
+            "medicalEquipment": [],
+            "emergencyEquipment": []
+          },
+          "etc": []
+        }
       }
     }
   ]
 }
 
 각 컷은 다음을 고려하여 생성:
+
+**컷 디자인 패턴 및 몰입감 구성 원칙:**
+
+1. **시퀀스 구조 (Sequence Structure):**
+   - **Establishing Shot (설정 샷)**: 장소와 상황을 보여주는 와이드 샷
+   - **Medium Shot (중간 샷)**: 캐릭터와 액션을 보여주는 중간 거리
+   - **Close-up (클로즈업)**: 감정과 세부사항을 강조하는 근접 샷
+   - **Reaction Shot (반응 샷)**: 캐릭터의 반응을 보여주는 샷
+
+2. **몰입감을 위한 샷 구성:**
+   - **POV (Point of View)**: 캐릭터의 시점으로 몰입감 증대
+   - **OTS (Over the Shoulder)**: 대화 시 자연스러운 시점
+   - **Dutch Angle**: 긴장감과 불안정한 분위기 연출
+   - **Low Angle**: 힘과 위엄을 강조
+   - **High Angle**: 약점이나 무력감을 표현
+
+3. **카메라 움직임으로 몰입감 증대:**
+   - **Dolly**: 부드러운 추적으로 자연스러운 움직임
+   - **Handheld**: 현실감과 긴장감 연출
+   - **Steadicam**: 안정적이면서도 유연한 움직임
+   - **Drone**: 공중에서의 독특한 시점
+   - **Crane**: 극적인 상승/하강 효과
+
+4. **감정적 몰입을 위한 샷 사이즈:**
+   - **EWS (Extreme Wide Shot)**: 장소의 규모와 분위기
+   - **WS (Wide Shot)**: 전체 상황 파악
+   - **MS (Medium Shot)**: 캐릭터와 액션의 균형
+   - **CU (Close Up)**: 감정과 세부사항
+   - **ECU (Extreme Close Up)**: 극적인 강조
+
+5. **시각적 스토리텔링:**
+   - **Rule of Thirds**: 화면을 3등분하여 시각적 균형
+   - **Leading Lines**: 시선을 유도하는 선적 요소
+   - **Depth of Field**: 초점으로 주목할 요소 강조
+   - **Color Contrast**: 색상 대비로 감정 강조
+
+6. **리듬과 페이스:**
+   - **Fast Cuts**: 긴장감과 에너지
+   - **Slow Motion**: 감정적 순간의 연장
+   - **Long Takes**: 현실감과 몰입감
+   - **Montage**: 시간의 압축과 감정의 집중
+
+7. **시퀀스별 컷 구성 패턴:**
+   - **액션 시퀀스**: EWS → WS → MS → CU → ECU (긴장감 증가)
+   - **대화 시퀀스**: MS → OTS → CU → Reaction Shot (감정 교류)
+   - **감정 시퀀스**: CU → ECU → POV → Dutch Angle (내면 탐구)
+   - **환경 시퀀스**: EWS → WS → MS → Detail Shot (공간 탐색)
+   - **클라이맥스**: Low Angle → Dutch Angle → Handheld → Fast Cuts (극적 효과)
+
+8. **몰입감 증대 기법:**
+   - **Subjective Camera**: 캐릭터의 시점으로 관객을 스토리에 참여시킴
+   - **Tracking Shot**: 캐릭터와 함께 움직이며 현실감 증대
+   - **Depth of Field**: 초점을 통해 주목할 요소를 명확히 함
+   - **Lighting Contrast**: 조명 대비로 감정적 분위기 강조
+   - **Sound Design**: 음향과 시각의 조화로 몰입감 증대
+
+9. **감정별 컷 구성 가이드:**
+   - **긴장감**: Dutch Angle + Handheld + Fast Cuts + Low Key Lighting
+   - **로맨스**: Soft Lighting + CU + Slow Motion + Gentle Camera Movement
+   - **액션**: Wide Shots + Fast Movement + Dynamic Angles + High Energy
+   - **드라마**: MS + CU + Static Camera + Natural Lighting
+   - **공포**: Dutch Angle + ECU + Handheld + Dark Lighting
+   - **희극**: Wide Shots + Eye-level + Bright Lighting + Simple Movement
+
+10. **시각적 스토리텔링 원칙:**
+    - **Show, Don't Tell**: 대사보다 시각적 요소로 스토리 전달
+    - **Emotional Journey**: 감정의 변화를 시각적으로 표현
+    - **Character Arc**: 캐릭터의 성장을 샷 구성으로 표현
+    - **Theme Reinforcement**: 주제를 반복되는 시각적 모티프로 강조
+    - **Audience Engagement**: 관객의 감정적 참여를 유도하는 구성
+
+11. **컷 간 연관성 및 대비 효과 설계:**
+    - **Cut-in**: 같은 액션의 다른 각도로 시점 변화 (예: WS → CU)
+    - **Overlapping Action**: 동일 동작을 여러 각도에서 반복하여 리듬감 증대
+    - **Matching Movement**: 이전 컷의 움직임을 다음 컷에서 자연스럽게 연결
+    - **Rhythm Change**: 긴 샷과 짧은 샷의 교대로 리듬감 창출
+    - **Eye-line Match**: 캐릭터의 시선을 따라 다음 컷으로 자연스럽게 전환
+    - **Graphic Match**: 형태나 색상의 유사성을 통해 시각적 연결
+    - **Action Match**: 동일한 액션을 다른 각도에서 연속 촬영
+
+12. **감정 곡선에 따른 점진적 구성:**
+    - **Tension Build-up**: WS → MS → CU → ECU (긴장감 점진적 증가)
+    - **Emotional Release**: ECU → CU → MS → WS (감정 해방)
+    - **Rhythm Acceleration**: 긴 샷 → 중간 샷 → 짧은 샷 (속도감 증가)
+    - **Rhythm Deceleration**: 짧은 샷 → 중간 샷 → 긴 샷 (속도감 감소)
+    - **Emotional Contrast**: 밝은 샷 ↔ 어두운 샷, 정적 샷 ↔ 동적 샷
+
+13. **시퀀스 리듬 설계:**
+    - **Establishing Rhythm**: 첫 컷으로 전체 분위기 설정
+    - **Development Rhythm**: 중간 컷들로 스토리 발전
+    - **Climax Rhythm**: 클라이맥스에서 리듬 최고조
+    - **Resolution Rhythm**: 마무리에서 리듬 안정화
+    - **Pause and Breath**: 긴장 후 이완으로 감정적 호흡
+
+14. **컷 전환 기법:**
+    - **Cut on Action**: 액션 중간에 컷하여 자연스러운 전환
+    - **Cut on Reaction**: 반응을 통해 감정적 전환
+    - **Cut on Movement**: 움직임을 통해 시각적 연결
+    - **Cut on Sound**: 소리를 통해 청각적 연결
+    - **Cut on Emotion**: 감정 변화를 통해 내적 연결
+
+15. **시각적 대비 효과:**
+    - **Size Contrast**: WS ↔ CU (규모 대비)
+    - **Angle Contrast**: High Angle ↔ Low Angle (시점 대비)
+    - **Movement Contrast**: Static ↔ Dynamic (움직임 대비)
+    - **Lighting Contrast**: Bright ↔ Dark (조명 대비)
+    - **Color Contrast**: Warm ↔ Cool (색감 대비)
+
+16. **시퀀스 내 컷 간 연관성 강화:**
+    - **Continuity of Action**: 이전 컷의 액션이 다음 컷에서 자연스럽게 이어짐
+    - **Continuity of Direction**: 캐릭터나 물체의 움직임 방향이 일관됨
+    - **Continuity of Position**: 캐릭터의 위치가 논리적으로 연결됨
+    - **Continuity of Time**: 시간적 흐름이 자연스럽게 연결됨
+    - **Continuity of Space**: 공간적 관계가 일관되게 유지됨
+
+17. **감정적 몰입을 위한 컷 설계:**
+    - **Emotional Pacing**: 감정의 강도에 따라 컷 길이 조절
+    - **Suspense Building**: 긴장감을 위한 점진적 클로즈업
+    - **Catharsis**: 감정 해방을 위한 시각적 폭발
+    - **Intimacy**: 감정적 친밀감을 위한 클로즈업
+    - **Distance**: 객관적 거리감을 위한 와이드 샷
+
+18. **리듬감 있는 시퀀스 구성:**
+    - **Staccato Rhythm**: 짧고 빠른 컷으로 에너지 증대
+    - **Legato Rhythm**: 길고 부드러운 컷으로 감정 연장
+    - **Syncopated Rhythm**: 예상과 다른 타이밍으로 놀라움
+    - **Crescendo Rhythm**: 점진적으로 강해지는 리듬
+    - **Decrescendo Rhythm**: 점진적으로 약해지는 리듬
+
+19. **시각적 모티프 반복:**
+    - **Recurring Shot**: 특정 샷을 반복하여 주제 강조
+    - **Visual Echo**: 이전 컷의 시각적 요소를 다음 컷에서 재해석
+    - **Color Motif**: 특정 색상을 반복하여 감정 강조
+    - **Shape Motif**: 특정 형태를 반복하여 시각적 통일감
+    - **Movement Motif**: 특정 움직임을 반복하여 리듬감 창출
+
+20. **컷 시퀀스 설계 원칙:**
+    - **Unity**: 전체 시퀀스가 하나의 감정적 목표를 향함
+    - **Variety**: 단조로움을 피하기 위한 다양한 구성
+    - **Balance**: 긴장과 이완의 균형
+    - **Progression**: 감정적 여정의 자연스러운 발전
+    - **Closure**: 시퀀스의 만족스러운 마무리
+
+21. **창의적 실험적 컷 디자인 (전체의 10%):**
+    - **Jump Cut**: 시간의 급격한 압축으로 놀라움 연출
+    - **Match Cut**: 형태나 움직임의 유사성으로 시각적 연결
+    - **Graphic Match**: 색상, 형태, 구도의 유사성으로 전환
+    - **Split Screen**: 동시성이나 대비를 시각적으로 표현
+    - **Object POV**: 물체의 시점으로 독특한 관점 제공
+    - **Silhouette Composition**: 실루엣으로 미스터리한 분위기 연출
+    - **Whip Pan**: 빠른 팬으로 에너지와 긴장감 증대
+    - **360도 회전**: 캐릭터나 공간의 완전한 탐색
+    - **Dutch Tilt**: 불안정한 각도로 긴장감 연출
+    - **Extreme Close-up**: 극단적 클로즈업으로 강렬한 인상
+    - **Slow Motion**: 시간의 연장으로 감정적 순간 강조
+    - **Fast Motion**: 시간의 압축으로 에너지 증대
+
+22. **실험적 컷의 적절한 배치:**
+    - **Climax Point**: 감정의 절정에서 강렬한 시각적 충격
+    - **Transition Point**: 장면 전환에서 독특한 연결
+    - **Emotional Peak**: 감정의 최고점에서 실험적 표현
+    - **Narrative Twist**: 이야기 전환점에서 놀라운 시각
+    - **Character Revelation**: 캐릭터의 중요한 순간에서 특별한 각도
+
+23. **실험적 컷의 서사 통합:**
+    - **Narrative Justification**: 실험적 컷이 스토리에 의미를 더함
+    - **Emotional Enhancement**: 감정적 충격을 시각적으로 증폭
+    - **Character Insight**: 캐릭터의 내면을 독특한 방식으로 표현
+    - **Thematic Reinforcement**: 주제를 실험적 기법으로 강조
+    - **Audience Engagement**: 관객의 주의를 끌면서 몰입 유지
+
+24. **실험적 컷의 기술적 고려사항:**
+    - **Technical Feasibility**: 실제 촬영 가능한 기법 선택
+    - **Post-production Integration**: 편집 후 작업과의 조화
+    - **Audience Comprehension**: 관객이 이해할 수 있는 수준 유지
+    - **Genre Appropriateness**: 장르에 맞는 실험적 기법 선택
+    - **Budget Consideration**: 제작 비용을 고려한 기법 선택
+
+25. **창의적 컷의 감정적 효과:**
+    - **Surprise Factor**: 예상치 못한 시각적 충격
+    - **Memory Anchor**: 강렬한 인상으로 기억에 남는 순간
+    - **Emotional Amplification**: 감정을 시각적으로 증폭
+    - **Narrative Emphasis**: 중요한 순간을 특별하게 강조
+    - **Visual Poetry**: 시각적 시로 표현하는 감정
+
+26. **실험적 컷의 구체적 적용 예시:**
+    - **Jump Cut**: "문을 열고 → 바로 방 안" (시간 압축)
+    - **Match Cut**: "달리는 발 → 달리는 바퀴" (움직임 연결)
+    - **Graphic Match**: "원형 창문 → 원형 태양" (형태 연결)
+    - **Split Screen**: "동시에 다른 장소의 두 캐릭터" (동시성)
+    - **Object POV**: "카메라가 물체의 시점으로 촬영" (독특한 관점)
+    - **Silhouette**: "실루엣으로만 보이는 캐릭터" (미스터리)
+    - **Whip Pan**: "빠른 팬으로 긴장감 증대" (에너지)
+    - **360도 회전**: "캐릭터 주변을 완전히 탐색" (공간 탐색)
+
+27. **실험적 컷의 배치 전략:**
+    - **85% 몰입감 있는 컷**: 서사 흐름과 감정 곡선에 충실
+    - **15% 실험적 컷**: 클라이맥스나 전환점에서 강렬한 인상
+    - **균형 유지**: 실험적 컷이 서사를 방해하지 않도록 주의
+    - **감정적 정당성**: 실험적 컷이 감정을 증폭시켜야 함
+    - **기억에 남는 순간**: 관객이 오래 기억할 수 있는 강렬한 시각
+
+28. **실험적 컷의 품질 기준:**
+    - **Narrative Relevance**: 스토리에 의미를 더하는 실험적 컷
+    - **Emotional Impact**: 감정적 충격을 주는 실험적 컷
+    - **Visual Innovation**: 시각적으로 혁신적인 실험적 컷
+    - **Technical Excellence**: 기술적으로 완성도 높은 실험적 컷
+    - **Audience Engagement**: 관객의 몰입을 유지하는 실험적 컷
+
+**기술적 선택 가이드:**
 - shotSize: EWS, VWS, WS, FS, LS, MLS, MS, MCS, CU, MCU, BCU, ECU, TCU, OTS, POV, TS, GS, AS, PS, BS 중 선택
 - angleDirection: Eye-level, High, Low, Dutch, Bird_eye, Worm_eye, Canted, Oblique, Aerial, Ground, Overhead, Under, Side, Front, Back, Three_quarter, Profile, Reverse, POV, Subjective 중 선택  
 - cameraMovement: Static, Pan, Tilt, Dolly, Zoom, Handheld, Tracking, Crane, Steadicam, Gimbal, Drone, Jib, Slider, Dolly_zoom, Arc, Circle, Spiral, Vertigo, Whip_pan, Crash_zoom, Push_in, Pull_out, Follow, Lead, Reveal, Conceal, Parallax, Time_lapse, Slow_motion, Fast_motion, Bullet_time, Matrix_style, 360_degree, VR_style 중 선택
 - estimatedDuration: 1-30초 사이의 값
 - productionMethod: live_action 또는 ai_generated 중 선택
+
+특별 요구사항(specialRequirements)과 추가 인력/장비(cutDelta) 연관 관계:
+1. specialCinematography가 true인 경우:
+   - drone: true → cutDelta.additionalCrew.cinematography.droneOperator에 "드론 조작자" 추가
+   - crane: true → cutDelta.additionalCrew.cinematography.craneOperator에 "크레인 조작자" 추가
+   - jib: true → cutDelta.additionalCrew.cinematography.jibOperator에 "집 조작자" 추가
+   - underwater: true → cutDelta.additionalCrew.cinematography.underwaterOperator에 "수중 촬영자" 추가
+   - aerial: true → cutDelta.additionalCrew.cinematography.aerialOperator에 "공중 촬영자" 추가
+
+2. specialEffects가 true인 경우:
+   - vfx: true → cutDelta.additionalCrew.art.vfxSupervisor에 "VFX 감독" 추가, cutDelta.additionalEquipment.art.vfxEquipment에 "VFX 장비" 추가
+   - pyrotechnics: true → cutDelta.additionalCrew.art.pyrotechnician에 "폭발 효과 기술자" 추가, cutDelta.additionalEquipment.art.pyrotechnics에 "폭발 효과 장비" 추가
+   - smoke: true → cutDelta.additionalEquipment.art.smokeMachines에 "연기 기계" 추가
+   - fog: true → cutDelta.additionalCrew.lighting.fogOperator에 "안개 효과 오퍼레이터" 추가, cutDelta.additionalEquipment.art.fogMachines에 "안개 기계" 추가
+   - wind: true → cutDelta.additionalEquipment.art.windMachines에 "바람 기계" 추가
+   - rain: true → cutDelta.additionalEquipment.art.rainMachines에 "비 효과 기계" 추가
+   - snow: true → cutDelta.additionalEquipment.art.snowMachines에 "눈 효과 기계" 추가
+   - fire: true → cutDelta.additionalEquipment.art.fireMachines에 "화재 효과 기계" 추가
+   - explosion: true → cutDelta.additionalCrew.art.pyrotechnician에 "폭발 효과 기술자" 추가
+   - stunt: true → cutDelta.additionalCrew.art.stuntCoordinator에 "스턴트 코디네이터" 추가
+
+3. specialLighting이 true인 경우:
+   - laser: true → cutDelta.additionalCrew.lighting.laserOperator에 "레이저 오퍼레이터" 추가
+   - strobe: true → cutDelta.additionalCrew.lighting.strobeOperator에 "스트로브 오퍼레이터" 추가
+   - blackLight: true → cutDelta.additionalEquipment.lighting.specialEffectsLights에 "블랙라이트" 추가
+   - uvLight: true → cutDelta.additionalEquipment.lighting.specialEffectsLights에 "UV라이트" 추가
+   - movingLight: true → cutDelta.additionalEquipment.lighting.specialEffectsLights에 "무빙라이트" 추가
+   - colorChanger: true → cutDelta.additionalEquipment.lighting.specialEffectsLights에 "컬러체인저" 추가
+
+4. safety가 true인 경우:
+   - requiresMedic: true → cutDelta.additionalCrew.production.medic에 "의료 담당자" 추가, cutDelta.additionalEquipment.production.medicalEquipment에 "의료 장비" 추가
+   - requiresFireSafety: true → cutDelta.additionalCrew.production.fireSafetyOfficer에 "소화 안전 담당자" 추가, cutDelta.additionalEquipment.production.fireSuppression에 "소화 장비" 추가
+   - requiresSafetyOfficer: true → cutDelta.additionalCrew.production.safetySupervisor에 "안전 감독" 추가, cutDelta.additionalEquipment.production.safetyGear에 "안전 장비" 추가
+
+5. 기타 특수 효과:
+   - animatronics: true → cutDelta.additionalCrew.art.animatronicsOperator에 "애니매트로닉스 조작자" 추가, cutDelta.additionalEquipment.art.animatronics에 "애니매트로닉스" 추가
+   - prosthetics: true → cutDelta.additionalCrew.art.prostheticsArtist에 "특수 의상 아티스트" 추가, cutDelta.additionalEquipment.art.prosthetics에 "특수 의상" 추가
+   - bloodEffects: true → cutDelta.additionalCrew.art.bloodEffectsArtist에 "혈액 효과 아티스트" 추가, cutDelta.additionalEquipment.art.bloodEffects에 "혈액 효과" 추가
+   - makeupEffects: true → cutDelta.additionalCrew.art.makeupEffectsArtist에 "특수 분장 아티스트" 추가, cutDelta.additionalEquipment.art.makeupEffects에 "분장 효과" 추가
+   - setEffects: true → cutDelta.additionalCrew.art.setEffectsArtist에 "세트 효과 아티스트" 추가, cutDelta.additionalEquipment.art.setEffects에 "세트 효과" 추가
+
+6. 음향 관련:
+   - foleyArtist: true → cutDelta.additionalCrew.sound.foleyArtist에 "폴리 아티스트" 추가, cutDelta.additionalEquipment.sound.foleyEquipment에 "폴리 장비" 추가
+   - ambienceRecordist: true → cutDelta.additionalCrew.sound.ambienceRecordist에 "환경음 녹음사" 추가, cutDelta.additionalEquipment.sound.ambienceRecorders에 "환경음 녹음기" 추가
 
 유효한 JSON 형식으로만 응답하세요.
 `;
@@ -588,9 +945,10 @@ genre - ${genre.join(', ')}
 
   async generateImage(projectId: string, sceneId: string, cutId: string): Promise<string> {
     const cut = await this.findById(projectId, sceneId, cutId);
+    const scene = await this.sceneService.findById(projectId, sceneId);
     
     // AI 이미지 생성 프롬프트 작성
-    const prompt = this.buildImageGenerationPrompt(cut);
+    const prompt = this.buildImageGenerationPrompt(scene, cut);
     
     try {
       // AI 서비스를 통해 이미지 생성
@@ -656,13 +1014,57 @@ genre - ${genre.join(', ')}
     }
   }
 
-  private buildImageGenerationPrompt(cut: CutResponseDto): string {
+  private buildImageGenerationPrompt(scene: SceneResponseDto, cut: CutResponseDto): string {
     const { title, description, cameraSetup, subjectMovement, productionMethod } = cut;
     
     let prompt = `영화 촬영 컷 이미지: ${title || '영화 촬영 컷'}`;
     
     if (description) {
       prompt += `\n설명: ${description}`;
+    }
+    
+    // 씬 장소 정보 추가
+    if (scene && scene.location) {
+      prompt += `\n장소: ${scene.location.name || '미정'}`;
+      if (scene.location.address) {
+        prompt += ` (${scene.location.address})`;
+      }
+    }
+    
+    // 날씨 정보 추가
+    if (scene && scene.weather) {
+      prompt += `\n날씨: ${scene.weather}`;
+    }
+    
+    // 시간대 정보 추가
+    if (scene && scene.sceneDateTime) {
+      prompt += `\n시간대: ${scene.sceneDateTime}`;
+    }
+    
+    // 조명 정보 추가
+    if (scene && scene.lighting) {
+      prompt += `\n조명:`;
+      if (scene.lighting.description) {
+        prompt += ` ${scene.lighting.description}`;
+      }
+      if (scene.lighting.setup && scene.lighting.setup.overall) {
+        if (scene.lighting.setup.overall.mood) {
+          prompt += ` 분위기: ${scene.lighting.setup.overall.mood}`;
+        }
+        if (scene.lighting.setup.overall.colorTemperature) {
+          prompt += ` 색온도: ${scene.lighting.setup.overall.colorTemperature}`;
+        }
+      }
+    }
+    
+    // 시각적 설명 추가
+    if (scene && scene.visualDescription) {
+      prompt += `\n시각적 배경: ${scene.visualDescription}`;
+    }
+    
+    // 특수효과 정보 추가
+    if (cut.vfxEffects) {
+      prompt += `\n특수효과: ${cut.vfxEffects}`;
     }
     
     if (cameraSetup) {
@@ -687,7 +1089,7 @@ genre - ${genre.join(', ')}
       prompt += `\n제작 방법: ${productionMethod === 'ai_generated' ? 'AI 생성' : '실사 촬영'}`;
     }
     
-    prompt += `\n\n고품질 영화 촬영 컷 이미지, 시네마틱한 분위기, 전문적인 촬영 스타일`;
+    prompt += `\n\n고품질 영화 촬영 컷 이미지, 시네마틱한 분위기, 전문적인 촬영 스타일, film still 스타일, Cinematic Composition`;
     
     return prompt;
   }
