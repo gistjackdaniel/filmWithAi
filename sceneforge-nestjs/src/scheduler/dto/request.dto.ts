@@ -125,7 +125,7 @@ export class CreateSchedulerRequestDto {
   restDay: number;
 }
 
-export class UpdateSchedulerRequestDto {
+export class UpdateSchedulerDayRequestDto {
   @ApiPropertyOptional({ 
     description: '일차',
     example: 1
@@ -199,3 +199,38 @@ export class UpdateSchedulerRequestDto {
   breakdown?: any;
 }
 
+export class UpdateSchedulerRequestDto {
+  @ApiProperty({ 
+    description: '스케줄러 일일 배열',
+    type: [UpdateSchedulerDayRequestDto]
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateSchedulerDayRequestDto)
+  @IsNotEmpty()
+  days?: UpdateSchedulerDayRequestDto[];
+
+  @ApiProperty({ 
+    description: '총 일수',
+    example: 10
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  totalDays?: number;
+
+  @ApiProperty({  
+    description: '총 씬 수',
+    example: 10
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  totalScenes?: number;
+
+  @ApiProperty({  
+    description: '총 촬영 시간',
+    example: 10
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  totalDuration?: number;
+}

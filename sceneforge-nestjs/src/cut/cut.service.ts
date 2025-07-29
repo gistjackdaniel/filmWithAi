@@ -14,6 +14,8 @@ import { AiService } from 'src/ai/ai.service';
 import { SceneService } from 'src/scene/scene.service';
 import { SceneResponseDto } from 'src/scene/dto/response.dto';
 import { ProjectService } from 'src/project/project.service';
+import { StorageFactoryService } from '../common/services/storage-factory.service';
+import * as fs from 'fs';
 
 @Injectable()
 export class CutService {
@@ -21,7 +23,8 @@ export class CutService {
     @InjectModel(Cut.name) private cutModel: Model<Cut>,
     private aiService: AiService,
     private sceneService: SceneService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private storageFactoryService: StorageFactoryService
   ) {}
 
   async create(projectId: string, sceneId: string, createCutDto: CreateCutRequestDto): Promise<CutResponseDto> {
@@ -503,6 +506,194 @@ genre - ${genre.join(', ')}
     }
 
     return this.mapToResponseDto(cut);
+  }
+
+  async getImage(projectId: string, sceneId: string, cutId: string): Promise<string> {
+    const cut = await this.findById(projectId, sceneId, cutId);
+    return cut.imageUrl || '';
+  }
+
+  async uploadImage(
+    projectId: string, 
+    sceneId: string, 
+    cutId: string, 
+    file: Express.Multer.File
+  ): Promise<string> {
+    // 컷 존재 확인
+    const cut = await this.findById(projectId, sceneId, cutId);
+    
+    // 기존 이미지가 있다면 삭제
+    if (cut.imageUrl) {
+      try {
+        await this.storageFactoryService.deleteImage(cut.imageUrl);
+      } catch (error) {
+        console.warn('기존 이미지 삭제 실패:', error);
+      }
+    }
+
+    // 파일을 base64로 변환
+    const base64Data = file.buffer.toString('base64');
+    const mimeType = file.mimetype;
+    const imageData = `data:${mimeType};base64,${base64Data}`;
+
+    // 새 이미지 업로드
+    const fileName = `cut_${cutId}_${Date.now()}_${file.originalname}`;
+    const imageUrl = await this.storageFactoryService.uploadImage(
+      imageData,
+      fileName
+    );
+
+    // 컷 업데이트
+    await this.cutModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(cutId),
+        projectId: new Types.ObjectId(projectId),
+        sceneId: new Types.ObjectId(sceneId),
+        isDeleted: false
+      },
+      {
+        imageUrl: imageUrl
+      }
+    );
+
+    return imageUrl;
+  }
+
+  async deleteImage(projectId: string, sceneId: string, cutId: string): Promise<string> {
+    const cut = await this.findById(projectId, sceneId, cutId);
+    
+    if (cut.imageUrl) {
+      try {
+        await this.storageFactoryService.deleteImage(cut.imageUrl);
+      } catch (error) {
+        console.warn('이미지 삭제 실패:', error);
+      }
+    }
+
+    // 컷에서 이미지 URL 제거
+    await this.cutModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(cutId),
+        projectId: new Types.ObjectId(projectId),
+        sceneId: new Types.ObjectId(sceneId),
+        isDeleted: false
+      },
+      {
+        imageUrl: ''
+      }
+    );
+
+    return '이미지가 성공적으로 삭제되었습니다.';
+  }
+
+  async generateImage(projectId: string, sceneId: string, cutId: string): Promise<string> {
+    const cut = await this.findById(projectId, sceneId, cutId);
+    
+    // AI 이미지 생성 프롬프트 작성
+    const prompt = this.buildImageGenerationPrompt(cut);
+    
+    try {
+      // AI 서비스를 통해 이미지 생성
+      const imageResult = await this.aiService.callImageGenerations(prompt, {
+        model: 'dall-e-3',
+        size: '1024x1024',
+        quality: 'standard'
+      });
+
+      if (imageResult.data && imageResult.data.length > 0) {
+        const imageUrl = imageResult.data[0].url;
+        
+        // 기존 이미지가 있다면 삭제
+        if (cut.imageUrl) {
+          try {
+            await this.storageFactoryService.deleteImage(cut.imageUrl);
+          } catch (error) {
+            console.warn('기존 이미지 삭제 실패:', error);
+          }
+        }
+
+        // AI에서 생성된 이미지를 다운로드
+        const fileName = `ai_generated_${cutId}_${Date.now()}.png`;
+        const tempFilePath = await this.aiService.downloadImageFromUrl(imageUrl, fileName);
+
+        try {
+          // 다운로드한 파일을 base64로 변환
+          const fileBuffer = fs.readFileSync(tempFilePath);
+          const base64Data = fileBuffer.toString('base64');
+          const imageData = `data:image/png;base64,${base64Data}`;
+
+          // 스토리지 서비스에 업로드
+          const storageFileName = `cut_${cutId}_${Date.now()}_ai_generated.png`;
+          const storageImageUrl = await this.storageFactoryService.uploadImage(
+            imageData,
+            storageFileName
+          );
+
+          // 컷 업데이트
+          await this.cutModel.findOneAndUpdate(
+            {
+              _id: new Types.ObjectId(cutId),
+              projectId: new Types.ObjectId(projectId),
+              sceneId: new Types.ObjectId(sceneId),
+              isDeleted: false
+            },
+            {
+              imageUrl: storageImageUrl
+            }
+          );
+
+          return storageImageUrl;
+        } finally {
+          // 임시 파일 정리
+          await this.aiService.cleanupTempFile(tempFilePath);
+        }
+      } else {
+        throw new Error('AI 이미지 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('AI 이미지 생성 실패:', error);
+      throw new Error('AI 이미지 생성에 실패했습니다.');
+    }
+  }
+
+  private buildImageGenerationPrompt(cut: CutResponseDto): string {
+    const { title, description, cameraSetup, subjectMovement, productionMethod } = cut;
+    
+    let prompt = `영화 촬영 컷 이미지: ${title || '영화 촬영 컷'}`;
+    
+    if (description) {
+      prompt += `\n설명: ${description}`;
+    }
+    
+    if (cameraSetup) {
+      prompt += `\n카메라 설정:`;
+      if (cameraSetup.shotSize) prompt += ` 샷 사이즈: ${cameraSetup.shotSize}`;
+      if (cameraSetup.angleDirection) prompt += ` 앵글: ${cameraSetup.angleDirection}`;
+      if (cameraSetup.cameraMovement) prompt += ` 카메라 움직임: ${cameraSetup.cameraMovement}`;
+      if (cameraSetup.lensSpecs) prompt += ` 렌즈: ${cameraSetup.lensSpecs}`;
+    }
+    
+    if (subjectMovement && subjectMovement.length > 0) {
+      prompt += `\n피사체:`;
+      subjectMovement.forEach(subject => {
+        prompt += ` ${subject.name}(${subject.type})`;
+        if (subject.position) prompt += ` 위치: ${subject.position}`;
+        if (subject.action) prompt += ` 행동: ${subject.action}`;
+        if (subject.emotion) prompt += ` 감정: ${subject.emotion}`;
+      });
+    }
+    
+    if (productionMethod) {
+      prompt += `\n제작 방법: ${productionMethod === 'ai_generated' ? 'AI 생성' : '실사 촬영'}`;
+    }
+    
+    prompt += `\n\n고품질 영화 촬영 컷 이미지, 시네마틱한 분위기, 전문적인 촬영 스타일`;
+    
+    return prompt;
+  }
+
+  getStorageInfo(): { type: string; bucket?: string; localPath?: string } {
+    return this.storageFactoryService.getStorageInfo();
   }
 
   private mapToResponseDto(cut: Cut): CutResponseDto {

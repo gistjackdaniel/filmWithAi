@@ -77,13 +77,7 @@ export class SchedulerSceneResponseDto {
   };
 }
 
-export class SchedulerResponseDto {
-  @ApiProperty({ 
-    description: '스케줄러 ID',
-    example: '507f1f77bcf86cd799439011'
-  })
-  _id: Types.ObjectId;
-
+export class SchedulerDayResponseDto {
   @ApiProperty({ 
     description: '프로젝트 ID',
     example: '507f1f77bcf86cd799439011'
@@ -128,13 +122,9 @@ export class SchedulerResponseDto {
 
   @ApiProperty({ 
     description: '브레이크다운 정보',
-    example: {
-      locations: {},
-      actors: {},
-      equipment: {}
-    }
+    example: []
   })
-  breakdown: any;
+  breakdown: any[];
 
   @ApiProperty({ 
     description: '삭제 여부',
@@ -142,3 +132,35 @@ export class SchedulerResponseDto {
   })
   isDeleted: boolean;
 } 
+
+export class SchedulerResponseDto {
+  @ApiProperty({ 
+    description: '스케줄러 ID',
+    example: '507f1f77bcf86cd799439011'
+  })
+  _id: Types.ObjectId;
+
+  @ApiProperty({ 
+    description: '스케줄러 일일 배열',
+    type: [SchedulerDayResponseDto]
+  })
+  days: SchedulerDayResponseDto[];
+
+  @ApiProperty({ 
+    description: '총 일수',
+    example: 10
+  })
+  totalDays: number;
+
+  @ApiProperty({ 
+    description: '총 씬 수',
+    example: 10
+  })
+  totalScenes: number;
+
+  @ApiProperty({ 
+    description: '총 촬영 시간',
+    example: 10
+  })
+  totalDuration: number;
+}

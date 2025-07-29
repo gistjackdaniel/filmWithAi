@@ -5,6 +5,7 @@ import { Scheduler, SchedulerDocument } from './schema/scheduler.schema';
 import { CreateSchedulerRequestDto, UpdateSchedulerRequestDto } from './dto/request.dto';
 import { SchedulerResponseDto } from './dto/response.dto';
 import { SceneService } from 'src/scene/scene.service';
+import { SceneResponseDto } from 'src/scene/dto/response.dto';
 
 @Injectable()
 export class SchedulerService {
@@ -13,16 +14,21 @@ export class SchedulerService {
     private sceneService: SceneService
   ) {}
 
+  createScheduler(scenes: SceneResponseDto[]) : any {
+    // ...
+    return new SchedulerResponseDto()
+  }
+  
+
   async create(projectId: string, createSchedulerDto: CreateSchedulerRequestDto): Promise<SchedulerResponseDto> {
     // 스케줄러 생성 알고리즘
     const scenes = await this.sceneService.findByProjectId(projectId);
+    const scheduler = this.createScheduler(scenes);
+
+    // 스케줄러 저장
     
-    
-    const scheduler = new this.schedulerModel({
-      projectId: new Types.ObjectId(projectId)
-    });
-    const savedScheduler = await scheduler.save();
-    return savedScheduler;
+
+    return scheduler;
   }
 
   async findByProjectId(projectId: string): Promise<SchedulerResponseDto[]> {

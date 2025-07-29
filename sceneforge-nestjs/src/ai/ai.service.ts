@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // DTO 정의
 export interface ChatMessage {
@@ -30,11 +32,21 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly openaiApiKey: string;
   private readonly openaiBaseUrl = 'https://api.openai.com/v1';
+  private readonly tempDir: string;
 
   constructor(private configService: ConfigService) {
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') || '';
+    this.tempDir = path.join(process.cwd(), 'temp');
+    this.ensureTempDir();
+    
     if (this.openaiApiKey === '') {
       this.logger.error('OpenAI API 키가 설정되지 않았습니다.');
+    }
+  }
+
+  private ensureTempDir() {
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
     }
   }
 
@@ -96,6 +108,43 @@ export class AiService {
     } catch (error) {
       this.logger.error('OpenAI Images API 호출 중 오류 발생:', error.message);
       throw new BadRequestException('이미지 생성에 실패했습니다.');
+    }
+  }
+
+  /**
+   * 이미지 URL을 파일로 다운로드
+   */
+  async downloadImageFromUrl(imageUrl: string, fileName: string): Promise<string> {
+    try {
+      this.logger.log(`이미지 다운로드 시작: ${imageUrl}`);
+      
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000
+      });
+
+      const filePath = path.join(this.tempDir, fileName);
+      fs.writeFileSync(filePath, response.data);
+
+      this.logger.log(`이미지 다운로드 완료: ${filePath}`);
+      return filePath;
+    } catch (error) {
+      this.logger.error('이미지 다운로드 실패:', error.message);
+      throw new BadRequestException('이미지 다운로드에 실패했습니다.');
+    }
+  }
+
+  /**
+   * 임시 파일 삭제
+   */
+  async cleanupTempFile(filePath: string): Promise<void> {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        this.logger.log(`임시 파일 삭제 완료: ${filePath}`);
+      }
+    } catch (error) {
+      this.logger.warn('임시 파일 삭제 실패:', error.message);
     }
   }
 } 

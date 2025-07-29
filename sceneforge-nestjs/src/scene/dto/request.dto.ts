@@ -197,154 +197,182 @@ export class RealLocationDto implements RealLocation {
 
 export class CrewRoleDto implements CrewRole {
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  director?: CrewMember[];
+  director?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  assistantDirector?: CrewMember[];
+  assistantDirector?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  scriptSupervisor?: CrewMember[];
+  scriptSupervisor?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  continuity?: CrewMember[];
+  continuity?: CrewMemberDto[];
 }
 
 export class ProductionDto implements Production {
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  producer?: CrewMember[];
+  producer?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  lineProducer?: CrewMember[];
+  lineProducer?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  productionManager?: CrewMember[];
+  productionManager?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  productionAssistant?: CrewMember[];
+  productionAssistant?: CrewMemberDto[];
 }
 
 export class CinematographyDto implements Cinematography {
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  cinematographer?: CrewMember[];
+  cinematographer?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  cameraOperator?: CrewMember[];
+  cameraOperator?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  firstAssistant?: CrewMember[];
+  firstAssistant?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  secondAssistant?: CrewMember[];
+  secondAssistant?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  dollyGrip?: CrewMember[];
+  dollyGrip?: CrewMemberDto[];
 }
 
 export class LightingCrewDto implements LightingCrew {
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  gaffer?: CrewMember[];
+  gaffer?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  bestBoy?: CrewMember[];
+  bestBoy?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  electrician?: CrewMember[];
+  electrician?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  generatorOperator?: CrewMember[];
+  generatorOperator?: CrewMemberDto[];
 }
 
 export class SoundDto implements Sound {
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  soundMixer?: CrewMember[];
+  soundMixer?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  boomOperator?: CrewMember[];
+  boomOperator?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  soundAssistant?: CrewMember[];
+  soundAssistant?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  utility?: CrewMember[];
+  utility?: CrewMemberDto[];
 }
 
 export class ArtDto implements Art {
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  productionDesigner?: CrewMember[];
+  productionDesigner?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  artDirector?: CrewMember[];
+  artDirector?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  setDecorator?: CrewMember[];
+  setDecorator?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  propMaster?: CrewMember[];
+  propMaster?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  makeupArtist?: CrewMember[];
+  makeupArtist?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  costumeDesigner?: CrewMember[];
+  costumeDesigner?: CrewMemberDto[];
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CrewMemberDto)
   @IsOptional()
-  hairStylist?: CrewMember[];
+  hairStylist?: CrewMemberDto[];
 }
 
 export class CrewDto implements Crew {
@@ -597,6 +625,32 @@ export class ExtraMemberDto implements ExtraMember {
   @IsNumber()
   @IsNotEmpty()
   number: number;
+}
+
+export class CrewMemberDto implements CrewMember {
+  @ApiProperty({
+    description: '역할',
+    example: '감독'
+  })
+  @IsString()
+  @IsNotEmpty()
+  role: string;
+
+  @ApiPropertyOptional({
+    description: '연락처',
+    example: '010-1234-5678'
+  })
+  @IsString()
+  @IsOptional()
+  contact?: string;
+
+  @ApiPropertyOptional({
+    description: '프로필 ID',
+    example: '507f1f77bcf86cd799439011'
+  })
+  @IsMongoId()
+  @IsOptional()
+  profileId?: string;
 }
 
 export class CreateSceneRequestDto {
@@ -914,10 +968,12 @@ export class CreateSceneRequestDto {
     example: [
       {
         role: '주인공',
+        name: '김철수',
         profileId: '507f1f77bcf86cd799439011'
       },
       {
         role: '조연',
+        name: '이영희',
         profileId: '507f1f77bcf86cd799439012'
       }
     ]
@@ -1148,6 +1204,7 @@ export class UpdateSceneRequestDto {
     example: [
       {
         role: '주인공',
+        name: '김철수',
         profileId: '507f1f77bcf86cd799439011'
       }
     ]

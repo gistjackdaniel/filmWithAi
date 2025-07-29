@@ -33,42 +33,12 @@ import {
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  @Post()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '프로필 생성' })
-  @ApiResponse({ status: 201, description: '프로필 생성 성공', type: ProfileResponseDto })
-  @ApiBody({ type: CreateProfileRequestDto })
-  async create(@CurrentUser() user: JwtPayload, @Body() createProfileDto: CreateProfileRequestDto): Promise<ProfileResponseDto> {
-    const profile = await this.profileService.createProfile(createProfileDto);
-    return profile;
-  }
-
   @Get()
   @ApiBearerAuth()
   @ApiOperation({ summary: '프로필 조회' })
   @ApiResponse({ status: 200, description: '프로필 조회 성공', type: ProfileResponseDto })
   async findOne(@CurrentUser() user: JwtPayload): Promise<ProfileResponseDto> {
     const profile = await this.profileService.findProfileById(user.profileId);
-    return profile;
-  }
-
-  @Patch()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '프로필 수정' })
-  @ApiResponse({ status: 200, description: '프로필 수정 성공', type: ProfileResponseDto })
-  @ApiBody({ type: UpdateProfileRequestDto })
-  async update(@CurrentUser() user: JwtPayload, @Body() updateProfileDto: UpdateProfileRequestDto): Promise<ProfileResponseDto> {
-    // ProfileService에 update 메서드가 없으므로 findProfileById로 대체
-    const profile = await this.profileService.findProfileById(user.profileId);
-    return profile;
-  }
-
-  @Delete()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '프로필 삭제' })
-  @ApiResponse({ status: 200, description: '프로필 삭제 성공', type: ProfileResponseDto })
-  async delete(@CurrentUser() user: JwtPayload): Promise<ProfileResponseDto> {
-    const profile = await this.profileService.deleteProfile({ profileId: user.profileId });
     return profile;
   }
 

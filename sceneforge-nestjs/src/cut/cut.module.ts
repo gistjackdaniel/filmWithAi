@@ -10,6 +10,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { AiModule } from 'src/ai/ai.module';
 import { SceneModule } from 'src/scene/scene.module';
 import { ProjectModule } from 'src/project/project.module';
+import { S3Service } from '../common/services/s3.service';
+import { LocalStorageService } from '../common/services/local-storage.service';
+import { StorageFactoryService } from '../common/services/storage-factory.service';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { ProjectModule } from 'src/project/project.module';
   controllers: [CutController],
   providers: [
     CutService,
+    S3Service,
+    LocalStorageService,
+    StorageFactoryService,
     {
       provide: APP_PIPE,
       useClass: ValidationPipe,

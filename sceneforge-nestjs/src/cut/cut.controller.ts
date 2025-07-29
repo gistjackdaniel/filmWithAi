@@ -8,18 +8,27 @@ import {
   Param, 
   UseGuards,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { 
   ApiTags, 
   ApiOperation, 
   ApiResponse, 
   ApiParam, 
-  ApiBearerAuth 
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody
 } from '@nestjs/swagger';
 import { 
   CreateCutRequestDto, 
   UpdateCutRequestDto,
-  CreateCutDraftRequestDto
+  CreateCutDraftRequestDto,
+  UploadImageDto
 } from './dto/request.dto';
 import { 
   CutResponseDto
@@ -159,48 +168,103 @@ export class CutController {
     return this.cutService.delete(projectId, sceneId, cutId);
   }
 
-  @Put(':cutId/restore')
-  @ApiOperation({ summary: '삭제된 컷 복구', description: '삭제된 컷을 복구합니다.' })
+  @Get(':cutId/image')
+  @ApiOperation({ summary: '컷 이미지 조회', description: '특정 컷의 이미지를 조회합니다.' })
   @ApiParam({ name: 'projectId', description: '프로젝트 ID', example: '507f1f77bcf86cd799439011' })
   @ApiParam({ name: 'sceneId', description: '씬 ID', example: '507f1f77bcf86cd799439011' })
   @ApiParam({ name: 'cutId', description: '컷 ID', example: '507f1f77bcf86cd799439011' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: '컷이 성공적으로 복구되었습니다.',
-    type: CutResponseDto
+    description: '컷 이미지를 성공적으로 조회했습니다.',
   })
-  @ApiResponse({ 
-    status: HttpStatus.NOT_FOUND, 
-    description: '삭제된 컷을 찾을 수 없습니다.' 
-  })
-  async restore(
+  async getImage(
     @Param('projectId') projectId: string, 
     @Param('sceneId') sceneId: string,
     @Param('cutId') cutId: string
-  ): Promise<CutResponseDto> {
-    return this.cutService.restore(projectId, sceneId, cutId);
+  ): Promise<string> {
+    return this.cutService.getImage(projectId, sceneId, cutId);
   }
 
-  @Put(':cutId/order')
-  @ApiOperation({ summary: '컷 순서 변경', description: '컷의 순서를 변경합니다.' })
+  @Post(':cutId/image')
+  @ApiOperation({ summary: '컷 이미지 업로드', description: '컷 이미지를 업로드합니다.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: '이미지 파일 (JPEG, PNG, GIF, WebP)'
+        }
+      }
+    }
+  })
   @ApiParam({ name: 'projectId', description: '프로젝트 ID', example: '507f1f77bcf86cd799439011' })
   @ApiParam({ name: 'sceneId', description: '씬 ID', example: '507f1f77bcf86cd799439011' })
   @ApiParam({ name: 'cutId', description: '컷 ID', example: '507f1f77bcf86cd799439011' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: '컷 순서가 성공적으로 변경되었습니다.',
-    type: CutResponseDto
+    description: '컷 이미지를 성공적으로 업로드했습니다.',
   })
-  @ApiResponse({ 
-    status: HttpStatus.NOT_FOUND, 
-    description: '컷을 찾을 수 없습니다.' 
-  })
-  async updateOrder(
-    @Param('projectId') projectId: string,
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
+    @Param('projectId') projectId: string, 
     @Param('sceneId') sceneId: string,
     @Param('cutId') cutId: string,
-    @Body('order') newOrder: number
-  ): Promise<CutResponseDto> {
-    return this.cutService.updateOrder(projectId, sceneId, cutId, newOrder);
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new FileTypeValidator({ fileType: '.(jpg|jpeg|png|gif|webp)' }),
+        ],
+      }),
+    ) file: Express.Multer.File
+  ): Promise<string> {
+    return this.cutService.uploadImage(projectId, sceneId, cutId, file);
+  }
+
+  @Delete(':cutId/image')
+  @ApiOperation({ summary: '컷 이미지 삭제', description: '컷 이미지를 삭제합니다.' })
+  @ApiParam({ name: 'projectId', description: '프로젝트 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiParam({ name: 'sceneId', description: '씬 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiParam({ name: 'cutId', description: '컷 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '컷 이미지를 성공적으로 삭제했습니다.',
+  })
+  async deleteImage(
+    @Param('projectId') projectId: string, 
+    @Param('sceneId') sceneId: string,
+    @Param('cutId') cutId: string
+  ): Promise<string> {
+    return this.cutService.deleteImage(projectId, sceneId, cutId);
+  }
+
+  @Post(':cutId/image/generate')
+  @ApiOperation({ summary: '컷 이미지 생성', description: 'AI를 통해 컷 이미지를 생성합니다.' })
+  @ApiParam({ name: 'projectId', description: '프로젝트 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiParam({ name: 'sceneId', description: '씬 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiParam({ name: 'cutId', description: '컷 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '컷 이미지를 성공적으로 생성했습니다.',
+  })  
+  async generateImage(
+    @Param('projectId') projectId: string, 
+    @Param('sceneId') sceneId: string,
+    @Param('cutId') cutId: string
+  ): Promise<string> {
+    return this.cutService.generateImage(projectId, sceneId, cutId);
+  }
+
+  @Get('storage/info')
+  @ApiOperation({ summary: '스토리지 정보 조회', description: '현재 사용 중인 스토리지 설정 정보를 조회합니다.' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '스토리지 정보를 성공적으로 조회했습니다.',
+  })
+  async getStorageInfo(): Promise<{ type: string; bucket?: string; localPath?: string }> {
+    return this.cutService.getStorageInfo();
   }
 } 

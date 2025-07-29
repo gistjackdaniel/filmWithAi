@@ -556,3 +556,13 @@ export class CreateCutDraftRequestDto {
   @IsNotEmpty()
   genre: string;
 }
+
+export class UploadImageDto {
+  @ApiProperty({
+    description: '이미지 파일',
+    type: 'string',
+    format: 'binary'
+  })
+  @IsNotEmpty()
+  file: Express.Multer.File;
+}

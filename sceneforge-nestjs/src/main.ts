@@ -3,18 +3,25 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import * as cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import * as path from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
   const server = app.getHttpServer();
   server.setTimeout(2 * 60 * 1000);
   server.keepAliveTimeout = 2 * 60 * 1000;
   server.headersTimeout = 2 * 60 * 1000;
+
+  // 정적 파일 서빙 설정
+  app.useStaticAssets(path.join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   // /uploads 경로에만 CORS 헤더 추가
   app.use('/uploads', (req, res, next) => {
