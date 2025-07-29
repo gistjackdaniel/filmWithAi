@@ -6,6 +6,7 @@ import { ProjectService } from './project.service';
 import { ProjectsController } from './project.controller';
 import { Project, ProjectSchema } from './schema/project.schema';
 import { ProfileModule } from '../profile/profile.module';
+import { AiModule } from 'src/ai/ai.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ProfileModule } from '../profile/profile.module';
       }),
       inject: [ConfigService],
     }),
+    AiModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectService],

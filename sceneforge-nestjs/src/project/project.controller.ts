@@ -106,4 +106,13 @@ export class ProjectsController {
     });
     return result;
   }
+
+  @Post(':id/generate-story')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '프로젝트 스토리 생성' })
+  @ApiResponse({ status: 200, description: '프로젝트 스토리 생성 성공', type: ProjectResponseDto })
+  async generateStory(@CurrentUser() user: JwtPayload, @Param('id') id: string): Promise<ProjectResponseDto> {
+    const result = await this.projectsService.generateStory(id);
+    return result;
+  }
 } 

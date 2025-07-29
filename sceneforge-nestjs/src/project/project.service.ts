@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Project, ProjectDocument } from './schema/project.schema';
 import { ProfileService } from '../profile/profile.service';
-
+import { AiService } from 'src/ai/ai.service';
 
 import {
   CreateProjectRequestDto,
@@ -25,6 +25,7 @@ export class ProjectService {
   constructor(
     @InjectModel(Project.name) private projectModel: Model<ProjectDocument>,
     private readonly profileService: ProfileService,
+    private readonly aiService: AiService,
   ) {}
 
   async create(ownerId: string, createProjectRequestDto: CreateProjectRequestDto): Promise<ProjectResponseDto> {
@@ -169,5 +170,57 @@ export class ProjectService {
     });
 
     return projects;
+  }
+
+  async generateStory(projectId: string): Promise<ProjectResponseDto> {
+    const project = await this.projectModel.findOne({
+      _id: new Types.ObjectId(projectId),
+      isDeleted: false,
+    });
+
+    if (!project) {
+      throw new NotFoundException('프로젝트를 찾을 수 없습니다.');
+    }
+
+    const prompt = this.generateStoryPrompt(project);
+
+    const story = await this.aiService.callChatCompletions([
+      {
+        role: 'system',
+        content:
+          '당신은 영화 스토리 작가입니다. 창의적이고 매력적인 스토리를 작성해주세요.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ], {
+      model: 'gpt-4o',
+      max_tokens: 4000,
+      temperature: 0.8,
+    });
+
+    project.story = story;
+
+    await project.save();
+
+    return project;
+  }
+
+  generateStoryPrompt(project: ProjectResponseDto): string {
+    return `다음 시놉시스를 바탕으로 영화 스토리를 생성해주세요.
+
+시놉시스: ${project.synopsis}
+장르: ${JSON.stringify(project.genre)}
+최대 길이: ${project.estimatedDuration}
+
+다음 형식으로 작성해주세요:
+1. 스토리 개요 (2-3문장)
+2. 주요 등장인물 소개
+3. 스토리 전개 (시작-전개-위기-절정-결말)
+4. 핵심 메시지
+
+한국어로 자연스럽게 작성해주세요.
+`;
   }
 } 

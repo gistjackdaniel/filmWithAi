@@ -53,6 +53,32 @@ export class SchedulerScene {
 } 
 
 @Schema({ _id: false })
+export class SchedulerBreakdown {
+  @Prop({ type: Object, required: true })
+  basicInfo: {
+    projectTitle: string;
+    date: string;
+    dayOfWeek: string;
+    weather: string;
+    temperature: {
+      max: number;
+      min: number;
+    };
+  };
+
+  @Prop({ type: Object, required: true })
+  contacts: {
+    producer: { name: string; contact: string };
+    director: { name: string; contact: string };
+  };
+
+  @Prop({ type: [Object], required: true })
+  sceneDetails: {
+    
+  };
+}
+
+@Schema({ _id: false })
 export class SchedulerDay {
   @Prop({
     type: Types.ObjectId,
