@@ -39,7 +39,7 @@ export const CAPTION_CARD_STRUCTURE = {
     lighting: '', // 조명 설정
     weather: '', // 날씨 조건
     timeOfDay: '', // 시간대
-    specialRequirements: [] // 특별 요구사항
+    specialRequirements: [], // 특별 요구사항
   },
   
   // 스케줄링을 위한 상세 정보
@@ -49,7 +49,7 @@ export const CAPTION_CARD_STRUCTURE = {
       model: '기본 카메라', // 카메라 모델
       lens: '기본 렌즈', // 렌즈 사양
       settings: '기본 설정', // 카메라 설정
-      movement: '고정' // 카메라 워크
+      movement: '고정', // 카메라 워크
     },
     
     // 필요인력 상세 정보
@@ -62,7 +62,7 @@ export const CAPTION_CARD_STRUCTURE = {
       costumeDesigner: '의상',
       soundEngineer: '음향감독',
       artDirector: '미술감독',
-      additionalCrew: [] // 추가 인력
+      additionalCrew: [], // 추가 인력
     },
     
     // 장비 상세 정보
@@ -72,7 +72,7 @@ export const CAPTION_CARD_STRUCTURE = {
       lighting: [], // 조명 장비
       audio: [], // 음향 장비
       grip: [], // 그립 장비
-      special: [] // 특수 장비
+      special: [], // 특수 장비
     },
     
     // 촬영 설정
@@ -80,8 +80,8 @@ export const CAPTION_CARD_STRUCTURE = {
       setupTime: 30, // 셋업 시간 (분)
       breakdownTime: 15, // 정리 시간 (분)
       complexity: '보통', // 복잡도
-      specialNeeds: [] // 특별 요구사항
-    }
+      specialNeeds: [], // 특별 요구사항
+    },
   },
   
   // 그래프 가중치 (스케줄링용)
@@ -90,14 +90,14 @@ export const CAPTION_CARD_STRUCTURE = {
     equipmentPriority: 1, // 장비 우선순위
     castPriority: 1, // 배우 우선순위
     timePriority: 1, // 시간 우선순위
-    complexity: 1 // 복잡도
+    complexity: 1, // 복잡도
   },
   
   // 편집 권한
   canEdit: true, // 편집 가능 여부
   lastModified: '', // 마지막 수정 시간
-  modifiedBy: '' // 수정한 사용자
-}
+  modifiedBy: '', // 수정한 사용자
+};
 
 /**
  * 키워드 노드 타입 정의
@@ -113,16 +113,16 @@ export const KEYWORD_NODE_TYPES = {
   LIGHTING: 'lighting',
   WEATHER: 'weather',
   TIME_OF_DAY: 'timeOfDay',
-  SPECIAL_REQUIREMENTS: 'specialRequirements'
-}
+  SPECIAL_REQUIREMENTS: 'specialRequirements',
+};
 
 /**
  * 캡션 카드 타입별 분류
  */
 export const CAPTION_CARD_TYPES = {
   GENERATED_VIDEO: 'generated_video', // 생성형 AI로 영상 생성 가능
-  LIVE_ACTION: 'live_action' // 실사 촬영 필요
-}
+  LIVE_ACTION: 'live_action', // 실사 촬영 필요
+};
 
 /**
  * 그래프 관계성 정의
@@ -134,8 +134,8 @@ export const GRAPH_RELATIONSHIPS = {
   SAME_DATE: 'sameDate', // 같은 날짜
   SAME_EQUIPMENT: 'sameEquipment', // 같은 장비
   SAME_CAST: 'sameCast', // 같은 배우
-  SAME_TIME: 'sameTime' // 같은 시간대
-}
+  SAME_TIME: 'sameTime', // 같은 시간대
+};
 
 /**
  * 스케줄링 가중치 계산 함수 (스케줄러와 동일한 우선순위 기반)
@@ -153,7 +153,7 @@ export const calculateScheduleWeight = (card) => {
     (weights.equipmentPriority || 0) * 100 + // 장비
     (weights.complexity || 0) * 50           // 복잡도
   );
-}
+};
 
 /**
  * 캡션 카드 그룹화 함수
@@ -162,42 +162,42 @@ export const calculateScheduleWeight = (card) => {
  * @returns {Object} 그룹화된 카드들
  */
 export const groupCaptionCards = (cards, relationship) => {
-  const groups = {}
+  const groups = {};
   
   cards.forEach(card => {
-    let key = ''
+    let key = '';
     
     switch (relationship) {
-      case GRAPH_RELATIONSHIPS.SAME_USER:
-        key = card.keywords.userInfo
-        break
-      case GRAPH_RELATIONSHIPS.SAME_LOCATION:
-        key = card.keywords.location
-        break
-      case GRAPH_RELATIONSHIPS.SAME_DATE:
-        key = card.keywords.date
-        break
-      case GRAPH_RELATIONSHIPS.SAME_EQUIPMENT:
-        key = card.keywords.equipment
-        break
-      case GRAPH_RELATIONSHIPS.SAME_CAST:
-        key = card.keywords.cast.join(',')
-        break
-      case GRAPH_RELATIONSHIPS.SAME_TIME:
-        key = card.keywords.timeOfDay
-        break
-      default:
-        key = 'unknown'
+    case GRAPH_RELATIONSHIPS.SAME_USER:
+      key = card.keywords.userInfo;
+      break;
+    case GRAPH_RELATIONSHIPS.SAME_LOCATION:
+      key = card.keywords.location;
+      break;
+    case GRAPH_RELATIONSHIPS.SAME_DATE:
+      key = card.keywords.date;
+      break;
+    case GRAPH_RELATIONSHIPS.SAME_EQUIPMENT:
+      key = card.keywords.equipment;
+      break;
+    case GRAPH_RELATIONSHIPS.SAME_CAST:
+      key = card.keywords.cast.join(',');
+      break;
+    case GRAPH_RELATIONSHIPS.SAME_TIME:
+      key = card.keywords.timeOfDay;
+      break;
+    default:
+      key = 'unknown';
     }
     
     if (!groups[key]) {
-      groups[key] = []
+      groups[key] = [];
     }
-    groups[key].push(card)
-  })
+    groups[key].push(card);
+  });
   
-  return groups
-}
+  return groups;
+};
 
 /**
  * 최적 스케줄 계산 함수
@@ -207,38 +207,38 @@ export const groupCaptionCards = (cards, relationship) => {
 export const calculateOptimalSchedule = (cards) => {
   // 가중치 기반 정렬
   const sortedCards = cards.sort((a, b) => 
-    calculateScheduleWeight(b) - calculateScheduleWeight(a)
-  )
+    calculateScheduleWeight(b) - calculateScheduleWeight(a),
+  );
   
   // 같은 장소, 같은 장비로 그룹화
-  const locationGroups = groupCaptionCards(cards, GRAPH_RELATIONSHIPS.SAME_LOCATION)
-  const equipmentGroups = groupCaptionCards(cards, GRAPH_RELATIONSHIPS.SAME_EQUIPMENT)
+  const locationGroups = groupCaptionCards(cards, GRAPH_RELATIONSHIPS.SAME_LOCATION);
+  const equipmentGroups = groupCaptionCards(cards, GRAPH_RELATIONSHIPS.SAME_EQUIPMENT);
   
   // 일일 스케줄 생성
-  const dailySchedule = {}
+  const dailySchedule = {};
   const breakdown = {
     locations: new Set(),
     equipment: new Set(),
     cast: new Set(),
     props: new Set(),
-    specialRequirements: new Set()
-  }
+    specialRequirements: new Set(),
+  };
   
   sortedCards.forEach(card => {
     // 브레이크다운 정보 수집
-    breakdown.locations.add(card.keywords.location)
-    breakdown.equipment.add(card.keywords.equipment)
-    card.keywords.cast.forEach(actor => breakdown.cast.add(actor))
-    card.keywords.props.forEach(prop => breakdown.props.add(prop))
-    card.keywords.specialRequirements.forEach(req => breakdown.specialRequirements.add(req))
+    breakdown.locations.add(card.keywords.location);
+    breakdown.equipment.add(card.keywords.equipment);
+    card.keywords.cast.forEach(actor => breakdown.cast.add(actor));
+    card.keywords.props.forEach(prop => breakdown.props.add(prop));
+    card.keywords.specialRequirements.forEach(req => breakdown.specialRequirements.add(req));
     
     // 날짜별 스케줄 생성
-    const date = card.keywords.date
+    const date = card.keywords.date;
     if (!dailySchedule[date]) {
-      dailySchedule[date] = []
+      dailySchedule[date] = [];
     }
-    dailySchedule[date].push(card)
-  })
+    dailySchedule[date].push(card);
+  });
   
   return {
     dailySchedule,
@@ -247,10 +247,10 @@ export const calculateOptimalSchedule = (cards) => {
       equipment: Array.from(breakdown.equipment),
       cast: Array.from(breakdown.cast),
       props: Array.from(breakdown.props),
-      specialRequirements: Array.from(breakdown.specialRequirements)
-    }
-  }
-}
+      specialRequirements: Array.from(breakdown.specialRequirements),
+    },
+  };
+};
 
 export default {
   CAPTION_CARD_STRUCTURE,
@@ -259,5 +259,5 @@ export default {
   GRAPH_RELATIONSHIPS,
   calculateScheduleWeight,
   groupCaptionCards,
-  calculateOptimalSchedule
-} 
+  calculateOptimalSchedule,
+}; 

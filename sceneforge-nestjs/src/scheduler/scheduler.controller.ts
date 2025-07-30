@@ -21,7 +21,8 @@ import {
   UpdateSchedulerRequestDto, 
 } from './dto/request.dto';
 import { 
-  SchedulerResponseDto
+  SchedulerResponseDto,
+  BreakdownResponseDto
 } from './dto/response.dto';
 import { JwtAuthGuard } from '../common/guard/jwt-auth.guard';
 import { SchedulerService } from './scheduler.service';
@@ -106,5 +107,34 @@ export class SchedulerController {
   })
   async delete(@Param('projectId') projectId: string, @Param('schedulerId') schedulerId: string): Promise<SchedulerResponseDto> {
     return this.schedulerService.delete(projectId, schedulerId);
+  }
+
+  @Post(':schedulerId/breakdown/:dayNumber')
+  @ApiOperation({ summary: '일일 Breakdown 생성', description: '특정 일일 스케줄의 상세 breakdown을 생성합니다.' })
+  @ApiParam({ name: 'projectId', description: '프로젝트 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiParam({ name: 'schedulerId', description: '스케줄러 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiParam({ name: 'dayNumber', description: '일일 스케줄 번호', example: '1' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Breakdown이 성공적으로 생성되었습니다.',
+    type: BreakdownResponseDto
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: '스케줄러 또는 일일 스케줄을 찾을 수 없습니다.' 
+  })
+  async generateBreakdown(
+    @Param('projectId') projectId: string, 
+    @Param('schedulerId') schedulerId: string, 
+    @Param('dayNumber') dayNumber: string
+  ): Promise<BreakdownResponseDto> {
+    const scheduler = await this.schedulerService.findById(projectId, schedulerId);
+    const daySchedule = scheduler.days.find(day => day.day === parseInt(dayNumber));
+    
+    if (!daySchedule) {
+      throw new Error(`Day ${dayNumber} 스케줄을 찾을 수 없습니다.`);
+    }
+    
+    return this.schedulerService.generateBreakdown(daySchedule);
   }
 } 

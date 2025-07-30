@@ -1,6 +1,6 @@
-import React, { forwardRef } from 'react'
-import { Box, Typography, Chip } from '@mui/material'
-import { SceneType } from '../../../types/conte'
+import React, { forwardRef } from 'react';
+import { Box, Typography, Chip } from '@mui/material';
+import { SceneType } from '../../../types/conte';
 
 /**
  * 접근성이 개선된 씬 카드 컴포넌트
@@ -19,56 +19,56 @@ const AccessibleSceneCard = forwardRef(({
   // 씬 타입별 아이콘과 라벨
   const getTypeInfo = (type) => {
     switch (type) {
-      case SceneType.GENERATED_VIDEO:
-        return { icon: '🎬', label: 'AI 비디오 생성' }
-      case SceneType.LIVE_ACTION:
-        return { icon: '🎥', label: '실사 촬영' }
-      default:
-        return { icon: '📹', label: '기타' }
+    case SceneType.GENERATED_VIDEO:
+      return { icon: '🎬', label: 'AI 비디오 생성' };
+    case SceneType.LIVE_ACTION:
+      return { icon: '🎥', label: '실사 촬영' };
+    default:
+      return { icon: '📹', label: '기타' };
     }
-  }
+  };
 
-  const typeInfo = getTypeInfo(scene.type)
-  const sceneNumber = scene.scene || scene.components?.sceneNumber || 'N/A'
-  const description = scene.description || scene.components?.description || '설명 없음'
+  const typeInfo = getTypeInfo(scene.type);
+  const sceneNumber = scene.scene || scene.components?.sceneNumber || 'N/A';
+  const description = scene.description || scene.components?.description || '설명 없음';
 
   // ARIA 라벨 생성
   const getAriaLabel = () => {
     const parts = [
       `씬 ${sceneNumber}`,
       typeInfo.label,
-      description.length > 50 ? `${description.substring(0, 50)}...` : description
-    ]
-    if (selected) parts.push('선택됨')
-    return parts.join(', ')
-  }
+      description.length > 50 ? `${description.substring(0, 50)}...` : description,
+    ];
+    if (selected) parts.push('선택됨');
+    return parts.join(', ');
+  };
 
   // 키보드 이벤트 핸들러
   const handleKeyDown = (event) => {
     switch (event.key) {
-      case 'Enter':
-      case ' ':
-        event.preventDefault()
-        onClick?.(scene)
-        break
-      case 'e':
-      case 'E':
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault()
-          onEdit?.(scene)
-        }
-        break
-      case 'i':
-      case 'I':
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault()
-          onInfo?.(scene)
-        }
-        break
-      default:
-        onKeyDown?.(event)
+    case 'Enter':
+    case ' ':
+      event.preventDefault();
+      onClick?.(scene);
+      break;
+    case 'e':
+    case 'E':
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        onEdit?.(scene);
+      }
+      break;
+    case 'i':
+    case 'I':
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        onInfo?.(scene);
+      }
+      break;
+    default:
+      onKeyDown?.(event);
     }
-  }
+  };
 
   // 로딩 상태 스켈레톤
   if (loading) {
@@ -101,8 +101,8 @@ const AccessibleSceneCard = forwardRef(({
           },
           '@keyframes loading': {
             '0%': { left: '-100%' },
-            '100%': { left: '100%' }
-          }
+            '100%': { left: '100%' },
+          },
         }}
         {...props}
       >
@@ -112,7 +112,7 @@ const AccessibleSceneCard = forwardRef(({
           </Typography>
         </Box>
       </Box>
-    )
+    );
   }
 
   return (
@@ -164,7 +164,7 @@ const AccessibleSceneCard = forwardRef(({
         '&:focus-visible': {
           outline: '3px solid var(--color-accent)',
           outlineOffset: '2px',
-        }
+        },
       }}
       {...props}
     >
@@ -173,7 +173,7 @@ const AccessibleSceneCard = forwardRef(({
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        mb: 1
+        mb: 1,
       }}>
         <Typography 
           variant="h6" 
@@ -181,7 +181,7 @@ const AccessibleSceneCard = forwardRef(({
           sx={{ 
             font: 'var(--font-heading-2)',
             color: 'var(--color-text-primary)',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
           씬 {sceneNumber}
@@ -197,7 +197,7 @@ const AccessibleSceneCard = forwardRef(({
               : 'var(--color-accent-bg)',
             color: 'var(--color-text-primary)',
             fontSize: '0.75rem',
-            height: '24px'
+            height: '24px',
           }}
         />
       </Box>
@@ -215,7 +215,7 @@ const AccessibleSceneCard = forwardRef(({
           WebkitLineClamp: 4,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          textOverflow: 'ellipsis'
+          textOverflow: 'ellipsis',
         }}
       >
         {description}
@@ -228,13 +228,13 @@ const AccessibleSceneCard = forwardRef(({
         alignItems: 'center',
         mt: 'auto',
         pt: 1,
-        borderTop: '1px solid var(--color-border)'
+        borderTop: '1px solid var(--color-border)',
       }}>
         <Typography 
           variant="caption" 
           sx={{ 
             font: 'var(--font-caption)',
-            color: 'var(--color-text-secondary)'
+            color: 'var(--color-text-secondary)',
           }}
         >
           지속시간: {scene.duration || 30}초
@@ -245,7 +245,7 @@ const AccessibleSceneCard = forwardRef(({
             variant="caption" 
             sx={{ 
               font: 'var(--font-caption)',
-              color: 'var(--color-text-secondary)'
+              color: 'var(--color-text-secondary)',
             }}
           >
             Ctrl+E: 편집
@@ -254,7 +254,7 @@ const AccessibleSceneCard = forwardRef(({
             variant="caption" 
             sx={{ 
               font: 'var(--font-caption)',
-              color: 'var(--color-text-secondary)'
+              color: 'var(--color-text-secondary)',
             }}
           >
             Ctrl+I: 정보
@@ -271,9 +271,9 @@ const AccessibleSceneCard = forwardRef(({
         </span>
       </Box>
     </Box>
-  )
-})
+  );
+});
 
-AccessibleSceneCard.displayName = 'AccessibleSceneCard'
+AccessibleSceneCard.displayName = 'AccessibleSceneCard';
 
-export default AccessibleSceneCard 
+export default AccessibleSceneCard; 

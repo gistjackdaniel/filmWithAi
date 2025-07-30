@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { 
   Box, 
   Typography, 
@@ -6,8 +6,8 @@ import {
   IconButton, 
   Tooltip,
   LinearProgress,
-  Button
-} from '@mui/material'
+  Button,
+} from '@mui/material';
 import {
   PlayArrow,
   Pause,
@@ -20,9 +20,9 @@ import {
   Error,
   Refresh,
   CloudUpload,
-  Delete
-} from '@mui/icons-material'
-import VideoPlayer from './VideoPlayer'
+  Delete,
+} from '@mui/icons-material';
+import VideoPlayer from './VideoPlayer';
 
 /**
  * V2 타임라인용 비디오 카드 컴포넌트
@@ -54,48 +54,48 @@ const VideoCard = ({
   showV2Track = true, // V2 트랙 표시 여부
   ...props
 }) => {
-  const [isVideoLoading, setIsVideoLoading] = useState(false)
-  const [videoError, setVideoError] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [showUploadArea, setShowUploadArea] = useState(false)
-  const fileInputRef = useRef(null)
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showUploadArea, setShowUploadArea] = useState(false);
+  const fileInputRef = useRef(null);
 
   // playhead 위치의 컷 찾기
   const currentCut = useMemo(() => {
-    if (!allCuts || allCuts.length === 0) return null
+    if (!allCuts || allCuts.length === 0) return null;
     
-    let accumulatedTime = 0
+    let accumulatedTime = 0;
     
     for (const cut of allCuts) {
-      const cutDuration = cut.estimatedDuration || cut.duration || 5
+      const cutDuration = cut.estimatedDuration || cut.duration || 5;
       if (currentTime >= accumulatedTime && currentTime < accumulatedTime + cutDuration) {
-        const relativeTime = currentTime - accumulatedTime
+        const relativeTime = currentTime - accumulatedTime;
         // 로그 제거 - 불필요한 중복 로그
         return {
           ...cut,
-          relativeTime: relativeTime
-        }
+          relativeTime: relativeTime,
+        };
       }
-      accumulatedTime += cutDuration
+      accumulatedTime += cutDuration;
     }
     
     // 마지막 컷인 경우
     if (currentTime >= accumulatedTime) {
-      const lastCut = allCuts[allCuts.length - 1]
-      const relativeTime = Math.min(currentTime - accumulatedTime, lastCut.estimatedDuration || lastCut.duration || 5)
+      const lastCut = allCuts[allCuts.length - 1];
+      const relativeTime = Math.min(currentTime - accumulatedTime, lastCut.estimatedDuration || lastCut.duration || 5);
       // 로그 제거 - 불필요한 중복 로그
       return lastCut ? {
         ...lastCut,
-        relativeTime: relativeTime
-      } : null
+        relativeTime: relativeTime,
+      } : null;
     }
     
-    return null
-  }, [currentTime, allCuts])
+    return null;
+  }, [currentTime, allCuts]);
 
   // 표시할 미디어 결정 (V2 우선, V1 보조)
   const displayMedia = useMemo(() => {
-    if (!currentCut) return null
+    if (!currentCut) return null;
     
     // V2만 켜져 있으면 V2 표시
     if (showV2Track && !showV1Track) {
@@ -105,8 +105,8 @@ const VideoCard = ({
         poster: currentCut.imageUrl,
         title: currentCut.title,
         shotNumber: currentCut.shotNumber,
-        trackType: 'V2'
-      }
+        trackType: 'V2',
+      };
     }
     
     // V1만 켜져 있으면 V1 표시
@@ -116,13 +116,13 @@ const VideoCard = ({
         url: currentCut.imageUrl,
         title: currentCut.title,
         shotNumber: currentCut.shotNumber,
-        trackType: 'V1'
-      }
+        trackType: 'V1',
+      };
     }
     
     // V1, V2 둘 다 켜져 있으면 V2 우선, V2가 비어있으면 V1 표시
     if (showV1Track && showV2Track) {
-      const hasVideo = currentCut.videoUrl || (currentCut.imageUrl && currentCut.type === 'video')
+      const hasVideo = currentCut.videoUrl || (currentCut.imageUrl && currentCut.type === 'video');
       
       if (hasVideo) {
         return {
@@ -131,21 +131,21 @@ const VideoCard = ({
           poster: currentCut.imageUrl,
           title: currentCut.title,
           shotNumber: currentCut.shotNumber,
-          trackType: 'V2'
-        }
+          trackType: 'V2',
+        };
       } else {
         return {
           type: 'image',
           url: currentCut.imageUrl,
           title: currentCut.title,
           shotNumber: currentCut.shotNumber,
-          trackType: 'V1'
-        }
+          trackType: 'V1',
+        };
       }
     }
     
-    return null
-  }, [currentCut, showV1Track, showV2Track])
+    return null;
+  }, [currentCut, showV1Track, showV2Track]);
 
   // 비디오 데이터 구조
   const {
@@ -161,110 +161,110 @@ const VideoCard = ({
     type = 'real', // 'real' | 'ai-generated'
     metadata = {},
     ...otherProps
-  } = video || {}
+  } = video || {};
 
   // 비디오 로딩 상태 변경
   const handleVideoLoadingChange = useCallback((loading) => {
-    setIsVideoLoading(loading)
-  }, [])
+    setIsVideoLoading(loading);
+  }, []);
 
   // 비디오 에러 처리
   const handleVideoError = useCallback((error) => {
-    setVideoError(error)
-    console.error('Video error:', error)
-  }, [])
+    setVideoError(error);
+    console.error('Video error:', error);
+  }, []);
 
   // 비디오 클릭 핸들러
   const handleVideoClick = useCallback(() => {
     if (onClick) {
-      onClick(video)
+      onClick(video);
     }
-  }, [video, onClick])
+  }, [video, onClick]);
 
   // 편집 버튼 클릭 핸들러
   const handleEditClick = useCallback((e) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (onEdit) {
-      onEdit(video)
+      onEdit(video);
     }
-  }, [video, onEdit])
+  }, [video, onEdit]);
 
   // 삭제 버튼 클릭 핸들러
   const handleDeleteClick = useCallback((e) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (onDelete) {
-      onDelete(video)
+      onDelete(video);
     }
-  }, [video, onDelete])
+  }, [video, onDelete]);
 
   // 파일 업로드 핸들러
   const handleFileUpload = useCallback((event) => {
-    const file = event.target.files[0]
+    const file = event.target.files[0];
     if (file && onUpload) {
-      onUpload(file, video)
+      onUpload(file, video);
     }
     // 파일 입력 초기화
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = '';
     }
-  }, [video, onUpload])
+  }, [video, onUpload]);
 
   // 파일 드래그 앤 드롭 핸들러
   const handleDragOver = useCallback((e) => {
-    e.preventDefault()
-    setShowUploadArea(true)
-  }, [])
+    e.preventDefault();
+    setShowUploadArea(true);
+  }, []);
 
   const handleDragLeave = useCallback((e) => {
-    e.preventDefault()
-    setShowUploadArea(false)
-  }, [])
+    e.preventDefault();
+    setShowUploadArea(false);
+  }, []);
 
   const handleDrop = useCallback((e) => {
-    e.preventDefault()
-    setShowUploadArea(false)
+    e.preventDefault();
+    setShowUploadArea(false);
     
-    const files = e.dataTransfer.files
+    const files = e.dataTransfer.files;
     if (files.length > 0 && onUpload) {
-      onUpload(files[0], video)
+      onUpload(files[0], video);
     }
-  }, [video, onUpload])
+  }, [video, onUpload]);
 
   // 파일 업로드 버튼 클릭
   const handleUploadClick = useCallback(() => {
     if (fileInputRef.current) {
-      fileInputRef.current.click()
+      fileInputRef.current.click();
     }
-  }, [])
+  }, []);
 
   // 비디오 재생/일시정지 토글
   const handlePlayPause = useCallback(() => {
-    setIsPlaying(!isPlaying)
-  }, [isPlaying])
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
 
   // 카드 너비 계산 - estimatedDuration 기반
-  const videoDuration = estimatedDuration || duration || 5
-  let cardWidth = width || 200 // 외부에서 전달된 너비가 있으면 사용, 없으면 기본값
+  const videoDuration = estimatedDuration || duration || 5;
+  let cardWidth = width || 200; // 외부에서 전달된 너비가 있으면 사용, 없으면 기본값
   
   // 외부에서 너비가 전달되지 않은 경우에만 내부 계산 수행
   if (width === null) {
-    const minWidth = 60 // 최소 너비
+    const minWidth = 60; // 최소 너비
     
     // 시간 기반 너비 계산 - TimeRuler와 동기화 (여백 없음)
     if (videoDuration > 0 && timeScale > 0) {
       // TimeRuler와 동일한 계산 공식 사용 (연속 배치)
-      const pixelsPerSecond = 1 / timeScale // timeScale이 작을수록 더 많은 픽셀 필요
-      const timeBasedWidth = videoDuration * pixelsPerSecond
+      const pixelsPerSecond = 1 / timeScale; // timeScale이 작을수록 더 많은 픽셀 필요
+      const timeBasedWidth = videoDuration * pixelsPerSecond;
       
       // 최소 너비와 최대 너비 제한 (여백 없이 연속 배치)
-      const maxWidth = Math.max(400, videoDuration * 20) // 최대 1초당 20px
-      cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth))
+      const maxWidth = Math.max(400, videoDuration * 20); // 최대 1초당 20px
+      cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, maxWidth));
       
     } else if (videoDuration > 0) {
       // timeScale이 0이지만 duration이 있는 경우 기본 계산
-      const basePixelsPerSecond = 10
-      const timeBasedWidth = videoDuration * basePixelsPerSecond
-      cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, 150))
+      const basePixelsPerSecond = 10;
+      const timeBasedWidth = videoDuration * basePixelsPerSecond;
+      cardWidth = Math.max(minWidth, Math.min(timeBasedWidth, 150));
       
     }
   } else {
@@ -288,8 +288,8 @@ const VideoCard = ({
           transition: 'all 0.2s ease',
           '&:hover': {
             borderColor: 'var(--color-primary)',
-            backgroundColor: 'rgba(212, 175, 55, 0.1)'
-          }
+            backgroundColor: 'rgba(212, 175, 55, 0.1)',
+          },
         }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -323,7 +323,7 @@ const VideoCard = ({
           style={{ display: 'none' }}
         />
       </Box>
-    )
+    );
   }
 
   return (
@@ -342,8 +342,8 @@ const VideoCard = ({
         '&:hover': {
           borderColor: 'var(--color-accent)',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-          transform: 'translateY(-1px)'
-        }
+          transform: 'translateY(-1px)',
+        },
       }}
       onClick={handleVideoClick}
       onMouseEnter={onMouseEnter}
@@ -364,7 +364,7 @@ const VideoCard = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'rgba(0,0,0,0.5)',
-              zIndex: 2
+              zIndex: 2,
             }}
           >
             <LinearProgress sx={{ width: '80%' }} />
@@ -379,7 +379,7 @@ const VideoCard = ({
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              backgroundColor: 'var(--color-bg)'
+              backgroundColor: 'var(--color-bg)',
             }}
           >
             <Error color="error" sx={{ fontSize: 20, mb: 0.5 }} />
@@ -407,7 +407,7 @@ const VideoCard = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'rgba(212, 175, 55, 0.1)',
-              position: 'relative'
+              position: 'relative',
             }}>
               {displayMedia.url ? (
                 <img
@@ -416,11 +416,11 @@ const VideoCard = ({
                   style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover'
+                    objectFit: 'cover',
                   }}
                   onError={(e) => {
-                    console.error('❌ 미리보기 이미지 로딩 실패:', displayMedia.url)
-                    e.target.style.display = 'none'
+                    console.error('❌ 미리보기 이미지 로딩 실패:', displayMedia.url);
+                    e.target.style.display = 'none';
                     e.target.parentElement.innerHTML = `
                       <div style="
                         display: flex;
@@ -439,7 +439,7 @@ const VideoCard = ({
                           <div style="font-size: 10px; margin-top: 2px;">이미지 없음</div>
                         </div>
                       </div>
-                    `
+                    `;
                   }}
                 />
               ) : (
@@ -450,7 +450,7 @@ const VideoCard = ({
                   justifyContent: 'center',
                   color: 'var(--color-text-secondary)',
                   textAlign: 'center',
-                  p: 2
+                  p: 2,
                 }}>
                   <Movie sx={{ fontSize: 32, mb: 1 }} />
                   <Typography variant="caption">
@@ -515,7 +515,7 @@ const VideoCard = ({
           p: 0.5,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -538,8 +538,8 @@ const VideoCard = ({
               height: 16,
               fontSize: '0.6rem',
               '& .MuiChip-label': {
-                px: 0.5
-              }
+                px: 0.5,
+              },
             }}
           />
         </Box>
@@ -563,8 +563,8 @@ const VideoCard = ({
         opacity: 0,
         transition: 'opacity 0.2s ease-in-out',
         '&:hover': {
-          opacity: 1
-        }
+          opacity: 1,
+        },
       }}>
         {onEdit && (
           <Tooltip title="편집">
@@ -575,8 +575,8 @@ const VideoCard = ({
                 backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)'
-                }
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                },
               }}
             >
               <Settings sx={{ fontSize: 12 }} />
@@ -593,8 +593,8 @@ const VideoCard = ({
                 backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)'
-                }
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                },
               }}
             >
               <Delete sx={{ fontSize: 12 }} />
@@ -609,7 +609,7 @@ const VideoCard = ({
           position: 'absolute',
           top: 4,
           left: 4,
-          zIndex: 1
+          zIndex: 1,
         }}
       >
         <Chip
@@ -622,8 +622,8 @@ const VideoCard = ({
             backgroundColor: 'rgba(0,0,0,0.7)',
             color: 'white',
             '& .MuiChip-label': {
-              px: 0.5
-            }
+              px: 0.5,
+            },
           }}
         />
       </Box>
@@ -638,11 +638,11 @@ const VideoCard = ({
           bottom: 0,
           border: '2px solid var(--color-accent)',
           borderRadius: 1,
-          pointerEvents: 'none'
+          pointerEvents: 'none',
         }} />
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default VideoCard 
+export default VideoCard; 

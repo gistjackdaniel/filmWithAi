@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { Box, IconButton, Tooltip, LinearProgress } from '@mui/material'
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Box, IconButton, Tooltip, LinearProgress } from '@mui/material';
 import { 
   ZoomIn, 
   ZoomOut, 
@@ -7,9 +7,9 @@ import {
   Fullscreen,
   FullscreenExit,
   Error,
-  Refresh
-} from '@mui/icons-material'
-import { useTheme } from '@mui/material/styles'
+  Refresh,
+} from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 
 /**
  * 컷 이미지 컴포넌트
@@ -24,78 +24,78 @@ const CutImage = ({
   className = '',
   showControls = true,
   maxZoom = 3,
-  minZoom = 0.5
+  minZoom = 0.5,
 }) => {
-  const theme = useTheme()
-  const imageRef = useRef(null)
-  const containerRef = useRef(null)
+  const theme = useTheme();
+  const imageRef = useRef(null);
+  const containerRef = useRef(null);
   
   // 상태 관리
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [zoom, setZoom] = useState(1)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [rotation, setRotation] = useState(0)
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [rotation, setRotation] = useState(0);
 
   /**
    * 이미지 로딩 시작
    */
   const handleLoadStart = useCallback(() => {
-    setIsLoading(true)
-    setError(null)
-    onLoadingChange?.(true)
-  }, [onLoadingChange])
+    setIsLoading(true);
+    setError(null);
+    onLoadingChange?.(true);
+  }, [onLoadingChange]);
 
   /**
    * 이미지 로딩 완료
    */
   const handleLoad = useCallback(() => {
-    setIsLoading(false)
-    onLoadingChange?.(false)
-  }, [onLoadingChange])
+    setIsLoading(false);
+    onLoadingChange?.(false);
+  }, [onLoadingChange]);
 
   /**
    * 이미지 에러 처리
    */
   const handleError = useCallback((e) => {
-    setError(e)
-    setIsLoading(false)
-    onLoadingChange?.(false)
-    onError?.(e)
-  }, [onLoadingChange, onError])
+    setError(e);
+    setIsLoading(false);
+    onLoadingChange?.(false);
+    onError?.(e);
+  }, [onLoadingChange, onError]);
 
   /**
    * 줌 인
    */
   const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(prev + 0.2, maxZoom))
-  }, [maxZoom])
+    setZoom(prev => Math.min(prev + 0.2, maxZoom));
+  }, [maxZoom]);
 
   /**
    * 줌 아웃
    */
   const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(prev - 0.2, minZoom))
-  }, [minZoom])
+    setZoom(prev => Math.max(prev - 0.2, minZoom));
+  }, [minZoom]);
 
   /**
    * 줌 리셋
    */
   const handleZoomReset = useCallback(() => {
-    setZoom(1)
-    setPosition({ x: 0, y: 0 })
-    setRotation(0)
-  }, [])
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+    setRotation(0);
+  }, []);
 
   /**
    * 회전
    */
   const handleRotate = useCallback(() => {
-    setRotation(prev => (prev + 90) % 360)
-  }, [])
+    setRotation(prev => (prev + 90) % 360);
+  }, []);
 
   /**
    * 전체화면 토글
@@ -103,31 +103,31 @@ const CutImage = ({
   const handleFullscreenToggle = useCallback(() => {
     if (containerRef.current) {
       if (document.fullscreenElement) {
-        document.exitFullscreen()
+        document.exitFullscreen();
       } else {
-        containerRef.current.requestFullscreen()
+        containerRef.current.requestFullscreen();
       }
     }
-  }, [])
+  }, []);
 
   /**
    * 마우스 휠 줌
    */
   const handleWheel = useCallback((e) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    setZoom(prev => Math.max(minZoom, Math.min(maxZoom, prev + delta)))
-  }, [minZoom, maxZoom])
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom(prev => Math.max(minZoom, Math.min(maxZoom, prev + delta)));
+  }, [minZoom, maxZoom]);
 
   /**
    * 마우스 드래그 시작
    */
   const handleMouseDown = useCallback((e) => {
     if (zoom > 1) {
-      setIsDragging(true)
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     }
-  }, [zoom, position])
+  }, [zoom, position]);
 
   /**
    * 마우스 드래그 중
@@ -136,48 +136,48 @@ const CutImage = ({
     if (isDragging && zoom > 1) {
       setPosition({
         x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      })
+        y: e.clientY - dragStart.y,
+      });
     }
-  }, [isDragging, zoom, dragStart])
+  }, [isDragging, zoom, dragStart]);
 
   /**
    * 마우스 드래그 종료
    */
   const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
+    setIsDragging(false);
+  }, []);
 
   /**
    * 더블클릭 줌 리셋
    */
   const handleDoubleClick = useCallback(() => {
-    handleZoomReset()
-  }, [handleZoomReset])
+    handleZoomReset();
+  }, [handleZoomReset]);
 
   // 전체화면 변경 감지
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
+      setIsFullscreen(!!document.fullscreenElement);
+    };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }
-  }, [])
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // 마우스 이벤트 리스너
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp])
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
     <Box
@@ -188,7 +188,7 @@ const CutImage = ({
         height: '100%',
         overflow: 'hidden',
         cursor: isDragging ? 'grabbing' : zoom > 1 ? 'grab' : 'default',
-        userSelect: 'none'
+        userSelect: 'none',
       }}
       className={className}
       onWheel={handleWheel}
@@ -204,7 +204,7 @@ const CutImage = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}
       >
         {/* 로딩 오버레이 */}
@@ -220,7 +220,7 @@ const CutImage = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'rgba(0,0,0,0.1)',
-              zIndex: 2
+              zIndex: 2,
             }}
           >
             <LinearProgress sx={{ width: '80%' }} />
@@ -241,7 +241,7 @@ const CutImage = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'rgba(0,0,0,0.1)',
-              zIndex: 2
+              zIndex: 2,
             }}
           >
             <Error color="error" sx={{ fontSize: 32, mb: 1 }} />
@@ -263,7 +263,7 @@ const CutImage = ({
               transition: isDragging ? 'none' : 'transform 0.2s ease',
               maxWidth: '100%',
               maxHeight: '100%',
-              objectFit: 'contain'
+              objectFit: 'contain',
             }}
             onLoadStart={handleLoadStart}
             onLoad={handleLoad}
@@ -282,7 +282,7 @@ const CutImage = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 1,
-            zIndex: 3
+            zIndex: 3,
           }}
         >
           {/* 줌 컨트롤 */}
@@ -296,8 +296,8 @@ const CutImage = ({
                   backgroundColor: 'rgba(0,0,0,0.7)',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: 'rgba(0,0,0,0.8)'
-                  }
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                  },
                 }}
               >
                 <ZoomIn />
@@ -313,8 +313,8 @@ const CutImage = ({
                   backgroundColor: 'rgba(0,0,0,0.7)',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: 'rgba(0,0,0,0.8)'
-                  }
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                  },
                 }}
               >
                 <ZoomOut />
@@ -332,8 +332,8 @@ const CutImage = ({
                   backgroundColor: 'rgba(0,0,0,0.7)',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: 'rgba(0,0,0,0.8)'
-                  }
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                  },
                 }}
               >
                 <RotateRight />
@@ -348,8 +348,8 @@ const CutImage = ({
                   backgroundColor: 'rgba(0,0,0,0.7)',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: 'rgba(0,0,0,0.8)'
-                  }
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                  },
                 }}
               >
                 {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
@@ -372,14 +372,14 @@ const CutImage = ({
             py: 0.5,
             borderRadius: 1,
             fontSize: '0.75rem',
-            zIndex: 3
+            zIndex: 3,
           }}
         >
           {Math.round(zoom * 100)}%
         </Box>
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default CutImage 
+export default CutImage; 

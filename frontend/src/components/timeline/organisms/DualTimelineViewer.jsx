@@ -1,15 +1,15 @@
-import React, { useState, useCallback, useRef } from 'react'
-import { Box, ToggleButton, ToggleButtonGroup, Typography, Chip } from '@mui/material'
+import React, { useState, useCallback, useRef } from 'react';
+import { Box, ToggleButton, ToggleButtonGroup, Typography, Chip } from '@mui/material';
 import { 
   Movie,
   Image,
   Timeline,
   ViewColumn,
-  ViewModule
-} from '@mui/icons-material'
-import TimelineV1 from './TimelineV1'
-import TimelineV2 from './TimelineV2'
-import { useTheme } from '@mui/material/styles'
+  ViewModule,
+} from '@mui/icons-material';
+import TimelineV1 from './TimelineV1';
+import TimelineV2 from './TimelineV2';
+import { useTheme } from '@mui/material/styles';
 
 /**
  * 이중 타임라인 뷰어 컴포넌트
@@ -19,52 +19,52 @@ const DualTimelineViewer = ({
   projectId, 
   onSceneSelect, 
   onSceneEdit,
-  isEditing = false 
+  isEditing = false, 
 }) => {
-  const theme = useTheme()
-  const [timelineVersion, setTimelineVersion] = useState('v1') // 'v1' | 'v2' | 'dual'
-  const [selectedSceneId, setSelectedSceneId] = useState(null)
-  const [syncScroll, setSyncScroll] = useState(true)
-  const [syncZoom, setSyncZoom] = useState(true)
+  const theme = useTheme();
+  const [timelineVersion, setTimelineVersion] = useState('v1'); // 'v1' | 'v2' | 'dual'
+  const [selectedSceneId, setSelectedSceneId] = useState(null);
+  const [syncScroll, setSyncScroll] = useState(true);
+  const [syncZoom, setSyncZoom] = useState(true);
 
   /**
    * 타임라인 버전 변경 핸들러
    */
   const handleTimelineVersionChange = useCallback((event, newVersion) => {
     if (newVersion !== null) {
-      setTimelineVersion(newVersion)
+      setTimelineVersion(newVersion);
     }
-  }, [])
+  }, []);
 
   /**
    * 씬 선택 핸들러
    */
   const handleSceneSelect = useCallback((sceneId) => {
-    setSelectedSceneId(sceneId)
+    setSelectedSceneId(sceneId);
     if (onSceneSelect) {
-      onSceneSelect(sceneId)
+      onSceneSelect(sceneId);
     }
-  }, [onSceneSelect])
+  }, [onSceneSelect]);
 
   /**
    * 씬 편집 핸들러
    */
   const handleSceneEdit = useCallback((sceneId) => {
     if (onSceneEdit) {
-      onSceneEdit(sceneId)
+      onSceneEdit(sceneId);
     }
-  }, [onSceneEdit])
+  }, [onSceneEdit]);
 
   /**
    * 동기화 설정 토글
    */
   const handleSyncToggle = useCallback((type) => {
     if (type === 'scroll') {
-      setSyncScroll(prev => !prev)
+      setSyncScroll(prev => !prev);
     } else if (type === 'zoom') {
-      setSyncZoom(prev => !prev)
+      setSyncZoom(prev => !prev);
     }
-  }, [])
+  }, []);
 
   return (
     <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -76,7 +76,7 @@ const DualTimelineViewer = ({
           justifyContent: 'space-between',
           p: 2,
           borderBottom: `1px solid ${theme.palette.divider}`,
-          backgroundColor: theme.palette.grey[50]
+          backgroundColor: theme.palette.grey[50],
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -86,11 +86,11 @@ const DualTimelineViewer = ({
           
           <Chip
             label={timelineVersion === 'v1' ? '촬영 소스' : 
-                   timelineVersion === 'v2' ? '스토리보드' : '이중 뷰'}
+              timelineVersion === 'v2' ? '스토리보드' : '이중 뷰'}
             size="small"
             color="primary"
             icon={timelineVersion === 'v1' ? <Movie /> : 
-                  timelineVersion === 'v2' ? <Image /> : <Timeline />}
+              timelineVersion === 'v2' ? <Image /> : <Timeline />}
           />
         </Box>
 
@@ -149,8 +149,8 @@ const DualTimelineViewer = ({
         )}
       </Box>
     </Box>
-  )
-}
+  );
+};
 
 /**
  * 이중 타임라인 레이아웃 컴포넌트
@@ -162,36 +162,36 @@ const DualTimelineLayout = ({
   isEditing,
   syncScroll,
   syncZoom,
-  onSyncToggle
+  onSyncToggle,
 }) => {
-  const theme = useTheme()
-  const v1Ref = useRef(null)
-  const v2Ref = useRef(null)
+  const theme = useTheme();
+  const v1Ref = useRef(null);
+  const v2Ref = useRef(null);
 
   /**
    * 동기화된 스크롤 핸들러
    */
   const handleSyncScroll = useCallback((source, scrollTop) => {
-    if (!syncScroll) return
+    if (!syncScroll) return;
 
-    const targetRef = source === 'v1' ? v2Ref : v1Ref
+    const targetRef = source === 'v1' ? v2Ref : v1Ref;
     if (targetRef.current) {
-      targetRef.current.scrollTop = scrollTop
+      targetRef.current.scrollTop = scrollTop;
     }
-  }, [syncScroll])
+  }, [syncScroll]);
 
   /**
    * 동기화된 줌 핸들러
    */
   const handleSyncZoom = useCallback((source, zoomLevel) => {
-    if (!syncZoom) return
+    if (!syncZoom) return;
 
-    const targetRef = source === 'v1' ? v2Ref : v1Ref
+    const targetRef = source === 'v1' ? v2Ref : v1Ref;
     if (targetRef.current) {
       // 줌 레벨 동기화 로직
-      console.log(`Syncing zoom from ${source} to ${source === 'v1' ? 'v2' : 'v1'}: ${zoomLevel}`)
+      console.log(`Syncing zoom from ${source} to ${source === 'v1' ? 'v2' : 'v1'}: ${zoomLevel}`);
     }
-  }, [syncZoom])
+  }, [syncZoom]);
 
   return (
     <Box sx={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -201,7 +201,7 @@ const DualTimelineLayout = ({
         sx={{
           flex: 1,
           borderRight: `1px solid ${theme.palette.divider}`,
-          position: 'relative'
+          position: 'relative',
         }}
       >
         <TimelineV1
@@ -219,7 +219,7 @@ const DualTimelineLayout = ({
         ref={v2Ref}
         sx={{
           flex: 1,
-          position: 'relative'
+          position: 'relative',
         }}
       >
         <TimelineV2
@@ -241,7 +241,7 @@ const DualTimelineLayout = ({
           display: 'flex',
           flexDirection: 'column',
           gap: 1,
-          zIndex: 10
+          zIndex: 10,
         }}
       >
         <Chip
@@ -260,7 +260,7 @@ const DualTimelineLayout = ({
         />
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default DualTimelineViewer 
+export default DualTimelineViewer; 

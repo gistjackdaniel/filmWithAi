@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Box, IconButton, Typography, Tooltip, TextField, Menu, MenuItem } from '@mui/material'
+import React, { useState } from 'react';
+import { Box, IconButton, Typography, Tooltip, TextField, Menu, MenuItem } from '@mui/material';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -7,10 +7,10 @@ import {
   LastPage,
   KeyboardArrowLeft,
   KeyboardArrowRight,
-  Schedule
-} from '@mui/icons-material'
-import { formatTimeFromSeconds } from '../../../utils/timelineUtils'
-import ZoomControls from './ZoomControls'
+  Schedule,
+} from '@mui/icons-material';
+import { formatTimeFromSeconds } from '../../../utils/timelineUtils';
+import ZoomControls from './ZoomControls';
 
 /**
  * 타임라인 네비게이션 컴포넌트
@@ -41,57 +41,57 @@ const TimelineNavigation = ({
   ...props
 }) => {
   // 시간 점프 메뉴 상태
-  const [timeJumpAnchor, setTimeJumpAnchor] = useState(null)
-  const [timeJumpValue, setTimeJumpValue] = useState('')
+  const [timeJumpAnchor, setTimeJumpAnchor] = useState(null);
+  const [timeJumpValue, setTimeJumpValue] = useState('');
   
 
   // 씬 점프 버튼들 (최대 5개씩 표시)
   const getSceneJumpButtons = () => {
-    if (totalScenes <= 1) return []
+    if (totalScenes <= 1) return [];
 
-    const buttons = []
-    const maxButtons = 5
-    const step = Math.max(1, Math.floor(totalScenes / maxButtons))
+    const buttons = [];
+    const maxButtons = 5;
+    const step = Math.max(1, Math.floor(totalScenes / maxButtons));
 
     for (let i = 0; i < totalScenes; i += step) {
-      if (buttons.length >= maxButtons) break
-      buttons.push(i)
+      if (buttons.length >= maxButtons) break;
+      buttons.push(i);
     }
 
     // 마지막 씬이 포함되지 않았다면 추가
     if (buttons[buttons.length - 1] !== totalScenes - 1) {
-      buttons[buttons.length - 1] = totalScenes - 1
+      buttons[buttons.length - 1] = totalScenes - 1;
     }
 
-    return buttons
-  }
+    return buttons;
+  };
 
-  const sceneJumpButtons = getSceneJumpButtons()
+  const sceneJumpButtons = getSceneJumpButtons();
 
   // 시간 점프 핸들러
   const handleTimeJump = () => {
     if (timeJumpValue && onTimeJump) {
-      const timeInSeconds = parseTimeInput(timeJumpValue)
+      const timeInSeconds = parseTimeInput(timeJumpValue);
       if (timeInSeconds >= 0) {
-        onTimeJump(timeInSeconds)
-        setTimeJumpValue('')
+        onTimeJump(timeInSeconds);
+        setTimeJumpValue('');
       }
     }
-    setTimeJumpAnchor(null)
-  }
+    setTimeJumpAnchor(null);
+  };
 
   // 시간 입력 파싱 (HH:MM:SS 또는 MM:SS 형식)
   const parseTimeInput = (input) => {
-    const parts = input.split(':').map(Number)
+    const parts = input.split(':').map(Number);
     if (parts.length === 2) {
       // MM:SS 형식
-      return parts[0] * 60 + parts[1]
+      return parts[0] * 60 + parts[1];
     } else if (parts.length === 3) {
       // HH:MM:SS 형식
-      return parts[0] * 3600 + parts[1] * 60 + parts[2]
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
     }
-    return -1
-  }
+    return -1;
+  };
 
 
 
@@ -101,8 +101,8 @@ const TimelineNavigation = ({
     { label: '1분', value: 60 },
     { label: '2분', value: 120 },
     { label: '5분', value: 300 },
-    { label: '10분', value: 600 }
-  ]
+    { label: '10분', value: 600 },
+  ];
 
 
 
@@ -137,7 +137,7 @@ const TimelineNavigation = ({
                   },
                   '&.Mui-disabled': {
                     color: 'var(--color-text-disabled)',
-                  }
+                  },
                 }}
               >
                 <FirstPage fontSize="small" />
@@ -161,7 +161,7 @@ const TimelineNavigation = ({
                   },
                   '&.Mui-disabled': {
                     color: 'var(--color-text-disabled)',
-                  }
+                  },
                 }}
               >
                 <ChevronLeft fontSize="small" />
@@ -182,7 +182,7 @@ const TimelineNavigation = ({
                 font: 'var(--font-body-2)',
                 color: 'var(--color-text-secondary)',
                 whiteSpace: 'nowrap',
-                minWidth: 'fit-content'
+                minWidth: 'fit-content',
               }}
             >
               씬 {currentSceneIndex + 1} / {totalScenes}
@@ -213,7 +213,7 @@ const TimelineNavigation = ({
                       '&:hover': {
                         color: 'var(--color-accent)',
                         backgroundColor: 'var(--color-hover)',
-                      }
+                      },
                     }}
                   >
                     {sceneIndex + 1}
@@ -234,7 +234,7 @@ const TimelineNavigation = ({
                 font: 'var(--font-body-2)',
                 color: 'var(--color-accent)',
                 whiteSpace: 'nowrap',
-                minWidth: 'fit-content'
+                minWidth: 'fit-content',
               }}
             >
               {formatTimeFromSeconds(currentTime)}
@@ -250,7 +250,7 @@ const TimelineNavigation = ({
                   '&:hover': {
                     color: 'var(--color-accent)',
                     backgroundColor: 'var(--color-hover)',
-                  }
+                  },
                 }}
               >
                 <Schedule fontSize="small" />
@@ -269,7 +269,7 @@ const TimelineNavigation = ({
                   sx={{
                     font: 'var(--font-body-2)',
                     color: 'var(--color-text-primary)',
-                    mb: 1
+                    mb: 1,
                   }}
                 >
                   시간으로 이동
@@ -282,7 +282,7 @@ const TimelineNavigation = ({
                   onChange={(e) => setTimeJumpValue(e.target.value)}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
-                      handleTimeJump()
+                      handleTimeJump();
                     }
                   }}
                   sx={{ mb: 1, width: '100%' }}
@@ -293,12 +293,12 @@ const TimelineNavigation = ({
                     <MenuItem
                       key={option.value}
                       onClick={() => {
-                        if (onTimeJump) onTimeJump(option.value)
-                        setTimeJumpAnchor(null)
+                        if (onTimeJump) onTimeJump(option.value);
+                        setTimeJumpAnchor(null);
                       }}
                       sx={{
                         font: 'var(--font-caption)',
-                        color: 'var(--color-text-secondary)'
+                        color: 'var(--color-text-secondary)',
                       }}
                     >
                       {option.label} 앞으로
@@ -326,7 +326,7 @@ const TimelineNavigation = ({
               minWidth: 300,
               backgroundColor: 'transparent',
               border: 'none',
-              padding: 0
+              padding: 0,
             }}
           />
         )}
@@ -349,7 +349,7 @@ const TimelineNavigation = ({
                   },
                   '&.Mui-disabled': {
                     color: 'var(--color-text-disabled)',
-                  }
+                  },
                 }}
               >
                 <ChevronRight fontSize="small" />
@@ -373,7 +373,7 @@ const TimelineNavigation = ({
                   },
                   '&.Mui-disabled': {
                     color: 'var(--color-text-disabled)',
-                  }
+                  },
                 }}
               >
                 <LastPage fontSize="small" />
@@ -383,7 +383,7 @@ const TimelineNavigation = ({
         )}
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default TimelineNavigation 
+export default TimelineNavigation; 

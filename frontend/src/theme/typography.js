@@ -5,7 +5,7 @@
 
 export const typography = {
   // Font Family
-  fontFamily: "'Inter', sans-serif",
+  fontFamily: '\'Inter\', sans-serif',
   
   // Font Weights
   weights: {
@@ -53,7 +53,7 @@ export const typography = {
       letterSpacing: '0.02em',
     },
   },
-}
+};
 
 /**
  * CSS 변수로 내보내기
@@ -72,6 +72,6 @@ export const cssTypographyVariables = `
     --font-button: ${typography.weights.medium} ${typography.styles.button.fontSize}/${typography.styles.button.lineHeight} ${typography.fontFamily};
     --font-caption: ${typography.weights.regular} ${typography.styles.caption.fontSize}/${typography.styles.caption.lineHeight} ${typography.fontFamily};
   }
-`
+`;
 
-export default typography 
+export default typography; 

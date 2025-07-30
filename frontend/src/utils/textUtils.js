@@ -10,7 +10,7 @@
  */
 export const removeMarkdown = (text) => {
   if (!text || typeof text !== 'string') {
-    return text
+    return text;
   }
 
   return text
@@ -36,12 +36,12 @@ export const removeMarkdown = (text) => {
     // 인용 제거 (> text)
     .replace(/^>\s+/gm, '')
     // 수평선 제거 (---, ***, ___)
-    .replace(/^[-*_]{3,}$/gm, '')
-    // // 줄바꿈 정리 (연속된 줄바꿈을 2개로 제한)
-    // .replace(/\n{3,}/g, '\n\n')
-    // // 앞뒤 공백 제거
-    // .trim()
-}
+    .replace(/^[-*_]{3,}$/gm, '');
+  // // 줄바꿈 정리 (연속된 줄바꿈을 2개로 제한)
+  // .replace(/\n{3,}/g, '\n\n')
+  // // 앞뒤 공백 제거
+  // .trim()
+};
 
 /**
  * 스토리 텍스트를 정리 (마크다운 제거 + 추가 정리)
@@ -50,15 +50,15 @@ export const removeMarkdown = (text) => {
  */
 export const cleanStoryText = (story) => {
   if (!story || typeof story !== 'string') {
-    return story
+    return story;
   }
 
-  return removeMarkdown(story)
-    // // 문단 구분을 위한 줄바꿈 정리 (빈 줄을 2개로 통일)
-    // .replace(/\n\s*\n\s*\n+/g, '\n\n')
-    // // 앞뒤 공백 제거
-    // .trim()
-}
+  return removeMarkdown(story);
+  // // 문단 구분을 위한 줄바꿈 정리 (빈 줄을 2개로 통일)
+  // .replace(/\n\s*\n\s*\n+/g, '\n\n')
+  // // 앞뒤 공백 제거
+  // .trim()
+};
 
 /**
  * 콘티 설명 텍스트를 정리
@@ -67,15 +67,15 @@ export const cleanStoryText = (story) => {
  */
 export const cleanConteDescription = (description) => {
   if (!description || typeof description !== 'string') {
-    return description
+    return description;
   }
 
-  return removeMarkdown(description)
-    // // 불필요한 공백 정리
-    // .replace(/\s+/g, ' ')
-    // // 앞뒤 공백 제거
-    // .trim()
-}
+  return removeMarkdown(description);
+  // // 불필요한 공백 정리
+  // .replace(/\s+/g, ' ')
+  // // 앞뒤 공백 제거
+  // .trim()
+};
 
 /**
  * 대사 텍스트를 정리
@@ -84,18 +84,18 @@ export const cleanConteDescription = (description) => {
  */
 export const cleanDialogueText = (dialogue) => {
   if (!dialogue || typeof dialogue !== 'string') {
-    return dialogue
+    return dialogue;
   }
 
   return removeMarkdown(dialogue)
     // 대사 인용 부호 정리
     .replace(/["""]/g, '"')
-    .replace(/[''']/g, "'")
+    .replace(/[''']/g, '\'')
     // 불필요한 공백 정리
     .replace(/\s+/g, ' ')
     // 앞뒤 공백 제거
-    .trim()
-}
+    .trim();
+};
 
 /**
  * 시놉시스 텍스트를 정리
@@ -104,12 +104,12 @@ export const cleanDialogueText = (dialogue) => {
  */
 export const cleanSynopsisText = (synopsis) => {
   if (!synopsis || typeof synopsis !== 'string') {
-    return synopsis
+    return synopsis;
   }
 
-  return removeMarkdown(synopsis)
-    // // 불필요한 공백 정리
-    // .replace(/\s+/g, ' ')
-    // // 앞뒤 공백 제거
-    // .trim()
-} 
+  return removeMarkdown(synopsis);
+  // // 불필요한 공백 정리
+  // .replace(/\s+/g, ' ')
+  // // 앞뒤 공백 제거
+  // .trim()
+}; 

@@ -18,7 +18,8 @@ import {
   Videocam,
   Person,
   Settings,
-  AutoAwesome
+  AutoAwesome,
+  Delete
 } from '@mui/icons-material'
 import toast from 'react-hot-toast'
 
@@ -44,6 +45,7 @@ const CutCard = React.memo(({
   onClick, 
   onEdit, 
   onInfo,
+  onDelete, // 컷 삭제 핸들러 추가
   selected = false,
   isMultiSelected = false,
   loading = false,
@@ -643,6 +645,29 @@ const CutCard = React.memo(({
               }}
             >
               <Info sx={{ fontSize: 12 }} />
+            </IconButton>
+          </Tooltip>
+        )}
+        
+        {onDelete && (
+          <Tooltip title="삭제">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (window.confirm(`컷 "${cut.title || cut.shotNumber}"을(를) 삭제하시겠습니까?`)) {
+                  onDelete(cut.id, cut.sceneId)
+                }
+              }}
+              sx={{
+                backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(220, 53, 69, 1)'
+                }
+              }}
+            >
+              <Delete sx={{ fontSize: 12 }} />
             </IconButton>
           </Tooltip>
         )}

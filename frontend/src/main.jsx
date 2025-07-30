@@ -1,13 +1,13 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { ThemeProvider } from '@mui/material/styles'
-import CssBaseline from '@mui/material/CssBaseline'
-import { Toaster } from 'react-hot-toast'
-import { GoogleOAuthProvider } from '@react-oauth/google'
-import App from './App.jsx'
-import createAppTheme from './theme/theme.js'
-import './index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { Toaster } from 'react-hot-toast';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import App from './App.jsx';
+import createAppTheme from './theme/theme.js';
+import './index.css';
 
 /**
  * SceneForge 앱의 진입점
@@ -16,7 +16,7 @@ import './index.css'
  */
 
 // 다크 모드 테마 생성
-const darkTheme = createAppTheme('dark')
+const darkTheme = createAppTheme('dark');
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   // React Strict Mode로 개발 시 잠재적 문제 감지
@@ -27,7 +27,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter
         future={{
           v7_startTransition: true,
-          v7_relativeSplatPath: true
+          v7_relativeSplatPath: true,
         }}
       >
         <ThemeProvider theme={darkTheme}>
@@ -42,12 +42,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               style: {
                 background: '#2F2F37',
                 color: '#F5F5F5',
-                border: '1px solid #444'
-              }
+                border: '1px solid #444',
+              },
             }}
           />
         </ThemeProvider>
       </BrowserRouter>
     </GoogleOAuthProvider>
   </React.StrictMode>,
-) 
+); 

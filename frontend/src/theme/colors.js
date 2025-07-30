@@ -24,7 +24,7 @@ export const colors = {
   timelineTrack: '#3A3A42', // 타임라인 트랙 배경
   sceneCardBorder: '#4A4A52', // 씬 카드 테두리
   modalOverlay: 'rgba(27, 27, 30, 0.8)', // 모달 오버레이
-}
+};
 
 /**
  * CSS 변수로 내보내기 (다크 테마 기본)
@@ -43,6 +43,6 @@ export const cssVariables = `
     --color-scene-card-border: ${colors.sceneCardBorder};
     --color-modal-overlay: ${colors.modalOverlay};
   }
-`
+`;
 
-export default colors 
+export default colors; 

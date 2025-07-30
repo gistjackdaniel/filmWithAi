@@ -453,22 +453,22 @@ const ConteGenerationPage = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      {/* 공통 헤더 */}
-      <CommonHeader 
+        <Box sx={{ flexGrow: 1 }}>
+          {/* 공통 헤더 */}
+          <CommonHeader 
         title={projectInfo?.projectTitle || 'AI 스토리 생성'}
-        showBackButton={true}
-        onBack={handleBack}
-      >
-        {/* 저장 버튼 */}
-        <Button 
-          color="inherit" 
-          startIcon={<Save />}
-          onClick={handleSave}
-          disabled={!generatedStory}
-        >
-          저장
-        </Button>
+            showBackButton={true}
+            onBack={handleBack}
+          >
+            {/* 저장 버튼 */}
+            <Button 
+              color="inherit" 
+              startIcon={<Save />}
+              onClick={handleSave}
+              disabled={!generatedStory}
+            >
+              저장
+            </Button>
         
         {/* 씬 생성 버튼 */}
         {generatedStory && (
@@ -481,192 +481,192 @@ const ConteGenerationPage = () => {
             씬 생성
           </Button>
         )}
-      </CommonHeader>
+          </CommonHeader>
 
-      {/* 메인 컨텐츠 */}
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {/* 프로젝트 정보 헤더 */}
-        <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
-          <Typography variant="h4" gutterBottom>
+          {/* 메인 컨텐츠 */}
+          <Container maxWidth="lg" sx={{ mt: 4 }}>
+            {/* 프로젝트 정보 헤더 */}
+            <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+              <Typography variant="h4" gutterBottom>
             📝 {projectInfo?.projectTitle || 'AI 스토리 생성'}
-          </Typography>
-          
-          {/* 프로젝트 상태 정보 */}
-          {projectInfo && (
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-              <Chip 
-                label={`상태: ${projectInfo.status || 'draft'}`} 
-                color="primary" 
-                size="small" 
-              />
-              <Chip 
-                label={`생성일: ${new Date(projectInfo.createdAt).toLocaleDateString()}`} 
-                variant="outlined" 
-                size="small" 
-              />
-            </Box>
-          )}
-          
-          {/* 시놉시스 편집 섹션 */}
-          {projectInfo?.synopsis && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                📝 시놉시스
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {projectInfo.synopsis}
-              </Typography>
-            </Box>
-          )}
-        </Box>
-        
-        {/* 설명 텍스트 */}
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          영화 시놉시스를 입력하면 AI가 자동으로 상세한 스토리를 생성합니다.
-          생성된 스토리는 씬과 컷으로 세분화됩니다.
-        </Typography>
-        
-        {/* 탭 네비게이션 */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs 
-            value={activeTab} 
-            onChange={handleTabChange}
-            aria-label="스토리 생성 기능 탭"
-          >
-            <Tab 
-              label="스토리 생성" 
-              icon={<AutoFixHigh />} 
-              iconPosition="start"
-            />
-            <Tab 
-              label="히스토리" 
-              icon={<History />} 
-              iconPosition="start"
-            />
-            <Tab 
-              label="템플릿" 
-              icon={<Tune />} 
-              iconPosition="start"
-            />
-            <Tab 
-              label="품질 개선" 
-              icon={<AutoFixHigh />} 
-              iconPosition="start"
-            />
-          </Tabs>
-        </Box>
-
-        {/* 스토리 생성 탭 */}
-        {activeTab === 0 && (
-          <Box>
-            {/* 시놉시스 입력 폼 */}
-            <SynopsisInputForm 
-              onSubmit={handleGenerateStory}
-              onSave={handleSave}
-              isGenerating={isGenerating}
-            />
-
-            {/* 로딩 상태 표시 */}
-            {isGenerating && (
-              <Box sx={{ 
-                mt: 3, 
-                p: 3, 
-                bgcolor: 'background.paper', 
-                borderRadius: 2, 
-                boxShadow: 1,
-                textAlign: 'center'
-              }}>
-                <LoadingSpinner message="AI 스토리 생성 중..." />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  시놉시스를 분석하고 상세한 스토리를 생성하고 있습니다...
-                </Typography>
-              </Box>
-            )}
-
-            {/* 생성된 스토리 표시 */}
-            {!isGenerating && generatedStory && (
-              <StoryResult 
-                story={generatedStory}
-                onSave={(editedStory) => {
-                  updateGeneratedStory(editedStory)
-                  toast.success('스토리가 업데이트되었습니다.')
-                }}
-                onRegenerate={() => {
-                  if (synopsis) {
-                    handleGenerateStory(synopsis)
-                  }
-                }}
-                isGenerating={isGenerating}
-                onAutoSave={handleAutoSave}
-                projectId={projectId}
-              />
-            )}
-
-            {/* 에러 상태 표시 */}
-            {generationError && (
-              <Box sx={{ 
-                mt: 3, 
-                p: 3, 
-                bgcolor: 'background.paper', 
-                borderRadius: 2, 
-                boxShadow: 1,
-                border: '1px solid #f44336'
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Error sx={{ color: '#f44336', mr: 1 }} />
-                  <Typography variant="h6" color="error">
-                    스토리 생성 실패
+              
+              {/* 프로젝트 상태 정보 */}
+              {projectInfo && (
+                <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                  <Chip 
+                    label={`상태: ${projectInfo.status || 'draft'}`} 
+                    color="primary" 
+                    size="small" 
+                  />
+                  <Chip 
+                    label={`생성일: ${new Date(projectInfo.createdAt).toLocaleDateString()}`} 
+                    variant="outlined" 
+                    size="small" 
+                  />
+                </Box>
+              )}
+              
+              {/* 시놉시스 편집 섹션 */}
+              {projectInfo?.synopsis && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    📝 시놉시스
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {projectInfo.synopsis}
                   </Typography>
                 </Box>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                  {generationError}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<Refresh />}
-                    onClick={() => {
+              )}
+            </Box>
+            
+            {/* 설명 텍스트 */}
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+              영화 시놉시스를 입력하면 AI가 자동으로 상세한 스토리를 생성합니다.
+          생성된 스토리는 씬과 컷으로 세분화됩니다.
+            </Typography>
+            
+            {/* 탭 네비게이션 */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+              <Tabs 
+                value={activeTab} 
+                onChange={handleTabChange}
+                aria-label="스토리 생성 기능 탭"
+              >
+                <Tab 
+                  label="스토리 생성" 
+                  icon={<AutoFixHigh />} 
+                  iconPosition="start"
+                />
+                <Tab 
+                  label="히스토리" 
+                  icon={<History />} 
+                  iconPosition="start"
+                />
+                <Tab 
+                  label="템플릿" 
+                  icon={<Tune />} 
+                  iconPosition="start"
+                />
+                <Tab 
+                  label="품질 개선" 
+                  icon={<AutoFixHigh />} 
+                  iconPosition="start"
+                />
+              </Tabs>
+            </Box>
+
+            {/* 스토리 생성 탭 */}
+            {activeTab === 0 && (
+              <Box>
+                {/* 시놉시스 입력 폼 */}
+                <SynopsisInputForm 
+                  onSubmit={handleGenerateStory}
+                  onSave={handleSave}
+                  isGenerating={isGenerating}
+                />
+
+                {/* 로딩 상태 표시 */}
+                {isGenerating && (
+                  <Box sx={{ 
+                    mt: 3, 
+                    p: 3, 
+                    bgcolor: 'background.paper', 
+                    borderRadius: 2, 
+                    boxShadow: 1,
+                    textAlign: 'center'
+                  }}>
+                    <LoadingSpinner message="AI 스토리 생성 중..." />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                      시놉시스를 분석하고 상세한 스토리를 생성하고 있습니다...
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* 생성된 스토리 표시 */}
+                {!isGenerating && generatedStory && (
+                  <StoryResult 
+                    story={generatedStory}
+                    onSave={(editedStory) => {
+                      updateGeneratedStory(editedStory)
+                      toast.success('스토리가 업데이트되었습니다.')
+                    }}
+                    onRegenerate={() => {
                       if (synopsis) {
                         handleGenerateStory(synopsis)
                       }
                     }}
-                    size="small"
-                  >
-                    다시 시도
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => setActiveTab(2)} // 템플릿 탭으로 이동
-                    size="small"
-                  >
-                    템플릿 사용
-                  </Button>
-                </Box>
+                    isGenerating={isGenerating}
+                    onAutoSave={handleAutoSave}
+                projectId={projectId}
+                  />
+                )}
+
+                {/* 에러 상태 표시 */}
+                {generationError && (
+                  <Box sx={{ 
+                    mt: 3, 
+                    p: 3, 
+                    bgcolor: 'background.paper', 
+                    borderRadius: 2, 
+                    boxShadow: 1,
+                    border: '1px solid #f44336'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Error sx={{ color: '#f44336', mr: 1 }} />
+                      <Typography variant="h6" color="error">
+                        스토리 생성 실패
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                      {generationError}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<Refresh />}
+                        onClick={() => {
+                          if (synopsis) {
+                            handleGenerateStory(synopsis)
+                          }
+                        }}
+                        size="small"
+                      >
+                        다시 시도
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={() => setActiveTab(2)} // 템플릿 탭으로 이동
+                        size="small"
+                      >
+                        템플릿 사용
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
               </Box>
             )}
-          </Box>
-        )}
 
-        {/* 히스토리 탭 */}
-        {activeTab === 1 && (
+            {/* 히스토리 탭 */}
+            {activeTab === 1 && (
           <StoryHistoryPanel 
-            onSelectHistory={(historyItem) => {
-              setSynopsis(historyItem.synopsis)
-              if (historyItem.settings) {
-                updateStorySettings(historyItem.settings)
-              }
-              // 스토리 내용도 함께 업데이트
-              if (historyItem.story) {
-                updateGeneratedStory(historyItem.story)
-              }
-              setActiveTab(0) // 생성 탭으로 이동
-            }}
-            onReuseHistory={handleReuseHistory}
-          />
-        )}
+                onSelectHistory={(historyItem) => {
+                  setSynopsis(historyItem.synopsis)
+                  if (historyItem.settings) {
+                    updateStorySettings(historyItem.settings)
+                  }
+                  // 스토리 내용도 함께 업데이트
+                  if (historyItem.story) {
+                    updateGeneratedStory(historyItem.story)
+                  }
+                  setActiveTab(0) // 생성 탭으로 이동
+                }}
+                onReuseHistory={handleReuseHistory}
+              />
+            )}
 
-        {/* 템플릿 탭 */}
-        {activeTab === 2 && (
+            {/* 템플릿 탭 */}
+            {activeTab === 2 && (
           <Box sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
             <Typography variant="h6" gutterBottom>
               📋 스토리 템플릿
@@ -676,25 +676,25 @@ const ConteGenerationPage = () => {
             </Typography>
             {/* 템플릿 선택 UI는 별도 컴포넌트로 구현 예정 */}
           </Box>
-        )}
+            )}
 
-        {/* 품질 개선 탭 */}
-        {activeTab === 3 && (
-          <StoryQualityEnhancer 
-            currentStory={generatedStory}
-            onRegenerate={() => {
-              if (synopsis) {
-                handleGenerateStory(synopsis)
-              }
-            }}
-            onEnhance={handleStoryEnhance}
-            isGenerating={isGenerating}
-            qualityEnhancement={qualityEnhancement}
-            onQualityEnhancementChange={updateQualityEnhancement}
-          />
-        )}
-      </Container>
-    </Box>
+            {/* 품질 개선 탭 */}
+            {activeTab === 3 && (
+              <StoryQualityEnhancer 
+                currentStory={generatedStory}
+                onRegenerate={() => {
+                  if (synopsis) {
+                    handleGenerateStory(synopsis)
+                  }
+                }}
+                onEnhance={handleStoryEnhance}
+                isGenerating={isGenerating}
+                qualityEnhancement={qualityEnhancement}
+                onQualityEnhancementChange={updateQualityEnhancement}
+              />
+            )}
+          </Container>
+        </Box>
   )
 }
 

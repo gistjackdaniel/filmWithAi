@@ -3,21 +3,21 @@ import {
   Box, 
   Typography, 
   Container,
-  AppBar,
-  Toolbar,
-  IconButton,
   Button,
   Tabs,
   Tab,
-  Divider,
-  Modal,
+  Paper,
+  Alert,
+  Stepper,
+  Step,
+  StepLabel,
+  StepContent,
   Card,
   CardContent,
   Grid,
   Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  Divider,
+  LinearProgress
 } from '@mui/material'
 import { 
   Save,
@@ -25,14 +25,15 @@ import {
   Tune,
   AutoFixHigh,
   Movie,
-  ExpandMore,
-  Close,
+  Create,
   Edit,
   Timeline,
   Refresh,
-  Error
+  Error,
+  CheckCircle,
+  PlayArrow,
+  Settings
 } from '@mui/icons-material'
-import { CircularProgress } from '@mui/material'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import SynopsisInputForm from '../components/project/SynopsisInputForm'
@@ -40,331 +41,215 @@ import LoadingSpinner from '../components/project/LoadingSpinner'
 import StoryResult from '../components/project/StoryResult'
 import StoryQualityEnhancer from '../components/project/StoryQualityEnhancer'
 import StoryHistoryPanel from '../components/project/StoryHistoryPanel'
-import { ConteGenerator, ConteEditModal, ConteDetailModal } from '../components/story'
-import { generateStoryWithRetry, regenerateConteWithRetry, generateSceneImage } from '../services/storyGenerationApi'
-import { autoSaveProject } from '../services/projectApi'
+import { createProject, updateProject, getProject, generateStory } from '../services/projectApi'
 import api from '../services/api'
-import useStoryStore from '../stores/storyStore'
-import useStoryHistoryStore from '../stores/storyHistoryStore'
+import useProjectStore from '../stores/projectStore'
 import { CommonHeader } from '../components/common'
 import { genreTemplates } from '../data/storyTemplates'
 
 /**
- * AI 콘티 생성 페이지 컴포넌트
- * 프로젝트 ID 기반으로 시놉시스를 입력하고 AI가 콘티를 생성하는 페이지
- * PRD 2.1.3 AI 콘티 생성 기능의 핵심 UI
+ * 시놉시스 → 스토리 생성 페이지 컴포넌트
+ * 프로젝트 생성 → 시놉시스 입력 → 스토리 생성 → 저장의 전체 플로우
+ * NestJS 백엔드 구조에 맞춰 구현
  */
-const ConteGenerationPage = () => {
+const SynoStoryProjectGenerationPage = () => {
   // React Router 네비게이션 훅
   const navigate = useNavigate()
   const location = useLocation()
   
-  // URL 파라미터에서 프로젝트 ID 가져오기
+  // URL 파라미터에서 프로젝트 ID 가져오기 (기존 프로젝트 편집 시)
   const { projectId } = useParams()
   
   // 로컬 상태 관리
-  const [activeTab, setActiveTab] = useState(0) // 활성 탭 (0: 생성, 1: 히스토리, 2: 템플릿, 3: 품질 개선, 4: 콘티 생성)
-  const [selectedConte, setSelectedConte] = useState(null) // 선택된 콘티
-  const [conteModalOpen, setConteModalOpen] = useState(false) // 콘티 상세 모달 열림 상태
-  const [editModalOpen, setEditModalOpen] = useState(false) // 편집 모달 열림 상태
-  const [editingConte, setEditingConte] = useState(null) // 편집 중인 콘티
+  const [activeTab, setActiveTab] = useState(0) // 활성 탭 (0: 프로젝트 생성, 1: 시놉시스, 2: 스토리 생성, 3: 히스토리, 4: 품질 개선)
+  const [currentStep, setCurrentStep] = useState(0) // 현재 단계 (0: 프로젝트 생성, 1: 시놉시스 입력, 2: 스토리 생성, 3: 완료)
+  const [projectCreated, setProjectCreated] = useState(false) // 프로젝트 생성 완료 여부
+  const [storyGenerated, setStoryGenerated] = useState(false) // 스토리 생성 완료 여부
   
-  // 이미지 로딩 실패 상태 관리
-  const [imageLoadErrors, setImageLoadErrors] = useState({})
-
-  // 이미지 생성 상태 관리
-  const [isGeneratingImages, setIsGeneratingImages] = useState(false)
-  const [imageGenerationProgress, setImageGenerationProgress] = useState(0)
+  // 프로젝트 관련 상태
+  const [projectData, setProjectData] = useState({
+    title: '',
+    synopsis: '',
+    story: '',
+    genre: '일반',
+    tags: [],
+    status: 'draft'
+  })
   
-  // 상태 복원 (뒤로가기 시) - 중복 토스트 방지용 플래그 추가
-  const hasRestored = useRef(false);
-  useEffect(() => {
-    // location.state가 있고, 아직 복원하지 않은 경우에만 실행
-    if (location.state && !hasRestored.current) {
-      // 탭 상태 복원
-      if (location.state.activeTab !== undefined) {
-        setActiveTab(location.state.activeTab)
-      }
-      
-      // 시놉시스 복원
-      if (location.state.synopsis) {
-        setSynopsis(location.state.synopsis)
-      }
-      
-      // 생성된 스토리 복원
-      if (location.state.generatedStory) {
-        updateGeneratedStory(location.state.generatedStory)
-      }
-      
-      // 스토리 설정 복원
-      if (location.state.storySettings) {
-        updateStorySettings(location.state.storySettings)
-      }
-      
-      // 템플릿 선택 복원
-      if (location.state.templateSelection) {
-        updateTemplateSelection(location.state.templateSelection)
-      }
-      
-      // 품질 개선 설정 복원
-      if (location.state.qualityEnhancement) {
-        updateQualityEnhancement(location.state.qualityEnhancement)
-      }
-      
-      // 콘티 생성 상태 복원
-      if (location.state.conteGeneration) {
-        // 콘티 생성 완료 상태로 복원
-        completeConteGeneration(location.state.conteGeneration.generatedConte || [])
-      }
-      
-      // 이미지 로딩 에러 상태 복원
-      if (location.state.imageLoadErrors) {
-        setImageLoadErrors(location.state.imageLoadErrors)
-      }
-      
-      // 선택된 콘티 복원
-      if (location.state.selectedConte) {
-        setSelectedConte(location.state.selectedConte)
-      }
-      
-      // 모달 상태 복원
-      if (location.state.conteModalOpen) {
-        setConteModalOpen(location.state.conteModalOpen)
-      }
-      
-      if (location.state.editModalOpen) {
-        setEditModalOpen(location.state.editModalOpen)
-      }
-      
-      if (location.state.editingConte) {
-        setEditingConte(location.state.editingConte)
-      }
-      
-      // 상태 복원 완료 알림 (중복 방지)
-      toast.success('이전 작업 상태가 복원되었습니다.');
-      hasRestored.current = true;
-    }
-  }, []);
-  
-  // Zustand 스토어에서 상태 가져오기
-  const {
-    synopsis,
-    generatedStory,
-    isGenerating,
-    generationError,
-    storySettings,
-    templateSelection,
-    qualityEnhancement,
-    conteGeneration,
-    setSynopsis,
-    startGeneration,
-    completeGeneration,
-    failGeneration,
-    updateGeneratedStory,
-    updateStorySettings,
-    updateTemplateSelection,
-    updateQualityEnhancement,
-    getCurrentError,
-    completeConteGeneration,
-    startConteGeneration,
-    failConteGeneration,
-    resetForNewProject
-  } = useStoryStore()
-
-  // 히스토리 스토어
-  const { addToHistory } = useStoryHistoryStore()
-
-  // 콘티 생성 상태
-  const { isConteGenerating, generatedConte } = conteGeneration
+  // 스토리 관련 로컬 상태
+  const [synopsis, setSynopsis] = useState('')
+  const [generatedStory, setGeneratedStory] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState('')
+  const [storySettings, setStorySettings] = useState({
+    genre: '일반',
+    maxLength: 600
+  })
   
   // 프로젝트 정보 상태
   const [projectInfo, setProjectInfo] = useState(null)
-  const [loadingProject, setLoadingProject] = useState(true)
-
-  // 프로젝트 상태 실시간 업데이트를 위한 함수
-  const updateProjectInfo = async () => {
-    if (!projectId) return
-    
-    try {
-      const response = await api.get(`/project/${projectId}`)
-      if (response.data.success) {
-        setProjectInfo(response.data.data.project)
-        console.log('🔄 프로젝트 정보 업데이트 완료:', response.data.data.project.status)
-      }
-    } catch (error) {
-      console.error('프로젝트 정보 업데이트 실패:', error)
-    }
-  }
+  const [loadingProject, setLoadingProject] = useState(false)
   
-  // 프로젝트 정보 로드
+  // 상태 복원 (뒤로가기 시)
+  const hasRestored = useRef(false)
   useEffect(() => {
-    const loadProjectInfo = async () => {
-      if (!projectId) {
-        console.error('프로젝트 ID가 없습니다.')
-        navigate('/')
-        return
+    if (location.state && !hasRestored.current) {
+      if (location.state.activeTab !== undefined) {
+        setActiveTab(location.state.activeTab)
+      }
+      if (location.state.currentStep !== undefined) {
+        setCurrentStep(location.state.currentStep)
+      }
+      if (location.state.projectData) {
+        setProjectData(location.state.projectData)
+      }
+      if (location.state.projectCreated) {
+        setProjectCreated(location.state.projectCreated)
+      }
+      if (location.state.storyGenerated) {
+        setStoryGenerated(location.state.storyGenerated)
       }
       
+      toast.success('이전 작업 상태가 복원되었습니다.')
+      hasRestored.current = true
+    }
+  }, [])
+  
+  // 프로젝트 스토어
+  const {
+    createProject: createProjectStore,
+    updateProject: updateProjectStore,
+    loadProject,
+    isCreating,
+    isUpdating,
+    isGeneratingStory,
+    storyGenerationError,
+    createError,
+    updateError,
+    currentProject
+  } = useProjectStore()
+  
+  // 기존 프로젝트 로드 (편집 모드)
+  useEffect(() => {
+    if (projectId) {
+      loadExistingProject()
+    }
+  }, [projectId])
+
+  /**
+   * 기존 프로젝트 로드
+   */
+  const loadExistingProject = async () => {
       try {
         setLoadingProject(true)
-        const response = await api.get(`/project/${projectId}`)
+      const response = await getProject(projectId)
         
-        if (response.data.success) {
-          const project = response.data.data.project
+      if (response.success && response.data) {
+        const project = response.data
           setProjectInfo(project)
-          
-          // 새 프로젝트인지 확인 (시놉시스와 스토리가 모두 없는 경우)
-          const isNewProject = !project.synopsis && !project.story
-          
-          if (isNewProject) {
-            // 새 프로젝트인 경우 스토어 초기화
-            console.log('🆕 새 프로젝트 감지 - 스토어 초기화')
-            resetForNewProject()
-          } else {
-            // 기존 프로젝트인 경우 데이터 로드
+        setProjectData({
+          title: project.title || project.projectTitle || '',
+          synopsis: project.synopsis || '',
+          story: project.story || '',
+          genre: project.genre || '일반',
+          tags: project.tags || [],
+          status: project.status || 'draft'
+        })
+        
+                // 로컬 상태에 데이터 설정
             if (project.synopsis) {
               setSynopsis(project.synopsis)
-            } else {
-              setSynopsis('')
             }
-            
             if (project.story) {
-              updateGeneratedStory(project.story)
-            } else {
-              updateGeneratedStory('')
+          setGeneratedStory(project.story)
+          setStoryGenerated(true)
             }
-          }
           
-          console.log('✅ 프로젝트 정보 로드 완료:', project.projectTitle)
+        setProjectCreated(true)
+        setCurrentStep(project.story ? 3 : 1) // 스토리가 있으면 완료, 없으면 시놉시스 단계
+          
+        console.log('✅ 기존 프로젝트 로드 완료:', project.title)
         } else {
-          throw new Error(response.data.message || '프로젝트를 찾을 수 없습니다.')
+        throw new Error(response.error || '프로젝트를 찾을 수 없습니다.')
         }
       } catch (error) {
-        console.error('프로젝트 정보 로드 실패:', error)
+      console.error('❌ 기존 프로젝트 로드 실패:', error)
         toast.error('프로젝트 정보를 불러오는데 실패했습니다.')
         navigate('/')
       } finally {
         setLoadingProject(false)
       }
     }
-    
-    loadProjectInfo()
-  }, [projectId, navigate, setSynopsis, updateGeneratedStory])
-
-  
-
-  /**
-   * 콘티 데이터 콘솔 출력 효과
-   * 콘티 생성 탭에서 콘티가 생성되면 모든 필드를 콘솔에 출력
-   */
-  useEffect(() => {
-    if (activeTab === 4 && generatedConte && generatedConte.length > 0) {
-      console.log('===== 콘티 데이터 전체 필드 출력 =====');
-      generatedConte.forEach((conte, idx) => {
-        console.log(`--- 콘티 #${idx + 1} ---`);
-        Object.entries(conte).forEach(([key, value]) => {
-          // 객체/배열은 JSON.stringify로 보기 좋게 출력
-          if (typeof value === 'object' && value !== null) {
-            console.log(`${key}: ${JSON.stringify(value, null, 2)}`);
-          } else {
-            console.log(`${key}: ${value}`);
-          }
-        });
-        console.log(''); // 콘티 간 구분을 위한 빈 줄
-      });
-      console.log('===============================');
-    }
-  }, [activeTab, generatedConte]);
 
   /**
    * 뒤로가기 버튼 핸들러
-   * 대시보드로 돌아가기
    */
   const handleBack = () => {
     navigate('/')
   }
 
   /**
-   * 저장 버튼 핸들러
-   * 시놉시스 또는 스토리를 프로젝트에 저장
+   * 프로젝트 생성 핸들러
+   * @param {Object} projectData - 프로젝트 데이터
    */
-  const handleSave = async () => {
-    if (!projectId) {
-      toast.error('저장할 프로젝트가 없습니다.')
-      return
-    }
-
+  const handleCreateProject = async (projectData) => {
     try {
-      console.log('💾 프로젝트 저장 시작:', {
-        hasSynopsis: !!synopsis,
-        hasStory: !!generatedStory,
-        projectId
-      })
-
-      // 저장할 데이터 구성
-      const updateData = {}
+      console.log('📁 프로젝트 생성 시작:', projectData)
       
-      // 시놉시스가 있으면 저장
-      if (synopsis && synopsis.trim()) {
-        updateData.synopsis = synopsis.trim()
-        console.log('📝 시놉시스 저장:', synopsis.trim().substring(0, 50) + '...')
-      }
+      const result = await createProjectStore(projectData)
       
-      // 스토리가 있으면 저장
-      if (generatedStory && generatedStory.trim()) {
-        updateData.story = generatedStory.trim()
-        updateData.status = 'story_ready'
-        console.log('📝 스토리 저장:', generatedStory.trim().substring(0, 50) + '...')
+      if (result.success) {
+        setProjectInfo(result.project)
+        setProjectCreated(true)
+        setCurrentStep(1) // 시놉시스 입력 단계로 이동
+        setActiveTab(1) // 시놉시스 탭으로 이동
+        
+        toast.success('프로젝트가 생성되었습니다.')
+        console.log('✅ 프로젝트 생성 완료:', result.project._id)
+        
+        return result.project
+      } else {
+        throw new Error(result.error || '프로젝트 생성에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('❌ 프로젝트 생성 실패:', error)
+      toast.error('프로젝트 생성에 실패했습니다: ' + error.message)
+      throw error
+    }
       }
 
-      // 저장할 데이터가 없으면 에러
-      if (Object.keys(updateData).length === 0) {
-        toast.error('저장할 내용이 없습니다. 시놉시스나 스토리를 입력해주세요.')
+  /**
+   * 시놉시스 저장 핸들러
+   * @param {string} synopsisText - 시놉시스 텍스트
+   */
+  const handleSaveSynopsis = async (synopsisText) => {
+    if (!projectInfo?._id) {
+      toast.error('저장할 프로젝트가 없습니다.')
         return
       }
 
-      // 프로젝트 업데이트
-      const response = await api.patch(`/project/${projectId}`, updateData)
-      
-      if (response.data.success) {
-        console.log('✅ 프로젝트 저장 완료:', response.data)
-        
-        // 프로젝트 정보 업데이트
-        await updateProjectInfo()
-        
-        // 성공 메시지
-        if (updateData.synopsis && updateData.story) {
-          toast.success('시놉시스와 스토리가 저장되었습니다.')
-        } else if (updateData.synopsis) {
-          toast.success('시놉시스가 저장되었습니다.')
-        } else if (updateData.story) {
-          toast.success('스토리가 저장되었습니다.')
-        }
-      } else {
-        throw new Error(response.data.message || '저장에 실패했습니다.')
-      }
-      
-    } catch (error) {
-      console.error('❌ 프로젝트 저장 실패:', error)
-      toast.error('저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'))
-    }
-  }
-
-  /**
-   * 자동 저장 핸들러
-   * @param {string} projectId - 프로젝트 ID
-   * @param {string} story - 저장할 스토리
-   */
-  const handleAutoSave = async (projectId, story) => {
     try {
-      await autoSaveProject(projectId, {
-        story,
-        synopsis,
-        projectTitle: `AI 스토리 프로젝트 - ${new Date().toLocaleDateString()}`
+      console.log('📝 시놉시스 저장 시작:', synopsisText.substring(0, 50) + '...')
+      
+      const result = await updateProjectStore(projectInfo._id, {
+        synopsis: synopsisText,
+        status: 'synopsis_ready'
       })
+      
+      if (result.success) {
+        setProjectData(prev => ({ ...prev, synopsis: synopsisText }))
+        setSynopsis(synopsisText)
+        setCurrentStep(2) // 스토리 생성 단계로 이동
+        setActiveTab(2) // 스토리 생성 탭으로 이동
+        
+          toast.success('시놉시스가 저장되었습니다.')
+        console.log('✅ 시놉시스 저장 완료')
+      } else {
+        throw new Error(result.error || '시놉시스 저장에 실패했습니다.')
+      }
     } catch (error) {
-      console.error('자동 저장 실패:', error)
-      throw error
+      console.error('❌ 시놉시스 저장 실패:', error)
+      toast.error('시놉시스 저장에 실패했습니다: ' + error.message)
     }
   }
 
@@ -373,12 +258,25 @@ const ConteGenerationPage = () => {
    * @param {string} synopsisText - 입력된 시놉시스
    */
   const handleGenerateStory = async (synopsisText) => {
+    if (!projectInfo?._id) {
+      toast.error('스토리를 생성할 프로젝트가 없습니다.')
+      return
+    }
+
     setSynopsis(synopsisText)
-    startGeneration()
+    setIsGenerating(true)
+    setGenerationError('')
     
     const startTime = Date.now()
     
     try {
+      console.log('📝 스토리 생성 시작:', {
+        projectId: projectInfo._id,
+        synopsis: synopsisText.substring(0, 50) + '...',
+        genre: storySettings.genre,
+        maxLength: storySettings.maxLength
+      })
+      
       // 선택된 장르에 따른 템플릿 프롬프트 가져오기
       let templatePrompt = null
       if (storySettings.genre && storySettings.genre !== '일반') {
@@ -388,344 +286,95 @@ const ConteGenerationPage = () => {
         }
       }
       
-      // lengthPresets의 maxLength 값을 백엔드로 전송
-      const maxLength = storySettings.maxLength || 600
-      
       // AI 스토리 생성 API 호출
-      const response = await generateStoryWithRetry({
-        synopsis: synopsisText,
-        maxLength: maxLength,  // ← lengthPresets에서 설정된 maxLength 값
-        genre: storySettings.genre,
-        templatePrompt: templatePrompt
-      })
+      const response = await generateStory(projectInfo._id)
       
       const generationTime = Math.round((Date.now() - startTime) / 1000)
       
-      completeGeneration(response.story)
-      
-      // 히스토리에 추가
-      addToHistory({
-        synopsis: synopsisText,
-        story: response.story,
-        settings: storySettings,
-        generationTime
-      })
+      if (response.success && response.data) {
+        setGeneratedStory(response.data.story)
+        setStoryGenerated(true)
+        setCurrentStep(3) // 완료 단계로 이동
       
       // 생성된 스토리를 프로젝트에 저장
-      if (projectId) {
         try {
           console.log('💾 생성된 스토리를 프로젝트에 저장 중...')
-          await api.patch(`/project/${projectId}`, {
-            story: response.story,
+          const saveResult = await updateProjectStore(projectInfo._id, {
+            story: response.data.story,
             status: 'story_ready'
           })
+          
+          if (saveResult.success) {
+            setProjectData(prev => ({ ...prev, story: response.data.story }))
           console.log('✅ 스토리 저장 완료')
-
-          // 프로젝트 정보 업데이트
-          await updateProjectInfo()
+          } else {
+            console.warn('⚠️ 스토리 저장 실패:', saveResult.error)
+          }
         } catch (saveError) {
           console.error('❌ 스토리 저장 실패:', saveError)
           // 저장 실패해도 스토리 생성은 성공으로 처리
         }
+      } else {
+        throw new Error(response.error || '스토리 생성에 실패했습니다.')
       }
       
       toast.success('스토리 생성이 완료되었습니다.')
+      console.log('✅ 스토리 생성 완료 (소요시간:', generationTime, '초)')
+      
     } catch (error) {
-      console.error('스토리 생성 실패:', error)
+      console.error('❌ 스토리 생성 실패:', error)
       const errorMessage = error.message || '스토리 생성에 실패했습니다.'
-      failGeneration(errorMessage)
+      setGenerationError(errorMessage)
+      setIsGenerating(false)
       toast.error(errorMessage)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
   /**
-   * 히스토리 재사용 핸들러
-   * @param {Object} historyData - 재사용할 히스토리 데이터
+   * 스토리 저장 핸들러
+   * @param {string} storyText - 저장할 스토리 텍스트
    */
-  const handleReuseHistory = (historyData) => {
-    setSynopsis(historyData.synopsis)
-    if (historyData.settings) {
-      updateStorySettings(historyData.settings)
-    }
-    // 스토리 내용도 함께 업데이트
-    if (historyData.story) {
-      updateGeneratedStory(historyData.story)
-    }
-    toast.success('이전 설정이 복원되었습니다.')
-  }
-
-  /**
-   * 템플릿 선택 핸들러
-   * @param {Object} template - 선택된 템플릿
-   */
-  const handleTemplateSelect = (template) => {
-    // 템플릿 설정이 있으면 적용
-    if (template.settings) {
-      updateStorySettings(template.settings)
-    }
-    toast.success(`${template.name} 템플릿이 적용되었습니다.`)
-  }
-
-  /**
-   * 설정 변경 핸들러
-   * @param {Object} newSettings - 새로운 설정
-   */
-  const handleSettingsChange = (newSettings) => {
-    updateStorySettings(newSettings)
-  }
-
-  /**
-   * 스토리 품질 개선 핸들러
-   * @param {Object} enhancementOptions - 개선 옵션
-   */
-  const handleStoryEnhance = async (enhancementOptions) => {
-    if (!synopsis) {
-      toast.error('개선할 시놉시스가 없습니다.')
+  const handleSaveStory = async (storyText) => {
+    if (!projectInfo?._id) {
+      toast.error('저장할 프로젝트가 없습니다.')
       return
     }
 
     try {
-      // 개선된 설정으로 스토리 재생성
-      const enhancedSettings = {
-        ...storySettings,
-        maxLength: Math.round(storySettings.maxLength * enhancementOptions.lengthMultiplier),
-        style: enhancementOptions.style || storySettings.style
-      }
-
-      updateStorySettings(enhancedSettings)
+      console.log('💾 스토리 저장 시작:', storyText.substring(0, 50) + '...')
       
-      // 개선된 설정으로 스토리 재생성
-      await handleGenerateStory(synopsis)
-      
-      toast.success('스토리가 개선되었습니다.')
-    } catch (error) {
-      console.error('스토리 개선 실패:', error)
-      toast.error('스토리 개선에 실패했습니다.')
-    }
-  }
-
-  /**
-   * 콘티 생성 시작 핸들러
-   */
-  const handleConteGenerationStart = () => {
-    // 스토어에서 이미 처리됨
-  }
-
-   /**
-   * 이미지 생성 상태 업데이트 핸들러
-   * @param {boolean} isGenerating - 이미지 생성 중 여부
-   * @param {number} progress - 진행률 (0-100)
-   */
-   const handleImageGenerationUpdate = (isGenerating, progress) => {
-    setIsGeneratingImages(isGenerating)
-    setImageGenerationProgress(progress)
-  }
-
-  /**
-   * 콘티 생성 완료 핸들러
-   * @param {Array} conteList - 생성된 콘티 리스트
-   * @param {boolean} isImageUpdate - 이미지 업데이트인지 여부 (중복 저장 방지)
-   */
-  const handleConteGenerationComplete = async (conteList, isImageUpdate = false) => {
-    console.log('🎬 handleConteGenerationComplete 호출됨:', {
-      projectId,
-      conteListLength: conteList?.length,
-      isImageUpdate,
-      conteList: conteList
-    })
-    
-    // API 응답의 실제 필드 값들을 모두 출력
-    if (conteList && conteList.length > 0) {
-      console.log('📋 API 응답의 실제 필드 값들:')
-      conteList.forEach((conte, index) => {
-        console.log(`📋 콘티 ${index + 1} - API 응답 필드:`, {
-          id: conte.id,
-          scene: conte.scene,
-          title: conte.title,
-          description: conte.description,
-          dialogue: conte.dialogue,
-          
-          characterLayout: conte.characterLayout,
-          props: conte.props,
-          weather: conte.weather,
-          lighting: conte.lighting,
-          visualDescription: conte.visualDescription,
-          transition: conte.transition,
-          lensSpecs: conte.lensSpecs,
-          visualEffects: conte.visualEffects,
-          type: conte.type,
-          estimatedDuration: conte.estimatedDuration,
-          // 스케줄링 관련 필드들
-          requiredPersonnel: conte.requiredPersonnel,
-          requiredEquipment: conte.requiredEquipment,
-          camera: conte.camera,
-          keywords: conte.keywords,
-          weights: conte.weights,
-          canEdit: conte.canEdit,
-          lastModified: conte.lastModified,
-          modifiedBy: conte.modifiedBy
-        })
+      const result = await updateProjectStore(projectInfo._id, {
+        story: storyText,
+        status: 'story_ready'
       })
-    }
-    
-    // 스토어에서 이미 처리됨
-    
-    // 생성된 콘티를 프로젝트에 저장
-    if (projectId && conteList && conteList.length > 0) {
-      try {
-        if (isImageUpdate) {
-          // 이미지 생성 완료 시 - 모든 콘티의 이미지 생성 상태 재확인
-          console.log('💾 이미지 생성 완료 - 콘티를 DB에 저장 중...', conteList.length, '개')
-          
-          // 이미지가 포함된 콘티만 필터링
-          const contesWithImages = conteList.filter(conte => conte.imageUrl)
-          const totalContes = conteList.length
-          const contesWithImagesCount = contesWithImages.length
-          
-          console.log('💾 DB 저장 전 최종 확인:', {
-            totalContes,
-            contesWithImagesCount,
-            allImagesGenerated: contesWithImagesCount === totalContes
-          })
-          
-          // 모든 콘티의 이미지가 생성된 경우에만 DB 저장 진행
-          if (contesWithImagesCount === totalContes) {
-            console.log('✅ 모든 콘티의 이미지 생성 완료 - DB 저장 진행')
+      
+            if (result.success) {
+        setProjectData(prev => ({ ...prev, story: storyText }))
+        setGeneratedStory(storyText)
+        
+        toast.success('스토리가 저장되었습니다.')
+        console.log('✅ 스토리 저장 완료')
           } else {
-            console.log('⚠️ 일부 콘티의 이미지 생성 실패 - DB 저장 건너뜀:', {
-              successCount: contesWithImagesCount,
-              totalCount: totalContes,
-              failedCount: totalContes - contesWithImagesCount
-            })
-            return // 일부 실패 시 DB 저장하지 않음
-          }
-          
-          const { conteAPI } = await import('../services/api')
-          
-          const savedContes = await Promise.all(
-            contesWithImages.map(async (conte, index) => {
-              try {
-                console.log(`💾 콘티 ${index + 1} 저장 중:`, conte.title)
-                
-                const conteData = {
-                  scene: conte.scene,
-                  title: conte.title,
-                  description: conte.description,
-                  dialogue: conte.dialogue || '',
-                  
-                  characterLayout: conte.characterLayout || '',
-                  props: conte.props || '',
-                  weather: conte.weather || '',
-                  lighting: conte.lighting || '',
-                  visualDescription: conte.visualDescription || '',
-                  transition: conte.transition || '',
-                  lensSpecs: conte.lensSpecs || '',
-                  visualEffects: conte.visualEffects || '',
-                  type: conte.type || 'live_action',
-                  estimatedDuration: conte.estimatedDuration || '5분',
-                  // 스케줄링 관련 필드들 추가
-                  requiredPersonnel: conte.requiredPersonnel || '감독 1명, 촬영감독 1명, 카메라맨 2명, 조명감독 1명, 음향감독 1명, 배우 3명, 스태프 5명',
-                  requiredEquipment: conte.requiredEquipment || '카메라 C1, 조명장비 3세트, 마이크 2개, 리플렉터 1개, 삼각대 2개',
-                  camera: conte.camera || 'C1',
-                  keywords: conte.keywords || {},
-                  weights: conte.weights || {},
-                  order: conte.order || index + 1,
-                  imageUrl: conte.imageUrl,
-                  imagePrompt: conte.imagePrompt || null,
-                  imageGeneratedAt: conte.imageGeneratedAt || null,
-                  imageModel: conte.imageModel || null,
-                  isFreeTier: conte.isFreeTier || false
-                }
-                
-                const response = await conteAPI.createConte(projectId, conteData)
-                console.log(`✅ 콘티 ${index + 1} 저장 완료:`, response.data)
-                console.log(`📋 콘티 ${index + 1} - DB 저장된 필드:`, {
-                  scene: conteData.scene,
-                  title: conteData.title,
-                  description: conteData.description,
-                  dialogue: conteData.dialogue,
-                  
-                  characterLayout: conteData.characterLayout,
-                  props: conteData.props,
-                  weather: conteData.weather,
-                  lighting: conteData.lighting,
-                  visualDescription: conteData.visualDescription,
-                  transition: conteData.transition,
-                  lensSpecs: conteData.lensSpecs,
-                  visualEffects: conteData.visualEffects,
-                  type: conteData.type,
-                  estimatedDuration: conteData.estimatedDuration,
-                  requiredPersonnel: conteData.requiredPersonnel,
-                  requiredEquipment: conteData.requiredEquipment,
-                  camera: conteData.camera,
-                  keywords: conteData.keywords,
-                  weights: conteData.weights
-                })
-                return response.data
-              } catch (error) {
-                console.error(`❌ 콘티 ${index + 1} 저장 실패:`, error)
-                throw error
-              }
-            })
-          )
-          
-          console.log('✅ 모든 콘티 저장 완료:', savedContes.length, '개')
-          
-          toast.success('이미지 생성이 완료되어 콘티가 DB에 저장되었습니다!')
-
-          // 프로젝트 정보 업데이트
-          await updateProjectInfo()
-          
-        } else {
-          // 콘티 생성 완료 시 - 프로젝트 상태만 업데이트 (DB 저장은 이미지 생성 완료 후에)
-          console.log('💾 콘티 생성 완료 - 프로젝트 상태만 업데이트:', conteList.length, '개')
-          
-          // 프로젝트 상태를 즉시 conte_ready로 업데이트
-          console.log('🔄 프로젝트 상태를 conte_ready로 업데이트 중...')
-          try {
-            const statusResponse = await api.put(`/projects/${projectId}`, {
-              status: 'conte_ready'
-            })
-            console.log('✅ 프로젝트 상태 업데이트 완료:', statusResponse.data)
-            
-            // 콘티 생성 완료 (조용히 처리)
-            
-            // 프로젝트 정보 업데이트
-            await updateProjectInfo()
-          } catch (statusError) {
-            console.error('❌ 프로젝트 상태 업데이트 실패:', statusError)
-            toast.error('콘티는 생성되었지만 상태 업데이트에 실패했습니다.')
-          }
-        }
-        
-      } catch (conteError) {
-        console.error('❌ 콘티 저장/업데이트 중 오류:', conteError)
-        
-        if (!isImageUpdate) {
-          // 콘티 생성 실패 시에도 프로젝트 상태만 업데이트 시도
-          try {
-            console.log('🔄 콘티 생성 실패했지만 프로젝트 상태 업데이트 시도...')
-            await api.patch(`/project/${projectId}`, {
-              status: 'conte_ready'
-            })
-            console.log('✅ 프로젝트 상태 업데이트 완료 (콘티 생성 실패 후)')
-
-          } catch (statusError) {
-            console.error('❌ 프로젝트 상태 업데이트도 실패:', statusError)
-            toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
-          }
-        } else {
-          toast.error('콘티 저장에 실패했습니다.')
-        }
+        throw new Error(result.error || '스토리 저장에 실패했습니다.')
       }
-    } else {
-      console.log('⚠️ 콘티 리스트가 비어있거나 projectId가 없음:', {
-        projectId,
-        conteListLength: conteList?.length
-      })
+              } catch (error) {
+      console.error('❌ 스토리 저장 실패:', error)
+      toast.error('스토리 저장에 실패했습니다: ' + error.message)
     }
   }
 
+  /**
+   * 프로젝트 완료 핸들러
+   */
+  const handleCompleteProject = () => {
+    if (projectInfo?._id) {
+      navigate(`/project/${projectInfo._id}`)
+        } else {
+      navigate('/')
+        }
+      }
 
   /**
    * 탭 변경 핸들러
@@ -733,694 +382,329 @@ const ConteGenerationPage = () => {
    */
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue)
-
-    // 탭 변경 시 프로젝트 정보 업데이트 (특히 콘티 생성 탭으로 이동할 때)
-    if (newValue === 4) { // 콘티 생성 탭
-      updateProjectInfo()
-
-      // 새 프로젝트인 경우 콘티 생성 상태 초기화
-      if (projectInfo && !projectInfo.synopsis && !projectInfo.story) {
-        console.log('🆕 콘티 생성 탭 - 새 프로젝트 감지, 콘티 상태 초기화')
-        resetForNewProject()
-      }
-    }
   }
 
   /**
-   * 콘티 상세 정보 모달 열기
-   * @param {Object} conte - 선택된 콘티 데이터
+   * 단계 변경 핸들러
+   * @param {number} step - 이동할 단계
    */
-  const handleConteClick = (conte) => {
-    setSelectedConte(conte)
-    setConteModalOpen(true)
+  const handleStepChange = (step) => {
+    setCurrentStep(step)
   }
 
-  /**
-   * 콘티 상세 정보 모달 닫기
-   */
-  const handleConteModalClose = () => {
-    setConteModalOpen(false)
-    setSelectedConte(null)
-  }
-
-  /**
-   * 콘티 편집 모달 열기
-   * @param {Object} conte - 편집할 콘티 데이터
-   */
-  const handleEditConte = (conte) => {
-    setEditingConte(conte)
-    setEditModalOpen(true)
-  }
-
-  /**
-   * 콘티 편집 모달 닫기
-   */
-  const handleEditModalClose = () => {
-    setEditModalOpen(false)
-    setEditingConte(null)
-  }
-
-  /**
-   * 콘티 저장 핸들러
-   * @param {Object} updatedConte - 업데이트된 콘티 데이터
-   */
-  const handleSaveConte = (updatedConte) => {
-    // 스토어에서 콘티 리스트 업데이트
-    const updatedConteList = generatedConte.map(conte => 
-      conte.id === updatedConte.id ? updatedConte : conte
-    )
-    
-    // 스토어에 업데이트된 콘티 리스트 저장
-    completeConteGeneration(updatedConteList)
-    
-    toast.success('콘티가 저장되었습니다.')
-  }
-
-  /**
-   * 이미지 재생성 핸들러
-   * @param {Object} updatedConte - 이미지가 재생성된 콘티 데이터
-   */
-  const handleRegenerateImage = (updatedConte) => {
-    // 스토어에서 콘티 리스트 업데이트
-    const updatedConteList = generatedConte.map(conte => 
-      conte.id === updatedConte.id ? updatedConte : conte
-    )
-    
-    // 스토어에 업데이트된 콘티 리스트 저장
-    completeConteGeneration(updatedConteList)
-  }
-
-  /**
-   * 콘티 재생성 핸들러
-   * @param {Object} conte - 재생성할 콘티 데이터
-   */
-  const handleRegenerateConte = async (conte) => {
-    try {
-      console.log('🎬 콘티 재생성 시작:', conte.title)
-      
-      // 실제 API가 없으므로 임시로 시뮬레이션
-      // const updatedConte = await regenerateConteWithRetry(conte)
-      
-      // 임시로 기존 콘티를 업데이트 (실제로는 API 호출)
-      const updatedConte = {
-        ...conte,
-        lastModified: new Date().toISOString(),
-        modifiedBy: '사용자',
-        description: `${conte.description} (재생성됨)`,
-        dialogue: conte.dialogue ? `${conte.dialogue} (재생성됨)` : '새로운 대사가 생성되었습니다.'
-      }
-      
-      // 스토어에서 콘티 리스트 업데이트
-      const updatedConteList = generatedConte.map(c => 
-        c.id === updatedConte.id ? updatedConte : c
-      )
-      
-      // 스토어에 업데이트된 콘티 리스트 저장
-      completeConteGeneration(updatedConteList)
-      
-      console.log('✅ 콘티 재생성 완료:', updatedConte.title)
-      
-    } catch (error) {
-      console.error('❌ 콘티 재생성 실패:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 이미지 로딩 실패 핸들러
-   * @param {string} conteId - 콘티 ID
-   * @param {Event} event - 이미지 로딩 에러 이벤트
-   */
-  const handleImageLoadError = (conteId, event) => {
-    console.error('이미지 로딩 실패:', conteId)
-    setImageLoadErrors(prev => ({
-      ...prev,
-      [conteId]: true
-    }))
-    // 이미지 요소 숨기기
-    if (event.target) {
-      event.target.style.display = 'none'
-    }
-  }
-
-  /**
-   * 타임라인 보기 핸들러
-   */
-  const handleViewTimeline = async () => {
-    if (!generatedConte || generatedConte.length === 0) {
-      toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
-      return
-    }
-
-    try {
-      console.log('🎬 타임라인 보기 시작 - 컷 생성 및 타임라인 표시')
-      
-      // 로딩 상태 표시
-      toast.loading('컷을 생성하고 타임라인을 준비하고 있습니다...', { id: 'timeline-loading' })
-      
-      // 콘티 데이터를 로컬 스토리지에 저장
-      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
-      
-      // 프로젝트 페이지로 이동 (컷 생성은 ProjectPage에서 처리)
-      navigate(`/project/${projectId}?mode=timeline&generateCuts=true`)
-      
-      toast.success('타임라인으로 이동합니다!', { id: 'timeline-loading' })
-      
-    } catch (error) {
-      console.error('❌ 타임라인 보기 실패:', error)
-      toast.error('타임라인 보기에 실패했습니다.', { id: 'timeline-loading' })
-    }
-  }
-
-  /**
-   * 이미지 재시도 핸들러
-   * @param {Object} conte - 콘티 객체
-   */
-  const handleImageRetry = async (conte) => {
-    try {
-      console.log('🔄 이미지 재시도 시작:', conte.scene)
-      
-      // 이미지 생성 API 호출
-      const imagePrompt = `${conte.title}: ${conte.description}. ${conte.visualDescription || ''} ${conte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
-      
-      const imageResponse = await generateSceneImage({
-        sceneDescription: imagePrompt,
-        style: 'cinematic',
-        genre: conte.genre || '일반',
-        size: '1024x1024'
-      })
-      
-      // 콘티 리스트에서 해당 콘티 업데이트
-      const updatedConteList = generatedConte.map(c => 
-        c.id === conte.id ? {
-          ...c,
-          imageUrl: imageResponse.imageUrl,
-          imagePrompt: imagePrompt,
-          imageGeneratedAt: imageResponse.generatedAt,
-          imageModel: imageResponse.model,
-          isFreeTier: imageResponse.isFreeTier
-        } : c
-      )
-      
-      // 스토어에 업데이트된 콘티 리스트 저장
-      completeConteGeneration(updatedConteList)
-      
-      // 에러 상태 제거
-      setImageLoadErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[conte.id]
-        return newErrors
-      })
-      
-      toast.success('이미지가 재생성되었습니다!')
-      
-    } catch (error) {
-      console.error('❌ 이미지 재시도 실패:', error)
-      toast.error('이미지 재생성에 실패했습니다.')
-    }
-  }
-
-  // 백엔드 서버 주소를 환경변수 또는 기본값으로 설정
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
-  const getImageUrl = (url) => {
-    if (!url) return '';
-    return url.startsWith('http') ? url : `${BACKEND_URL}${url}`;
-  };
+  // 단계별 완료 여부
+  const isProjectCreated = projectCreated || projectInfo?._id
+  const isSynopsisReady = projectData.synopsis && projectData.synopsis.trim().length > 0
+  const isStoryReady = storyGenerated || (projectData.story && projectData.story.trim().length > 0)
 
   return (
-    <ErrorBoundary>
-      <NetworkErrorHandler onRetry={() => {
-        if (synopsis) {
-          handleGenerateStory(synopsis)
-        }
-      }}>
         <Box sx={{ flexGrow: 1 }}>
           {/* 공통 헤더 */}
           <CommonHeader 
-            title={projectInfo?.projectTitle || 'AI 콘티 생성'}
+        title={projectInfo?.title || projectInfo?.projectTitle || '시놉시스 → 스토리 생성'}
             showBackButton={true}
             onBack={handleBack}
           >
-            {/* 저장 버튼 */}
+        {/* 완료 버튼 */}
+        {isStoryReady && (
             <Button 
               color="inherit" 
-              startIcon={<Save />}
-              onClick={handleSave}
-              disabled={!generatedStory}
+            startIcon={<CheckCircle />}
+            onClick={handleCompleteProject}
+            sx={{ ml: 1 }}
             >
-              저장
+            프로젝트 완료
             </Button>
+        )}
           </CommonHeader>
 
           {/* 메인 컨텐츠 */}
           <Container maxWidth="lg" sx={{ mt: 4 }}>
-            {/* 프로젝트 정보 헤더 */}
-            <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
-              <Typography variant="h4" gutterBottom>
-                🎬 {projectInfo?.projectTitle || 'AI 콘티 생성'}
+        {/* 진행 단계 표시 */}
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            📋 프로젝트 생성 단계
               </Typography>
               
-              {/* 프로젝트 상태 정보 */}
+          <Stepper activeStep={currentStep} orientation="horizontal" sx={{ mt: 3 }}>
+            <Step>
+              <StepLabel 
+                icon={isProjectCreated ? <CheckCircle /> : <Create />}
+                error={createError ? true : false}
+              >
+                프로젝트 생성
+              </StepLabel>
+            </Step>
+            <Step>
+              <StepLabel 
+                icon={isSynopsisReady ? <CheckCircle /> : <Edit />}
+              >
+                시놉시스 입력
+              </StepLabel>
+            </Step>
+            <Step>
+              <StepLabel 
+                icon={isStoryReady ? <CheckCircle /> : <AutoFixHigh />}
+                error={generationError ? true : false}
+              >
+                스토리 생성
+              </StepLabel>
+            </Step>
+            <Step>
+              <StepLabel icon={<CheckCircle />}>
+                완료
+              </StepLabel>
+            </Step>
+          </Stepper>
+        </Paper>
+
+        {/* 프로젝트 정보 표시 */}
               {projectInfo && (
-                <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              📁 프로젝트 정보
+            </Typography>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  프로젝트명
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  {projectInfo.title || projectInfo.projectTitle}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  상태
+                </Typography>
                   <Chip 
-                    label={`상태: ${projectInfo.status || 'draft'}`} 
+                  label={projectInfo.status || 'draft'} 
                     color="primary" 
                     size="small" 
                   />
-                  <Chip 
-                    label={`생성일: ${new Date(projectInfo.createdAt).toLocaleDateString()}`} 
-                    variant="outlined" 
-                    size="small" 
-                  />
-                </Box>
-              )}
-              
-              {/* 시놉시스 편집 섹션 */}
-              {projectInfo?.synopsis && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="h6" gutterBottom>
-                    📝 시놉시스
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  생성일
                   </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    {projectInfo.synopsis}
+                <Typography variant="body2">
+                  {new Date(projectInfo.createdAt).toLocaleDateString()}
                   </Typography>
-                </Box>
-              )}
-            </Box>
-            
-            {/* 설명 텍스트 */}
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-              영화 시놉시스를 입력하면 AI가 자동으로 상세한 스토리를 생성합니다.
-            </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  장르
+                </Typography>
+                <Typography variant="body2">
+                  {projectInfo.genre || '일반'}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        )}
             
             {/* 탭 네비게이션 */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs 
                 value={activeTab} 
                 onChange={handleTabChange}
-                aria-label="스토리 생성 기능 탭"
+            aria-label="프로젝트 생성 단계 탭"
               >
                 <Tab 
-                  label="스토리 생성" 
-                  icon={<AutoFixHigh />} 
+              label="프로젝트 생성" 
+              icon={<Create />} 
+                  iconPosition="start"
+              disabled={!isProjectCreated}
+                />
+                <Tab 
+              label="시놉시스 입력" 
+              icon={<Edit />} 
+                  iconPosition="start"
+              disabled={!isProjectCreated}
+                />
+                <Tab 
+              label="스토리 생성" 
+              icon={<AutoFixHigh />} 
+                  iconPosition="start"
+              disabled={!isSynopsisReady}
+                />
+                <Tab 
+              label="히스토리" 
+              icon={<History />} 
                   iconPosition="start"
                 />
                 <Tab 
-                  label="히스토리" 
-                  icon={<History />} 
+              label="품질 개선" 
+              icon={<Tune />} 
                   iconPosition="start"
-                />
-                <Tab 
-                  label="템플릿" 
-                  icon={<Tune />} 
-                  iconPosition="start"
-                />
-                <Tab 
-                  label="품질 개선" 
-                  icon={<AutoFixHigh />} 
-                  iconPosition="start"
-                />
-                <Tab 
-                  label="콘티 생성" 
-                  icon={<Movie />} 
-                  iconPosition="start"
+              disabled={!isStoryReady}
                 />
               </Tabs>
             </Box>
 
-            {/* 스토리 생성 탭 */}
+        {/* 프로젝트 생성 탭 */}
             {activeTab === 0 && (
-              <Box>
-                {/* 시놉시스 입력 폼 */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              📁 새 프로젝트 생성
+            </Typography>
+            
+            <Typography variant="body2" color="text.secondary" paragraph>
+              영화 제작을 위한 새 프로젝트를 생성합니다. 프로젝트명과 기본 정보를 입력해주세요.
+            </Typography>
+            
                 <SynopsisInputForm 
-                  onSubmit={handleGenerateStory}
-                  onSave={handleSave}
-                  isGenerating={isGenerating}
+              onSubmit={handleCreateProject}
+              isGenerating={isCreating}
+              isProjectCreation={true}
+              initialData={projectData}
                 />
 
-                {/* 로딩 상태 표시 */}
-                {isGenerating && (
-                  <Box sx={{ 
-                    mt: 3, 
-                    p: 3, 
-                    bgcolor: 'background.paper', 
-                    borderRadius: 2, 
-                    boxShadow: 1,
-                    textAlign: 'center'
-                  }}>
-                    <LoadingSpinner message="AI 스토리 생성 중..." />
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                      시놉시스를 분석하고 상세한 스토리를 생성하고 있습니다...
+            {createError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {createError}
+              </Alert>
+            )}
+          </Paper>
+        )}
+
+        {/* 시놉시스 입력 탭 */}
+        {activeTab === 1 && (
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              📝 시놉시스 입력
                     </Typography>
+            
+            <Typography variant="body2" color="text.secondary" paragraph>
+              영화의 기본 줄거리를 입력하면 AI가 상세한 스토리를 생성합니다.
+            </Typography>
+            
+            <SynopsisInputForm 
+              onSubmit={handleSaveSynopsis}
+              onSave={handleSaveSynopsis}
+              isGenerating={isUpdating}
+              initialSynopsis={projectData.synopsis}
+            />
+            
+            {updateError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {updateError}
+              </Alert>
+            )}
+          </Paper>
+        )}
+
+        {/* 스토리 생성 탭 */}
+        {activeTab === 2 && (
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              ✨ AI 스토리 생성
+            </Typography>
+            
+            <Typography variant="body2" color="text.secondary" paragraph>
+              입력된 시놉시스를 바탕으로 AI가 상세한 스토리를 생성합니다.
+            </Typography>
+            
+            {/* 시놉시스 미리보기 */}
+            {projectData.synopsis && (
+              <Card sx={{ mb: 3, bgcolor: 'grey.50' }}>
+                <CardContent>
+                  <Typography variant="subtitle2" gutterBottom>
+                    📝 입력된 시놉시스
+                  </Typography>
+                  <Typography variant="body2">
+                    {projectData.synopsis}
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 스토리 생성 버튼 */}
+            {!isStoryReady && (
+              <Box sx={{ mb: 3 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<AutoFixHigh />}
+                  onClick={() => handleGenerateStory(projectData.synopsis)}
+                  disabled={isGenerating || !projectData.synopsis}
+                  sx={{ mb: 2 }}
+                >
+                  {isGenerating ? '스토리 생성 중...' : '스토리 생성 시작'}
+                </Button>
+                
+                {isGenerating && (
+                  <Box sx={{ mt: 2 }}>
+                    <LoadingSpinner message="AI가 스토리를 생성하고 있습니다..." />
+                  </Box>
+                )}
                   </Box>
                 )}
 
                 {/* 생성된 스토리 표시 */}
-                {!isGenerating && generatedStory && (
+            {isStoryReady && (
                   <StoryResult 
-                    story={generatedStory}
-                    onSave={(editedStory) => {
-                      updateGeneratedStory(editedStory)
-                      toast.success('스토리가 업데이트되었습니다.')
-                    }}
-                    onRegenerate={() => {
-                      if (synopsis) {
-                        handleGenerateStory(synopsis)
-                      }
-                    }}
+                story={generatedStory || projectData.story}
+                onSave={handleSaveStory}
+                onRegenerate={() => handleGenerateStory(projectData.synopsis)}
                     isGenerating={isGenerating}
-                    onAutoSave={handleAutoSave}
-                    projectId="temp-project-id" // TODO: 실제 프로젝트 ID로 교체
+                projectId={projectInfo?._id}
                   />
                 )}
 
                 {/* 에러 상태 표시 */}
                 {generationError && (
-                  <Box sx={{ 
-                    mt: 3, 
-                    p: 3, 
-                    bgcolor: 'background.paper', 
-                    borderRadius: 2, 
-                    boxShadow: 1,
-                    border: '1px solid #f44336'
-                  }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Error sx={{ color: '#f44336', mr: 1 }} />
-                      <Typography variant="h6" color="error">
+              <Alert severity="error" sx={{ mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
                         스토리 생성 실패
                       </Typography>
-                    </Box>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2">
                       {generationError}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <Button
                         variant="contained"
                         startIcon={<Refresh />}
-                        onClick={() => {
-                          if (synopsis) {
-                            handleGenerateStory(synopsis)
-                          }
-                        }}
-                        size="small"
+                  onClick={() => handleGenerateStory(projectData.synopsis)}
+                  sx={{ mt: 2 }}
                       >
                         다시 시도
                       </Button>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setActiveTab(2)} // 템플릿 탭으로 이동
-                        size="small"
-                      >
-                        템플릿 사용
-                      </Button>
-                    </Box>
-                  </Box>
+              </Alert>
                 )}
-              </Box>
+          </Paper>
             )}
 
             {/* 히스토리 탭 */}
-            {activeTab === 1 && (
-              <HistoryList 
+        {activeTab === 3 && (
+          <StoryHistoryPanel 
                 onSelectHistory={(historyItem) => {
                   setSynopsis(historyItem.synopsis)
                   if (historyItem.settings) {
-                    updateStorySettings(historyItem.settings)
+                setStorySettings(historyItem.settings)
                   }
-                  // 스토리 내용도 함께 업데이트
                   if (historyItem.story) {
-                    updateGeneratedStory(historyItem.story)
+                setGeneratedStory(historyItem.story)
                   }
-                  setActiveTab(0) // 생성 탭으로 이동
+              setActiveTab(2) // 스토리 생성 탭으로 이동
                 }}
-                onReuseHistory={handleReuseHistory}
-              />
-            )}
-
-            {/* 템플릿 탭 */}
-            {activeTab === 2 && (
-              <TemplateSelector 
-                synopsis={synopsis}
-                onTemplateSelect={handleTemplateSelect}
-                onSettingsChange={handleSettingsChange}
-                currentSettings={storySettings}
-                templateSelection={templateSelection}
-                onTemplateSelectionChange={updateTemplateSelection}
               />
             )}
 
             {/* 품질 개선 탭 */}
-            {activeTab === 3 && (
+        {activeTab === 4 && (
               <StoryQualityEnhancer 
-                currentStory={generatedStory}
-                onRegenerate={() => {
-                  if (synopsis) {
-                    handleGenerateStory(synopsis)
-                  }
-                }}
-                onEnhance={handleStoryEnhance}
+            currentStory={generatedStory || projectData.story}
+            onRegenerate={() => handleGenerateStory(projectData.synopsis)}
+            onEnhance={handleGenerateStory}
                 isGenerating={isGenerating}
-                qualityEnhancement={qualityEnhancement}
-                onQualityEnhancementChange={updateQualityEnhancement}
-              />
-            )}
-
-            {/* 콘티 생성 탭 */}
-            {activeTab === 4 && (
-              <Box>
-                <ConteGenerator 
-                  story={generatedStory}
-                  onConteGenerated={handleConteGenerationComplete}
-                  onGenerationStart={handleConteGenerationStart}
-                  onGenerationComplete={handleConteGenerationComplete}
-                  onImageGenerationUpdate={handleImageGenerationUpdate}
-                  projectId={projectId}
-                />
-                
-                {/* 생성된 콘티 결과 표시 */}
-                {generatedConte && generatedConte.length > 0 && (
-                  <Box sx={{ mt: 4 }}>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      mb: 2 
-                    }}>
-                      <Box>
-                        <Typography variant="h6" gutterBottom>
-                          생성된 콘티 리스트
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" paragraph>
-                          총 {generatedConte.length}개의 씬이 생성되었습니다.
-                        </Typography>
-                      </Box>
-                      
-                      <Box sx={{ display: 'flex', gap: 2 }}>
-                      <Button
-                        variant="contained"
-                        startIcon={<Timeline />}
-                        onClick={handleViewTimeline}
-                        sx={{
-                          backgroundColor: 'var(--color-success)',
-                          '&:hover': {
-                            backgroundColor: 'var(--color-success-dark)',
-                          }
-                        }}
-                      >
-                        타임라인 보기
-                      </Button>
-                      </Box>
-                    </Box>
-                    
-                    {generatedConte.map((conte, index) => (
-                      <Box 
-                        key={index} 
-                        sx={{ 
-                          mb: 2, 
-                          p: 2, 
-                          border: '1px solid #ddd', 
-                          borderRadius: 1,
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                            borderColor: 'primary.main'
-                          },
-                          transition: 'all 0.2s ease'
-                        }}
-                        onClick={() => handleConteClick(conte)}
-                      >
-                        <Grid container spacing={2}>
-                          {/* 씬 이미지 */}
-                          {(conte.imageUrl || isGeneratingImages) && (
-                            <Grid item xs={12} sm={4}>
-                              <Box sx={{ 
-                                width: '100%', 
-                                height: 150, 
-                                borderRadius: 1,
-                                overflow: 'hidden',
-                                border: '1px solid #ddd',
-                                position: 'relative',
-                                backgroundColor: 'var(--color-card-bg)'
-                              }}>
-                                {conte.imageUrl ? (
-                                  <img 
-                                    src={getImageUrl(conte.imageUrl)} 
-                                    alt={`씬 ${conte.scene} 이미지`}
-                                    style={{
-                                      width: '100%',
-                                      height: '100%',
-                                      objectFit: 'cover'
-                                    }}
-                                    onError={(e) => handleImageLoadError(conte.id, e)}
-                                  />
-                                ) : isGeneratingImages ? (
-                                  <Box sx={{ 
-                                    width: '100%', 
-                                    height: '100%', 
-                                    display: 'flex', 
-                                    flexDirection: 'column',
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.1)'
-                                  }}>
-                                    <CircularProgress 
-                                      size={40} 
-                                      sx={{ color: 'var(--color-accent)', mb: 1 }} 
-                                    />
-                                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-                                      이미지 생성 중...
-                                    </Typography>
-                                    {imageGenerationProgress > 0 && (
-                                      <Typography variant="caption" color="text.secondary">
-                                        {Math.round(imageGenerationProgress)}%
-                                      </Typography>
-                                    )}
-                                  </Box>
-                                ) : null}
-                                {imageLoadErrors[conte.id] && (
-                                  <Box sx={{ 
-                                    position: 'absolute', 
-                                    top: 0, 
-                                    left: 0, 
-                                    width: '100%', 
-                                    height: '100%', 
-                                    backgroundColor: 'rgba(0, 0, 0, 0.7)', 
-                                    display: 'flex', 
-                                    flexDirection: 'column',
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    zIndex: 1 
-                                  }}>
-                                    <Error sx={{ color: 'white', mb: 1 }} />
-                                    <Typography variant="caption" color="white" sx={{ mb: 1, textAlign: 'center' }}>
-                                      이미지 로딩 실패
-                                    </Typography>
-                                    <Button
-                                      size="small"
-                                      variant="contained"
-                                      startIcon={<Refresh />}
-                                      onClick={() => handleImageRetry(conte)}
-                                      sx={{ 
-                                        backgroundColor: 'var(--color-primary)',
-                                        '&:hover': {
-                                          backgroundColor: 'var(--color-accent)',
-                                        }
-                                      }}
-                                    >
-                                      재시도
-                                    </Button>
-                                  </Box>
-                                )}
-                              </Box>
-                            </Grid>
-                          )}
-                          
-                          {/* 씬 정보 */}
-                          <Grid item xs={12} sm={(conte.imageUrl || isGeneratingImages) ? 8 : 12}>
-                            <Typography variant="subtitle1" gutterBottom>
-                              씬 {conte.scene || index + 1}: {conte.title}
-                            </Typography>
-                            <Typography variant="body2" paragraph>
-                              {conte.description}
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="caption" color="text.secondary">
-                                타입: {conte.type === 'generated_video' ? 'AI 생성 비디오' : '실사 촬영용'}
-                              </Typography>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                {conte.imageUrl ? (
-                                  <Chip 
-                                    label="이미지 있음" 
-                                    size="small" 
-                                    color="success" 
-                                    variant="outlined"
-                                  />
-                                ) : isGeneratingImages ? (
-                                  <Chip 
-                                    label="이미지 생성 중" 
-                                    size="small" 
-                                    color="warning" 
-                                    variant="outlined"
-                                    icon={<CircularProgress size={12} />}
-                                  />
-                                ) : null}
-                                <Chip 
-                                  label="상세보기" 
-                                  size="small" 
-                                  color="primary" 
-                                  variant="outlined"
-                                />
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={<Edit />}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleEditConte(conte)
-                                  }}
-                                  sx={{ minWidth: 'auto', px: 1 }}
-                                >
-                                  편집
-                                </Button>
-                              </Box>
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
+            qualityEnhancement={{}}
+            onQualityEnhancementChange={() => {}}
+          />
             )}
           </Container>
         </Box>
-
-        {/* 콘티 상세 정보 모달 (공통 컴포넌트 사용) */}
-        <ConteDetailModal
-          open={conteModalOpen}
-          onClose={handleConteModalClose}
-          conte={selectedConte}
-          onEdit={handleEditConte}
-          onImageRetry={handleImageRetry}
-          imageLoadErrors={imageLoadErrors}
-          onImageLoadError={handleImageLoadError}
-          isGeneratingImages={isGeneratingImages}
-          imageGenerationProgress={imageGenerationProgress}
-        />
-
-        {/* 콘티 편집 모달 */}
-        <ConteEditModal
-          open={editModalOpen}
-          onClose={handleEditModalClose}
-          conte={editingConte}
-          onSave={handleSaveConte}
-          onRegenerateImage={handleRegenerateImage}
-          onRegenerateConte={handleRegenerateConte}
-        />
-      </NetworkErrorHandler>
-    </ErrorBoundary>
   )
 }
 
-export default ConteGenerationPage
+export default SynoStoryProjectGenerationPage

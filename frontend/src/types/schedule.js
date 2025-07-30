@@ -12,7 +12,7 @@
 export const SchedulerTimeRange = {
   start: String,
   end: String,
-}
+};
 
 /**
  * 스케줄러 씬 타입
@@ -45,7 +45,7 @@ export const SchedulerScene = {
     characterProps: [String],
     setProps: [String],
   },
-}
+};
 
 /**
  * 스케줄러 생성 요청 타입
@@ -58,7 +58,7 @@ export const CreateSchedulerRequest = {
   maxDailyHours: Number,
   maxWeeklyHours: Number,
   restDay: Number,
-}
+};
 
 /**
  * 스케줄러 일 수정 요청 타입
@@ -81,7 +81,7 @@ export const UpdateSchedulerDayRequest = {
   scenes: [SchedulerScene],
   estimatedDuration: Number,
   breakdown: Object,
-}
+};
 
 /**
  * 스케줄러 수정 요청 타입
@@ -96,7 +96,7 @@ export const UpdateSchedulerRequest = {
   totalDays: Number,
   totalScenes: Number,
   totalDuration: Number,
-}
+};
 
 /**
  * 스케줄러 일 타입
@@ -123,7 +123,7 @@ export const SchedulerDay = {
   breakdown: Object,
   createdAt: Date,
   updatedAt: Date,
-}
+};
 
 /**
  * 스케줄러 응답 타입
@@ -152,7 +152,7 @@ export const SchedulerResponse = {
   totalDuration: Number,
   createdAt: Date,
   updatedAt: Date,
-}
+};
 
 /**
  * 스케줄러 목록 응답 타입
@@ -165,7 +165,7 @@ export const SchedulerListResponse = {
   success: Boolean,
   data: [SchedulerResponse],
   message: String,
-}
+};
 
 /**
  * 스케줄러 상세 응답 타입
@@ -178,7 +178,7 @@ export const SchedulerDetailResponse = {
   success: Boolean,
   data: SchedulerResponse,
   message: String,
-}
+};
 
 /**
  * 브레이크다운 정보 타입
@@ -195,7 +195,7 @@ export const BreakdownInfo = {
   equipment: Object,
   props: Object,
   costumes: Object,
-}
+};
 
 /**
  * 일일 스케줄 요약 타입
@@ -216,7 +216,7 @@ export const DailyScheduleSummary = {
   totalDuration: Number,
   cast: [String],
   equipment: [String],
-}
+};
 
 /**
  * 스케줄 통계 타입
@@ -237,7 +237,7 @@ export const ScheduleStatistics = {
   averageDurationPerDay: Number,
   uniqueLocations: [String],
   uniqueCast: [String],
-}
+};
 
 // 기본 스케줄러 객체 생성 함수
 export const createDefaultScheduler = () => ({
@@ -252,7 +252,7 @@ export const createDefaultScheduler = () => ({
   totalDuration: 0,
   createdAt: new Date(),
   updatedAt: new Date(),
-})
+});
 
 // 기본 스케줄러 일 객체 생성 함수
 export const createDefaultSchedulerDay = () => ({
@@ -275,7 +275,7 @@ export const createDefaultSchedulerDay = () => ({
   },
   createdAt: new Date(),
   updatedAt: new Date(),
-})
+});
 
 // 기본 스케줄러 씬 객체 생성 함수
 export const createDefaultSchedulerScene = () => ({
@@ -293,117 +293,117 @@ export const createDefaultSchedulerScene = () => ({
     characterProps: [],
     setProps: [],
   },
-})
+});
 
 // 스케줄러 유효성 검사 함수
 export const validateScheduler = (scheduler) => {
-  const errors = []
+  const errors = [];
   
   if (!scheduler.projectId || scheduler.projectId.trim() === '') {
-    errors.push('프로젝트 ID는 필수입니다.')
+    errors.push('프로젝트 ID는 필수입니다.');
   }
   
   if (!scheduler.maxDailyHours || scheduler.maxDailyHours < 1) {
-    errors.push('최대 일일 촬영 시간은 1시간 이상이어야 합니다.')
+    errors.push('최대 일일 촬영 시간은 1시간 이상이어야 합니다.');
   }
   
   if (!scheduler.maxWeeklyHours || scheduler.maxWeeklyHours < 1) {
-    errors.push('최대 주간 촬영 시간은 1시간 이상이어야 합니다.')
+    errors.push('최대 주간 촬영 시간은 1시간 이상이어야 합니다.');
   }
   
   if (scheduler.restDay < 0 || scheduler.restDay > 7) {
-    errors.push('휴게 일은 0-7 사이여야 합니다.')
+    errors.push('휴게 일은 0-7 사이여야 합니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 스케줄러 일 유효성 검사 함수
 export const validateSchedulerDay = (day) => {
-  const errors = []
+  const errors = [];
   
   if (!day.day || day.day < 1) {
-    errors.push('일차는 1 이상이어야 합니다.')
+    errors.push('일차는 1 이상이어야 합니다.');
   }
   
   if (!day.date || day.date.trim() === '') {
-    errors.push('날짜는 필수입니다.')
+    errors.push('날짜는 필수입니다.');
   }
   
   if (!day.location || day.location.trim() === '') {
-    errors.push('촬영 장소는 필수입니다.')
+    errors.push('촬영 장소는 필수입니다.');
   }
   
   if (!day.timeOfDay || !['낮', '밤', '미정'].includes(day.timeOfDay)) {
-    errors.push('시간대는 낮, 밤, 미정 중 하나여야 합니다.')
+    errors.push('시간대는 낮, 밤, 미정 중 하나여야 합니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 스케줄러 정렬 함수
 export const sortSchedulers = (schedulers, sortBy = 'createdAt', order = 'desc') => {
   return [...schedulers].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
+    let aValue = a[sortBy];
+    let bValue = b[sortBy];
     
     if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
-      aValue = new Date(aValue).getTime()
-      bValue = new Date(bValue).getTime()
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
     }
     
     if (order === 'asc') {
-      return aValue > bValue ? 1 : -1
+      return aValue > bValue ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1
+      return aValue < bValue ? 1 : -1;
     }
-  })
-}
+  });
+};
 
 // 스케줄러 필터링 함수
 export const filterSchedulers = (schedulers, filters) => {
   return schedulers.filter(scheduler => {
     // 프로젝트 ID 필터
     if (filters.projectId && scheduler.projectId !== filters.projectId) {
-      return false
+      return false;
     }
     
     // 총 일수 필터
     if (filters.minDays && scheduler.totalDays < filters.minDays) {
-      return false
+      return false;
     }
     
     if (filters.maxDays && scheduler.totalDays > filters.maxDays) {
-      return false
+      return false;
     }
     
     // 총 씬 수 필터
     if (filters.minScenes && scheduler.totalScenes < filters.minScenes) {
-      return false
+      return false;
     }
     
     if (filters.maxScenes && scheduler.totalScenes > filters.maxScenes) {
-      return false
+      return false;
     }
     
-    return true
-  })
-}
+    return true;
+  });
+};
 
 // 스케줄 통계 계산 함수
 export const calculateScheduleStatistics = (scheduler) => {
-  const uniqueLocations = new Set()
-  const uniqueCast = new Set()
-  let totalScenes = 0
+  const uniqueLocations = new Set();
+  const uniqueCast = new Set();
+  let totalScenes = 0;
   
   scheduler.days.forEach(day => {
-    if (day.location) uniqueLocations.add(day.location)
+    if (day.location) uniqueLocations.add(day.location);
     
     day.scenes.forEach(scene => {
-      totalScenes += 1
-      if (scene.cast?.name) uniqueCast.add(scene.cast.name)
-    })
-  })
+      totalScenes += 1;
+      if (scene.cast?.name) uniqueCast.add(scene.cast.name);
+    });
+  });
   
   return {
     totalDays: scheduler.totalDays,
@@ -413,8 +413,8 @@ export const calculateScheduleStatistics = (scheduler) => {
     averageDurationPerDay: scheduler.totalDays > 0 ? scheduler.totalDuration / scheduler.totalDays : 0,
     uniqueLocations: Array.from(uniqueLocations),
     uniqueCast: Array.from(uniqueCast),
-  }
-}
+  };
+};
 
 export default {
   SchedulerTimeRange,
@@ -437,4 +437,4 @@ export default {
   sortSchedulers,
   filterSchedulers,
   calculateScheduleStatistics,
-}
+};

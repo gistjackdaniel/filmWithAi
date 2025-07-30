@@ -28,21 +28,25 @@ import {
   AccessTime,
   CameraAlt, // 아이콘 추가
   Build, // 아이콘 추가
-  Star // 즐겨찾기 아이콘 추가
+  Star, // 즐겨찾기 아이콘 추가
+  Delete, // 삭제 아이콘 추가
+  Refresh // 재생성 아이콘 추가
 } from '@mui/icons-material';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { generateOptimalSchedule } from '../services/schedulerService';
+import toast from 'react-hot-toast';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { SceneDetailModal } from '../components/scene';
-import useStoryStore from '../stores/storyStore'; // 스토리 생성 스토어 추가
 import { getProject } from '../services/projectApi';
 import { CommonHeader } from '../components/common';
-import { LocationManagerModal } from '../components/schedule';
 import api from '../services/api';
 import { scheduleShooting } from '../services/schedulerService';
+import { getScenes } from '../services/sceneApi';
+
+
 
 /**
  * 간단한 스케줄표 페이지
@@ -62,7 +66,7 @@ const SimpleSchedulePage = () => {
   // 콘티 상세 모달 상태 추가
   const [selectedConte, setSelectedConte] = useState(null); // 선택된 콘티 정보
   const [conteModalOpen, setConteModalOpen] = useState(false); // 모달 열림 여부
-  const [locationManagerOpen, setLocationManagerOpen] = useState(false);
+
 
   // URL 파라미터 확인하여 즐겨찾기 모드인지 확인
   const isFavoriteView = new URLSearchParams(location.search).get('view') === 'favorite';
@@ -254,66 +258,65 @@ const SimpleSchedulePage = () => {
     }));
   }
 
-  // 스케줄 생성 함수
+  // 스케줄 생성 함수 (NestJS 백엔드 연동)
   const generateSchedule = async () => {
     try {
       setIsLoading(true)
       setError(null)
       
-      console.log('🎬 스케줄 생성 시작');
-      console.log('📋 사용할 콘티 데이터:', {
-        totalCount: conteData.length,
-        isArray: Array.isArray(conteData),
-        firstItem: conteData[0] ? {
-          id: conteData[0].id,
-          title: conteData[0].title,
-          type: conteData[0].type,
-          hasKeywords: !!conteData[0].keywords,
-          keywords: conteData[0].keywords
+      console.log('🎬 스케줄 생성 시작 (NestJS 백엔드)');
+      
+      if (!finalProjectId) {
+        setError('프로젝트 ID가 없습니다.');
+        return;
+      }
+      
+      // 1. 프로젝트의 씬 데이터 가져오기
+      console.log('📋 씬 데이터 가져오는 중...');
+      const scenesResponse = await getScenes(finalProjectId);
+      if (!scenesResponse.success || !scenesResponse.data) {
+        setError('씬 데이터를 가져올 수 없습니다.');
+        return;
+      }
+      
+      const scenes = scenesResponse.data;
+      console.log('📋 사용할 씬 데이터:', {
+        totalCount: scenes.length,
+        isArray: Array.isArray(scenes),
+        firstItem: scenes[0] ? {
+          id: scenes[0]._id,
+          title: scenes[0].title,
+          location: scenes[0].location?.name,
+          timeOfDay: scenes[0].timeOfDay
         } : '없음'
       });
       
-      if (!conteData || conteData.length === 0) {
-        if (isFavoriteView) {
-          setError('즐겨찾기된 프로젝트에 콘티 데이터가 없습니다.');
-        } else {
-          setError('콘티 데이터가 없습니다. 먼저 콘티를 생성해주세요.');
-        }
+      if (!scenes || scenes.length === 0) {
+        setError('씬 데이터가 없습니다. 먼저 씬을 생성해주세요.');
         return;
       }
-      conteData.forEach((conte, index) => {
-        console.log(`📋 콘티 ${index + 1} 상세 정보:`, {
-          id: conte.id,
-          title: conte.title,
-          type: conte.type,
-          keywords: conte.keywords,
-          location: conte.keywords?.location,
-          equipment: conte.keywords?.equipment,
-          cast: conte.keywords?.cast,
-          timeOfDay: conte.keywords?.timeOfDay
-        });
-      });
       
-      // realLocations, groups 동시 fetch
-      const [realLocRes, groupRes] = await Promise.all([
-        api.get(`/project/${finalProjectId}/real-locations`),
-        api.get(`/project/${finalProjectId}/groups`)
-      ]);
-      const realLocations = realLocRes.data.data || [];
-      const groups = groupRes.data.data || [];
-
-      // 스케줄 생성
-      const scheduleResult = await scheduleShooting(conteData, realLocations, groups, finalProjectId);
+      // 2. 스케줄러 서비스를 사용하여 최적화된 스케줄 생성 (그룹 정보는 씬에서 관리)
+      console.log('🎬 최적화된 스케줄 생성 중...');
+      const scheduleResult = await generateOptimalSchedule(scenes, finalProjectId);
       setScheduleData(scheduleResult);
       console.log('✅ 스케줄 생성 완료:', scheduleResult);
 
-      // DB 저장
+      // 5. NestJS 백엔드에 스케줄 저장
       try {
-        await api.post(`/project/${finalProjectId}/scheduler`, {
+        const saveResponse = await api.post(`/project/${finalProjectId}/scheduler`, {
           days: scheduleResult.days,
+          totalDays: scheduleResult.totalDays,
+          totalScenes: scheduleResult.totalScenes,
+          estimatedTotalDuration: scheduleResult.estimatedTotalDuration,
           createdAt: new Date()
         });
-        console.log('✅ 스케줄 DB 저장 완료');
+        
+        if (saveResponse.data.success) {
+          console.log('✅ 스케줄 DB 저장 완료');
+        } else {
+          console.warn('⚠️ 스케줄 DB 저장 실패:', saveResponse.data.message);
+        }
       } catch (err) {
         console.error('❌ 스케줄 DB 저장 실패:', err);
       }
@@ -325,13 +328,35 @@ const SimpleSchedulePage = () => {
     }
   }
 
-  // 페이지 로드 시 자동으로 스케줄 생성
-  // 1. 컴포넌트 마운트 시 콘티 데이터 전체 로그
+  // 스케줄 조회 함수 (NestJS 백엔드 연동)
+  const loadSchedule = async () => {
+    try {
+      if (!finalProjectId) return;
+      
+      console.log('📋 기존 스케줄 조회 중...');
+      const response = await api.get(`/project/${finalProjectId}/scheduler`);
+      
+      if (response.data.success && response.data.data) {
+        console.log('✅ 기존 스케줄 로드 완료:', response.data.data);
+        setScheduleData(response.data.data);
+      } else {
+        console.log('📋 기존 스케줄이 없습니다. 새로 생성합니다.');
+        generateSchedule();
+      }
+    } catch (error) {
+      console.error('❌ 스케줄 조회 실패:', error);
+      // 조회 실패 시 새로 생성
+      generateSchedule();
+    }
+  };
+
+  // 페이지 로드 시 스케줄 조회 또는 생성
   useEffect(() => {
-    console.log('📦 [SimpleSchedulePage] 즐겨찾기 모드:', isFavoriteView);
-    console.log('📦 [SimpleSchedulePage] 사용할 콘티 데이터:', getConteData());
-    generateSchedule();
-  }, [isFavoriteView, conteData]); // 즐겨찾기 모드와 콘티 데이터가 변경될 때마다 스케줄 재생성
+    console.log('📦 [AllSchedulePage] 프로젝트 ID:', finalProjectId);
+    if (finalProjectId) {
+      loadSchedule();
+    }
+  }, [finalProjectId]); // 프로젝트 ID가 변경될 때마다 스케줄 조회
 
   // 촬영 시간 포맷팅 함수
   const formatDuration = (minutes) => {
@@ -372,6 +397,37 @@ const SimpleSchedulePage = () => {
     // 일반적인 뒤로가기 - 브라우저 히스토리에서 이전 페이지로 이동
     console.log('🔙 이전 페이지로 돌아가기');
     navigate(-1);
+  };
+
+  // 스케줄 삭제 함수 (NestJS 백엔드 연동)
+  const handleDeleteSchedule = async () => {
+    try {
+      if (!finalProjectId) {
+        toast.error('프로젝트 ID가 없습니다.');
+        return;
+      }
+      
+      console.log('🗑️ 스케줄 삭제 시작...');
+      const response = await api.delete(`/project/${finalProjectId}/scheduler`);
+      
+      if (response.data.success) {
+        console.log('✅ 스케줄 삭제 완료');
+        setScheduleData(null);
+        toast.success('스케줄이 삭제되었습니다.');
+      } else {
+        console.error('❌ 스케줄 삭제 실패:', response.data.message);
+        toast.error(response.data.message || '스케줄 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('❌ 스케줄 삭제 실패:', error);
+      toast.error('스케줄 삭제에 실패했습니다.');
+    }
+  };
+
+  // 스케줄 재생성 함수
+  const handleRegenerateSchedule = async () => {
+    console.log('🔄 스케줄 재생성 시작...');
+    await generateSchedule();
   };
 
   /**
@@ -559,11 +615,7 @@ const SimpleSchedulePage = () => {
     }
   };
 
-  // 위치 관리 팝업 닫힘 핸들러
-  const handleLocationManagerClose = () => {
-    setLocationManagerOpen(false);
-    reloadConteData(); // 닫을 때마다 콘티 데이터 새로고침
-  };
+
 
   // 씬 개수와 촬영 시간 계산
   const totalScenes = (scheduleData?.days ?? []).reduce(
@@ -773,16 +825,28 @@ const SimpleSchedulePage = () => {
                 color="success"
               />
               </Box>
-              {/* 위치 관리 버튼을 Chip들과 같은 높이에 오른쪽에 배치 */}
-              <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<LocationOn />}
-                onClick={() => setLocationManagerOpen(true)}
-                sx={{ height: 40 }}
-              >
-                위치 관리
-              </Button>
+              {/* 스케줄 관리 버튼들 */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<Refresh />}
+                  onClick={handleRegenerateSchedule}
+                  sx={{ height: 40 }}
+                >
+                  재생성
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={handleDeleteSchedule}
+                  sx={{ height: 40 }}
+                >
+                  삭제
+                </Button>
+              </Box>
             </Box>
           </Grid>
 
@@ -874,12 +938,7 @@ const SimpleSchedulePage = () => {
         imageLoadErrors={{}}
         onImageLoadError={null}
       />
-      {/* 위치 관리 버튼과 같은 줄에 모달 연결 */}
-      <LocationManagerModal
-        open={locationManagerOpen}
-        onClose={handleLocationManagerClose}
-        projectId={finalProjectId}
-      />
+
     </Container>
     </Box>
   );

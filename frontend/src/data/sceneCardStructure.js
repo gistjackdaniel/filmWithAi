@@ -10,20 +10,20 @@ export const sceneCardStructure = {
       label: '제목',
       type: 'text',
       required: true,
-      maxLength: 100
+      maxLength: 100,
     },
     description: {
       label: '설명',
       type: 'textarea',
       required: true,
-      maxLength: 500
+      maxLength: 500,
     },
     sceneNumber: {
       label: '씬 번호',
       type: 'number',
       required: true,
-      min: 1
-    }
+      min: 1,
+    },
   },
 
   // 촬영 정보
@@ -36,9 +36,9 @@ export const sceneCardStructure = {
         '야외',
         '스튜디오',
         '로케이션',
-        '기타'
+        '기타',
       ],
-      required: true
+      required: true,
     },
     timeOfDay: {
       label: '시간대',
@@ -48,16 +48,16 @@ export const sceneCardStructure = {
         '밤',
         '새벽',
         '황혼',
-        '기타'
+        '기타',
       ],
-      required: true
+      required: true,
     },
     estimatedDuration: {
       label: '예상 시간 (분)',
       type: 'number',
       min: 1,
-      max: 480
-    }
+      max: 480,
+    },
   },
 
   // 촬영 기술 정보
@@ -73,8 +73,8 @@ export const sceneCardStructure = {
         '와이드 샷',
         '익스트림 클로즈업',
         '익스트림 와이드 샷',
-        '기타'
-      ]
+        '기타',
+      ],
     },
     cameraAngle: {
       label: '카메라 앵글',
@@ -86,8 +86,8 @@ export const sceneCardStructure = {
         '하이앵글',
         '버드아이뷰',
         '웜아이뷰',
-        '기타'
-      ]
+        '기타',
+      ],
     },
     cameraMovement: {
       label: '카메라 움직임',
@@ -100,9 +100,9 @@ export const sceneCardStructure = {
         '줌 아웃',
         '돌리',
         '트래킹',
-        '기타'
-      ]
-    }
+        '기타',
+      ],
+    },
   },
 
   // 등장 인물 및 소품
@@ -111,20 +111,20 @@ export const sceneCardStructure = {
       label: '등장 인물',
       type: 'array',
       itemType: 'text',
-      maxItems: 10
+      maxItems: 10,
     },
     props: {
       label: '소품',
       type: 'array',
       itemType: 'text',
-      maxItems: 20
+      maxItems: 20,
     },
     equipment: {
       label: '장비',
       type: 'array',
       itemType: 'text',
-      maxItems: 15
-    }
+      maxItems: 15,
+    },
   },
 
   // 추가 정보
@@ -132,12 +132,12 @@ export const sceneCardStructure = {
     notes: {
       label: '추가 노트',
       type: 'textarea',
-      maxLength: 1000
+      maxLength: 1000,
     },
     specialRequirements: {
       label: '특별 요구사항',
       type: 'textarea',
-      maxLength: 500
+      maxLength: 500,
     },
     weather: {
       label: '날씨',
@@ -149,10 +149,10 @@ export const sceneCardStructure = {
         '눈',
         '안개',
         '바람',
-        '기타'
-      ]
-    }
-  }
+        '기타',
+      ],
+    },
+  },
 };
 
 // 씬 카드 표시 순서
@@ -161,7 +161,7 @@ export const sceneCardDisplayOrder = [
   'shooting',
   'technical',
   'elements',
-  'additional'
+  'additional',
 ];
 
 // 필수 필드 목록
@@ -170,7 +170,7 @@ export const requiredFields = [
   'description',
   'sceneNumber',
   'location',
-  'timeOfDay'
+  'timeOfDay',
 ];
 
 // 기본 씬 카드 데이터
@@ -189,7 +189,7 @@ export const defaultSceneCard = {
   equipment: [],
   notes: '',
   specialRequirements: '',
-  weather: '맑음'
+  weather: '맑음',
 };
 
 // 씬 카드 유효성 검사
@@ -239,5 +239,5 @@ export default {
   requiredFields,
   defaultSceneCard,
   validateSceneCard,
-  sortSceneCards
+  sortSceneCards,
 }; 

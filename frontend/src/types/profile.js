@@ -18,7 +18,7 @@ export const CreateProfileRequest = {
   name: String,
   picture: String,
   lastLoginAt: Date,
-}
+};
 
 /**
  * 프로필 수정 요청 타입
@@ -35,7 +35,7 @@ export const UpdateProfileRequest = {
   name: String,
   picture: String,
   lastLoginAt: Date,
-}
+};
 
 /**
  * 프로필 조회 요청 타입
@@ -54,7 +54,7 @@ export const FindProfileRequest = {
   name: String,
   page: Number,
   limit: Number,
-}
+};
 
 /**
  * 프로필 삭제 요청 타입
@@ -63,7 +63,7 @@ export const FindProfileRequest = {
  */
 export const DeleteProfileRequest = {
   profileId: String,
-}
+};
 
 /**
  * 프로젝트 참조 타입
@@ -76,7 +76,7 @@ export const ProjectReference = {
   projectId: String,
   lastViewedAt: Date,
   isFavorite: Boolean,
-}
+};
 
 /**
  * 프로필 응답 타입
@@ -101,7 +101,7 @@ export const ProfileResponse = {
   createdAt: Date,
   updatedAt: Date,
   projects: [ProjectReference],
-}
+};
 
 /**
  * 프로필 목록 응답 타입
@@ -121,7 +121,7 @@ export const ProfileListResponse = {
     totalPages: Number,
   },
   message: String,
-}
+};
 
 /**
  * 프로필 상세 응답 타입
@@ -134,7 +134,7 @@ export const ProfileDetailResponse = {
   success: Boolean,
   data: ProfileResponse,
   message: String,
-}
+};
 
 /**
  * 즐겨찾기 프로젝트 추가 요청 타입
@@ -143,7 +143,7 @@ export const ProfileDetailResponse = {
  */
 export const AddFavoriteProjectRequest = {
   projectId: String,
-}
+};
 
 /**
  * 즐겨찾기 프로젝트 제거 요청 타입
@@ -152,7 +152,7 @@ export const AddFavoriteProjectRequest = {
  */
 export const RemoveFavoriteProjectRequest = {
   projectId: String,
-}
+};
 
 /**
  * 즐겨찾기 프로젝트 목록 응답 타입
@@ -165,7 +165,7 @@ export const FavoriteProjectsResponse = {
   success: Boolean,
   data: [ProjectReference],
   message: String,
-}
+};
 
 // 기본 프로필 객체 생성 함수
 export const createDefaultProfile = () => ({
@@ -178,67 +178,67 @@ export const createDefaultProfile = () => ({
   createdAt: new Date(),
   updatedAt: new Date(),
   projects: [],
-})
+});
 
 // 프로필 유효성 검사 함수
 export const validateProfile = (profile) => {
-  const errors = []
+  const errors = [];
   
   if (!profile.googleId || profile.googleId.trim() === '') {
-    errors.push('Google ID는 필수입니다.')
+    errors.push('Google ID는 필수입니다.');
   }
   
   if (!profile.email || profile.email.trim() === '') {
-    errors.push('이메일은 필수입니다.')
+    errors.push('이메일은 필수입니다.');
   }
   
   if (!profile.name || profile.name.trim() === '') {
-    errors.push('사용자 이름은 필수입니다.')
+    errors.push('사용자 이름은 필수입니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 프로필 정렬 함수
 export const sortProfiles = (profiles, sortBy = 'name', order = 'asc') => {
   return [...profiles].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
+    let aValue = a[sortBy];
+    let bValue = b[sortBy];
     
     if (sortBy === 'lastLoginAt' || sortBy === 'createdAt' || sortBy === 'updatedAt') {
-      aValue = new Date(aValue).getTime()
-      bValue = new Date(bValue).getTime()
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
     }
     
     if (order === 'asc') {
-      return aValue > bValue ? 1 : -1
+      return aValue > bValue ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1
+      return aValue < bValue ? 1 : -1;
     }
-  })
-}
+  });
+};
 
 // 프로필 필터링 함수
 export const filterProfiles = (profiles, filters) => {
   return profiles.filter(profile => {
     // 이메일 필터
     if (filters.email && !profile.email.toLowerCase().includes(filters.email.toLowerCase())) {
-      return false
+      return false;
     }
     
     // 이름 필터
     if (filters.name && !profile.name.toLowerCase().includes(filters.name.toLowerCase())) {
-      return false
+      return false;
     }
     
     // Google ID 필터
     if (filters.googleId && !profile.googleId.toLowerCase().includes(filters.googleId.toLowerCase())) {
-      return false
+      return false;
     }
     
-    return true
-  })
-}
+    return true;
+  });
+};
 
 export default {
   CreateProfileRequest,
@@ -256,4 +256,4 @@ export default {
   validateProfile,
   sortProfiles,
   filterProfiles,
-}
+};

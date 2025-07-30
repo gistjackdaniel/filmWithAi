@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -24,8 +24,8 @@ import {
   DialogActions,
   Alert,
   LinearProgress,
-  Tooltip
-} from '@mui/material'
+  Tooltip,
+} from '@mui/material';
 import { 
   Edit,
   Save,
@@ -44,10 +44,10 @@ import {
   Palette,
   Refresh,
   Delete,
-  Add
-} from '@mui/icons-material'
-import VideoPlayer from '../atoms/VideoPlayer'
-import { useTheme } from '@mui/material/styles'
+  Add,
+} from '@mui/icons-material';
+import VideoPlayer from '../atoms/VideoPlayer';
+import { useTheme } from '@mui/material/styles';
 
 /**
  * 컷 편집 컴포넌트
@@ -60,23 +60,23 @@ const CutEditor = ({
   onDelete,
   videoUrl,
   isOpen = false,
-  onClose
+  onClose,
 }) => {
-  const theme = useTheme()
-  const [editedCut, setEditedCut] = useState(cut)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [expandedSection, setExpandedSection] = useState('basic')
+  const theme = useTheme();
+  const [editedCut, setEditedCut] = useState(cut);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [expandedSection, setExpandedSection] = useState('basic');
 
   // 컷 데이터 초기화
   useEffect(() => {
     if (cut) {
-      setEditedCut(cut)
-      setCurrentTime(cut.startTime || 0)
+      setEditedCut(cut);
+      setCurrentTime(cut.startTime || 0);
     }
-  }, [cut])
+  }, [cut]);
 
   /**
    * 컷 정보 업데이트
@@ -84,9 +84,9 @@ const CutEditor = ({
   const handleCutUpdate = useCallback((field, value) => {
     setEditedCut(prev => ({
       ...prev,
-      [field]: value
-    }))
-  }, [])
+      [field]: value,
+    }));
+  }, []);
 
 
 
@@ -94,57 +94,57 @@ const CutEditor = ({
    * 시작 시간 설정
    */
   const handleStartTimeChange = useCallback((event, newValue) => {
-    const startTime = newValue
-    const endTime = Math.max(startTime + 0.5, editedCut.endTime || startTime + 2)
+    const startTime = newValue;
+    const endTime = Math.max(startTime + 0.5, editedCut.endTime || startTime + 2);
     
     setEditedCut(prev => ({
       ...prev,
       startTime,
       endTime,
-      duration: endTime - startTime
-    }))
-  }, [editedCut.endTime])
+      duration: endTime - startTime,
+    }));
+  }, [editedCut.endTime]);
 
   /**
    * 종료 시간 설정
    */
   const handleEndTimeChange = useCallback((event, newValue) => {
-    const endTime = newValue
-    const startTime = Math.min(endTime - 0.5, editedCut.startTime || 0)
+    const endTime = newValue;
+    const startTime = Math.min(endTime - 0.5, editedCut.startTime || 0);
     
     setEditedCut(prev => ({
       ...prev,
       startTime,
       endTime,
-      duration: endTime - startTime
-    }))
-  }, [editedCut.startTime])
+      duration: endTime - startTime,
+    }));
+  }, [editedCut.startTime]);
 
   /**
    * 컷 저장
    */
   const handleSave = useCallback(async () => {
     try {
-      setIsLoading(true)
-      setError(null)
+      setIsLoading(true);
+      setError(null);
       
       // 유효성 검사
       if (editedCut.duration < 0.5) {
-        throw new Error('컷 길이는 최소 0.5초여야 합니다.')
+        throw new Error('컷 길이는 최소 0.5초여야 합니다.');
       }
       
       if (editedCut.startTime >= editedCut.endTime) {
-        throw new Error('시작 시간은 종료 시간보다 작아야 합니다.')
+        throw new Error('시작 시간은 종료 시간보다 작아야 합니다.');
       }
       
-      await onSave(editedCut)
+      await onSave(editedCut);
       
     } catch (error) {
-      setError(error.message)
+      setError(error.message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [editedCut, onSave])
+  }, [editedCut, onSave]);
 
   /**
    * 컷 삭제
@@ -152,31 +152,31 @@ const CutEditor = ({
   const handleDelete = useCallback(async () => {
     if (window.confirm('이 컷을 삭제하시겠습니까?')) {
       try {
-        setIsLoading(true)
-        await onDelete(editedCut.id)
+        setIsLoading(true);
+        await onDelete(editedCut.id);
       } catch (error) {
-        setError(error.message)
+        setError(error.message);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
-  }, [editedCut.id, onDelete])
+  }, [editedCut.id, onDelete]);
 
   /**
    * 시간 포맷팅
    */
   const formatTime = useCallback((seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }, [])
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, []);
 
   /**
    * 섹션 확장/축소
    */
   const handleSectionChange = useCallback((section) => (event, isExpanded) => {
-    setExpandedSection(isExpanded ? section : false)
-  }, [])
+    setExpandedSection(isExpanded ? section : false);
+  }, []);
 
   if (!cut) {
     return (
@@ -185,7 +185,7 @@ const CutEditor = ({
           편집할 컷을 선택하세요
         </Typography>
       </Box>
-    )
+    );
   }
 
   return (
@@ -197,8 +197,8 @@ const CutEditor = ({
       PaperProps={{
         sx: {
           height: '90vh',
-          maxHeight: '90vh'
-        }
+          maxHeight: '90vh',
+        },
       }}
     >
       <DialogTitle>
@@ -259,7 +259,7 @@ const CutEditor = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: theme.palette.grey[100],
-                  borderRadius: 1
+                  borderRadius: 1,
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
@@ -386,7 +386,7 @@ const CutEditor = ({
                     value={editedCut.characterMovement?.characters?.map(c => c.name).join(', ') || ''}
                     onChange={(e) => handleCutUpdate('characterMovement', { 
                       ...editedCut.characterMovement, 
-                      characters: e.target.value.split(', ').map(name => ({ name: name.trim() }))
+                      characters: e.target.value.split(', ').map(name => ({ name: name.trim() })),
                     })}
                     fullWidth
                     size="small"
@@ -399,7 +399,7 @@ const CutEditor = ({
                     value={editedCut.characterMovement?.blocking || ''}
                     onChange={(e) => handleCutUpdate('characterMovement', { 
                       ...editedCut.characterMovement, 
-                      blocking: e.target.value 
+                      blocking: e.target.value, 
                     })}
                     fullWidth
                     size="small"
@@ -473,7 +473,7 @@ const CutEditor = ({
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 1000
+            zIndex: 1000,
           }}
         >
           <Box sx={{ textAlign: 'center' }}>
@@ -485,7 +485,7 @@ const CutEditor = ({
         </Box>
       )}
     </Dialog>
-  )
-}
+  );
+};
 
-export default CutEditor 
+export default CutEditor; 

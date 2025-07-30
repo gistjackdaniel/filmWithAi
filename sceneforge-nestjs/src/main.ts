@@ -14,9 +14,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   const server = app.getHttpServer();
-  server.setTimeout(2 * 60 * 1000);
-  server.keepAliveTimeout = 2 * 60 * 1000;
-  server.headersTimeout = 2 * 60 * 1000;
+  server.setTimeout(10 * 60 * 1000); // 10분으로 증가
+  server.keepAliveTimeout = 10 * 60 * 1000; // 10분으로 증가
+  server.headersTimeout = 10 * 60 * 1000; // 10분으로 증가
 
   // 정적 파일 서빙 설정
   app.useStaticAssets(path.join(__dirname, '..', 'uploads'), {

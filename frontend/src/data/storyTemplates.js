@@ -30,8 +30,8 @@ export const genreTemplates = {
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 800,
-      focus: '인간관계'
-    }
+      focus: '인간관계',
+    },
   },
 
   // 액션 템플릿
@@ -57,8 +57,8 @@ export const genreTemplates = {
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 700,
-      focus: '액션'
-    }
+      focus: '액션',
+    },
   },
 
   // 코미디 템플릿
@@ -84,8 +84,8 @@ export const genreTemplates = {
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 600,
-      focus: '재미'
-    }
+      focus: '재미',
+    },
   },
 
   // 로맨스 템플릿
@@ -111,8 +111,8 @@ export const genreTemplates = {
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 750,
-      focus: '사랑'
-    }
+      focus: '사랑',
+    },
   },
 
   // 스릴러 템플릿
@@ -138,8 +138,8 @@ export const genreTemplates = {
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 800,
-      focus: '긴장감'
-    }
+      focus: '긴장감',
+    },
   },
 
   // 판타지 템플릿
@@ -165,10 +165,10 @@ export const genreTemplates = {
 시놉시스: {synopsis}`,
     settings: {
       maxLength: 850,
-      focus: '모험'
-    }
-  }
-}
+      focus: '모험',
+    },
+  },
+};
 
 /**
  * 스토리 길이 프리셋
@@ -178,27 +178,27 @@ export const lengthPresets = {
     name: '짧은 스토리',
     description: '간결하고 핵심적인 내용',
     maxLength: 300,
-    estimatedTime: '1-2분'
+    estimatedTime: '1-2분',
   },
   medium: {
     name: '보통 스토리',
     description: '균형잡힌 길이의 스토리',
     maxLength: 600,
-    estimatedTime: '3-4분'
+    estimatedTime: '3-4분',
   },
   long: {
     name: '긴 스토리',
     description: '상세하고 풍부한 내용',
     maxLength: 1000,
-    estimatedTime: '5-7분'
+    estimatedTime: '5-7분',
   },
   epic: {
     name: '서사시',
     description: '매우 상세하고 긴 스토리',
     maxLength: 1500,
-    estimatedTime: '8-10분'
-  }
-}
+    estimatedTime: '8-10분',
+  },
+};
 
 /**
  * 사용자 정의 템플릿 저장소
@@ -207,104 +207,104 @@ export const customTemplates = {
   // 로컬 스토리지에서 사용자 템플릿을 가져오는 함수
   get: () => {
     try {
-      const saved = localStorage.getItem('custom-story-templates')
-      return saved ? JSON.parse(saved) : []
+      const saved = localStorage.getItem('custom-story-templates');
+      return saved ? JSON.parse(saved) : [];
     } catch (error) {
-      console.error('사용자 템플릿 로드 실패:', error)
-      return []
+      console.error('사용자 템플릿 로드 실패:', error);
+      return [];
     }
   },
 
   // 사용자 템플릿을 저장하는 함수
   save: (templates) => {
     try {
-      localStorage.setItem('custom-story-templates', JSON.stringify(templates))
-      return true
+      localStorage.setItem('custom-story-templates', JSON.stringify(templates));
+      return true;
     } catch (error) {
-      console.error('사용자 템플릿 저장 실패:', error)
-      return false
+      console.error('사용자 템플릿 저장 실패:', error);
+      return false;
     }
   },
 
   // 새 템플릿 추가
   add: (template) => {
-    const templates = customTemplates.get()
+    const templates = customTemplates.get();
     const newTemplate = {
       id: `custom_${Date.now()}`,
       ...template,
-      createdAt: new Date().toISOString()
-    }
-    templates.push(newTemplate)
-    return customTemplates.save(templates)
+      createdAt: new Date().toISOString(),
+    };
+    templates.push(newTemplate);
+    return customTemplates.save(templates);
   },
 
   // 템플릿 삭제
   remove: (templateId) => {
-    const templates = customTemplates.get()
-    const filtered = templates.filter(t => t.id !== templateId)
-    return customTemplates.save(filtered)
+    const templates = customTemplates.get();
+    const filtered = templates.filter(t => t.id !== templateId);
+    return customTemplates.save(filtered);
   },
 
   // 템플릿 업데이트
   update: (templateId, updates) => {
-    const templates = customTemplates.get()
+    const templates = customTemplates.get();
     const updated = templates.map(t => 
-      t.id === templateId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
-    )
-    return customTemplates.save(updated)
-  }
-}
+      t.id === templateId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t,
+    );
+    return customTemplates.save(updated);
+  },
+};
 
 /**
  * 템플릿 렌더링 함수
  * 변수를 템플릿에 적용
  */
 export const renderTemplate = (template, variables) => {
-  let result = template
+  let result = template;
   
   Object.entries(variables).forEach(([key, value]) => {
-    const regex = new RegExp(`{${key}}`, 'g')
-    result = result.replace(regex, value || '')
-  })
+    const regex = new RegExp(`{${key}}`, 'g');
+    result = result.replace(regex, value || '');
+  });
   
-  return result
-}
+  return result;
+};
 
 /**
  * 시놉시스 기반 추천 템플릿
  */
 export const getRecommendedTemplates = (synopsis) => {
-  const recommendations = []
+  const recommendations = [];
   
-  if (!synopsis) return recommendations
+  if (!synopsis) return recommendations;
   
-  const lowerSynopsis = synopsis.toLowerCase()
+  const lowerSynopsis = synopsis.toLowerCase();
   
   // 키워드 기반 추천
   if (lowerSynopsis.includes('사랑') || lowerSynopsis.includes('연애') || lowerSynopsis.includes('로맨스')) {
-    recommendations.push('romance')
+    recommendations.push('romance');
   }
   
   if (lowerSynopsis.includes('액션') || lowerSynopsis.includes('싸움') || lowerSynopsis.includes('전투')) {
-    recommendations.push('action')
+    recommendations.push('action');
   }
   
   if (lowerSynopsis.includes('웃음') || lowerSynopsis.includes('재미') || lowerSynopsis.includes('코미디')) {
-    recommendations.push('comedy')
+    recommendations.push('comedy');
   }
   
   if (lowerSynopsis.includes('긴장') || lowerSynopsis.includes('스릴') || lowerSynopsis.includes('미스터리')) {
-    recommendations.push('thriller')
+    recommendations.push('thriller');
   }
   
   if (lowerSynopsis.includes('판타지') || lowerSynopsis.includes('마법') || lowerSynopsis.includes('환상')) {
-    recommendations.push('fantasy')
-    }
+    recommendations.push('fantasy');
+  }
   
   // 기본 추천
   if (recommendations.length === 0) {
-    recommendations.push('drama')
+    recommendations.push('drama');
   }
   
-  return recommendations
-} 
+  return recommendations;
+}; 

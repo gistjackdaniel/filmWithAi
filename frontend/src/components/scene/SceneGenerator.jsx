@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -16,20 +16,20 @@ import {
   Alert,
   CircularProgress,
   LinearProgress,
-  Divider
-} from '@mui/material'
+  Divider,
+} from '@mui/material';
 import { 
   Movie,
   Settings,
   PlayArrow,
-  Info
-} from '@mui/icons-material'
-import { generateSceneWithRetry, generateSceneImage } from '../../services/storyGenerationApi'
-import SceneResult from './SceneResult'
-import SceneEditModal from './SceneEditModal'
-import useStoryGenerationStore from '../../stores/storyGenerationStore'
-import toast from 'react-hot-toast'
-import useProjectStore from '../../stores/projectStore'
+  Info,
+} from '@mui/icons-material';
+import { generateSceneWithRetry, generateSceneImage } from '../../services/storyGenerationApi';
+import SceneResult from './SceneResult';
+import SceneEditModal from './SceneEditModal';
+import useStoryGenerationStore from '../../stores/storyGenerationStore';
+import toast from 'react-hot-toast';
+import useProjectStore from '../../stores/projectStore';
 
 /**
  * AI 씬 생성 컴포넌트
@@ -53,7 +53,7 @@ const SceneGenerator = ({
   onGenerationComplete,
   onImageGenerationUpdate,
   isDirectMode = false,
-  projectId = null
+  projectId = null,
 }) => {
   // Zustand 스토어에서 상태 가져오기
   const {
@@ -61,27 +61,27 @@ const SceneGenerator = ({
     startSceneGeneration,
     completeSceneGeneration,
     failSceneGeneration,
-    updateSceneSettings
-  } = useStoryGenerationStore()
+    updateSceneSettings,
+  } = useStoryGenerationStore();
 
-  const { isGenerating, generatedScene, generationError, sceneSettings } = sceneGeneration
+  const { isGenerating, generatedScene, generationError, sceneSettings } = sceneGeneration;
 
   // 로컬 상태 관리
-  const [showResult, setShowResult] = useState(false) // 결과 표시 여부
-  const [generatingImages, setGeneratingImages] = useState(false) // 이미지 생성 중 상태
-  const [imageGenerationProgress, setImageGenerationProgress] = useState(0) // 이미지 생성 진행률
-  const [editModalOpen, setEditModalOpen] = useState(false) // 편집 모달 열림 상태
-  const [editingScene, setEditingScene] = useState(null) // 편집 중인 씬
-  const [editingIndex, setEditingIndex] = useState(-1) // 편집 중인 씬 인덱스
+  const [showResult, setShowResult] = useState(false); // 결과 표시 여부
+  const [generatingImages, setGeneratingImages] = useState(false); // 이미지 생성 중 상태
+  const [imageGenerationProgress, setImageGenerationProgress] = useState(0); // 이미지 생성 진행률
+  const [editModalOpen, setEditModalOpen] = useState(false); // 편집 모달 열림 상태
+  const [editingScene, setEditingScene] = useState(null); // 편집 중인 씬
+  const [editingIndex, setEditingIndex] = useState(-1); // 편집 중인 씬 인덱스
 
   // 편집 모달 상태 디버깅
   useEffect(() => {
     console.log('🔍 편집 모달 상태 변경:', {
       editModalOpen,
       editingScene: editingScene?.title,
-      editingIndex
-    })
-  }, [editModalOpen, editingScene, editingIndex])
+      editingIndex,
+    });
+  }, [editModalOpen, editingScene, editingIndex]);
 
   // 씬 생성 설정 옵션
   const genreOptions = [
@@ -92,15 +92,15 @@ const SceneGenerator = ({
     { value: '로맨스', label: '로맨스' },
     { value: '스릴러', label: '스릴러' },
     { value: 'SF', label: 'SF' },
-    { value: '판타지', label: '판타지' }
-  ]
+    { value: '판타지', label: '판타지' },
+  ];
 
   const focusOptions = [
     { value: '균형', label: '균형 (모든 요소 포함)' },
     { value: '시각적', label: '시각적 (카메라, 조명 중심)' },
     { value: '연기적', label: '연기적 (인물, 대사 중심)' },
-    { value: '기술적', label: '기술적 (촬영, 특수효과 중심)' }
-  ]
+    { value: '기술적', label: '기술적 (촬영, 특수효과 중심)' },
+  ];
 
   /**
    * 씬 이미지 생성 함수
@@ -108,32 +108,32 @@ const SceneGenerator = ({
    * @returns {Promise<Array>} 이미지가 추가된 콘티 리스트
    */
   const generateSceneImages = async (conteList) => {
-    setGeneratingImages(true)
-    setImageGenerationProgress(0)
+    setGeneratingImages(true);
+    setImageGenerationProgress(0);
     
     // 부모 컴포넌트에 이미지 생성 시작 알림
     if (onImageGenerationUpdate) {
-      onImageGenerationUpdate(true, 0)
+      onImageGenerationUpdate(true, 0);
     }
     
-    const updatedConteList = [...conteList]
+    const updatedConteList = [...conteList];
     
     try {
       for (let i = 0; i < updatedConteList.length; i++) {
-        const conte = updatedConteList[i]
+        const conte = updatedConteList[i];
         
         // 이미지 생성 프롬프트 구성
-        const imagePrompt = `${conte.title}: ${conte.description}. ${conte.visualDescription || ''} ${conte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
+        const imagePrompt = `${conte.title}: ${conte.description}. ${conte.visualDescription || ''} ${conte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`;
         
-        console.log(`🎨 씬 ${conte.scene} 이미지 생성 시작:`, imagePrompt)
+        console.log(`🎨 씬 ${conte.scene} 이미지 생성 시작:`, imagePrompt);
         
         // 이미지 생성 API 호출
         const imageResponse = await generateSceneImage({
           sceneDescription: imagePrompt,
           style: 'cinematic',
           genre: conte.genre || '일반',
-          size: '1024x1024'
-        })
+          size: '1024x1024',
+        });
         
         // 생성된 이미지 URL을 콘티에 추가
         updatedConteList[i] = {
@@ -142,39 +142,39 @@ const SceneGenerator = ({
           imagePrompt: imagePrompt,
           imageGeneratedAt: imageResponse.generatedAt,
           imageModel: imageResponse.model,
-          isFreeTier: imageResponse.isFreeTier
-        }
+          isFreeTier: imageResponse.isFreeTier,
+        };
         
-        console.log(`✅ 씬 ${conte.scene} 이미지 생성 완료:`, imageResponse.imageUrl)
+        console.log(`✅ 씬 ${conte.scene} 이미지 생성 완료:`, imageResponse.imageUrl);
         
         // 진행률 업데이트
-        const progress = ((i + 1) / updatedConteList.length) * 100
-        setImageGenerationProgress(progress)
+        const progress = ((i + 1) / updatedConteList.length) * 100;
+        setImageGenerationProgress(progress);
         
         // 부모 컴포넌트에 진행률 업데이트 알림
         if (onImageGenerationUpdate) {
-          onImageGenerationUpdate(true, progress)
+          onImageGenerationUpdate(true, progress);
         }
         
         // 잠시 대기 (API 제한 방지)
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      return updatedConteList
+      return updatedConteList;
       
     } catch (error) {
-      console.error('❌ 이미지 생성 전체 실패:', error)
-      throw error
+      console.error('❌ 이미지 생성 전체 실패:', error);
+      throw error;
     } finally {
-      setGeneratingImages(false)
-      setImageGenerationProgress(0)
+      setGeneratingImages(false);
+      setImageGenerationProgress(0);
       
       // 부모 컴포넌트에 이미지 생성 완료 알림
       if (onImageGenerationUpdate) {
-        onImageGenerationUpdate(false, 0)
+        onImageGenerationUpdate(false, 0);
       }
     }
-  }
+  };
 
   /**
    * 캡션 카드 생성 핸들러
@@ -182,16 +182,16 @@ const SceneGenerator = ({
   const handleGenerateConte = async () => {
     // 스토리 유효성 검사
     if (!story || !story.trim()) {
-      console.error('❌ 스토리가 없습니다.')
-      toast.error('캡션 카드를 생성할 스토리가 없습니다.')
-      return
+      console.error('❌ 스토리가 없습니다.');
+      toast.error('캡션 카드를 생성할 스토리가 없습니다.');
+      return;
     }
 
-    console.log('📝 스토리 길이:', story.length, '자')
+    console.log('📝 스토리 길이:', story.length, '자');
     if (story.length < 50) {
-      console.error('❌ 스토리가 너무 짧습니다.')
-      toast.error('스토리를 더 자세히 작성해주세요. (최소 50자)')
-      return
+      console.error('❌ 스토리가 너무 짧습니다.');
+      toast.error('스토리를 더 자세히 작성해주세요. (최소 50자)');
+      return;
     }
 
 
@@ -201,14 +201,14 @@ const SceneGenerator = ({
       '\n\n' +
       '[모든 씬의 keywords에는 반드시 crew(필요 인력: 촬영감독, 카메라맨, 조명기사 등), equipment(필요 장비: 카메라, 조명, 마이크 등), 그리고 cameras(카메라: C1~C20 중 1개 이상, 여러 개 가능)를 배열로 포함해 주세요. 예시: cameras: ["C1", "C5", "C12"]. 또한, timeOfDay(시간대)는 반드시 "낮" 또는 "밤" 중 하나로만 작성해 주세요.]';
 
-    let processedConteList = null
-    let conteWithImages = null
+    let processedConteList = null;
+    const conteWithImages = null;
 
 
     try {
-      startConteGeneration()
+      startConteGeneration();
       if (onGenerationStart) {
-        onGenerationStart()
+        onGenerationStart();
       }
 
       console.log('🎬 캡션 카드 생성 시작:', { 
@@ -216,42 +216,42 @@ const SceneGenerator = ({
         settings: conteSettings,
         maxScenes: conteSettings.maxScenes,
         projectId,
-        story: story.slice(0, 50) + (story.length > 50 ? '...' : '')
-      })
+        story: story.slice(0, 50) + (story.length > 50 ? '...' : ''),
+      });
 
       // AI 캡션 카드 생성 API 호출 (crew/equipment/cameras 안내문 포함)
       const response = await generateConteWithRetry({
         story: storyWithCrewEquipmentCamerasGuide,
         maxScenes: conteSettings.maxScenes,
         genre: conteSettings.genre,
-        focus: conteSettings.focus
-      })
+        focus: conteSettings.focus,
+      });
 
       console.log('✅ 캡션 카드 생성 완료:', { 
         response: response,
-        tokenCount: response.tokenCount 
-      })
+        tokenCount: response.tokenCount, 
+      });
 
       // 응답 데이터 처리
-      let conteList = []
+      let conteList = [];
       
       console.log('🔍 응답 데이터 분석:', {
         responseType: typeof response,
         hasConteList: response.conteList ? 'yes' : 'no',
-        responseKeys: typeof response === 'object' ? Object.keys(response) : 'N/A'
-      })
+        responseKeys: typeof response === 'object' ? Object.keys(response) : 'N/A',
+      });
 
       // API 응답에서 콘티 리스트 추출
       if (response && response.conteList && Array.isArray(response.conteList)) {
-        conteList = response.conteList
-        console.log('✅ API 응답 처리 완료:', conteList.length, '개 씬')
+        conteList = response.conteList;
+        console.log('✅ API 응답 처리 완료:', conteList.length, '개 씬');
       } else if (response && Array.isArray(response)) {
         // 응답이 직접 배열인 경우
-        conteList = response
-        console.log('✅ API 응답 배열 처리 완료:', conteList.length, '개 씬')
+        conteList = response;
+        console.log('✅ API 응답 배열 처리 완료:', conteList.length, '개 씬');
       } else {
-        console.log('❌ API 응답 형식이 올바르지 않음:', response)
-        throw new Error('콘티 데이터 형식이 올바르지 않습니다.')
+        console.log('❌ API 응답 형식이 올바르지 않음:', response);
+        throw new Error('콘티 데이터 형식이 올바르지 않습니다.');
       }
 
       /// API 응답 데이터를 그대로 사용 (서버에서 올바른 형식으로 제공됨)
@@ -269,50 +269,50 @@ const SceneGenerator = ({
           timeOfDay: '오후',
           weather: card.weather || '맑음',
           crew: ['촬영감독', '카메라맨', '조명기사'],
-          cameras: ['C1']
+          cameras: ['C1'],
         },
         canEdit: card.canEdit !== false,
         lastModified: card.lastModified || new Date().toISOString(),
-        modifiedBy: card.modifiedBy || 'AI'
-      }))
+        modifiedBy: card.modifiedBy || 'AI',
+      }));
 
-      console.log('✅ 처리된 캡션 카드 리스트:', processedConteList)
+      console.log('✅ 처리된 캡션 카드 리스트:', processedConteList);
 
       // 콘티 생성 완료 - 즉시 부모 컴포넌트에 전달하여 프로젝트 상태 업데이트
       console.log('🎬 콘티 생성 완료 - 즉시 부모 컴포넌트에 전달:', {
         processedConteListLength: processedConteList?.length,
-        hasOnConteGenerated: !!onConteGenerated
-      })
+        hasOnConteGenerated: !!onConteGenerated,
+      });
       
       // 콘티 생성 완료 시 즉시 부모 컴포넌트에 알림 (프로젝트 상태 업데이트용)
       if (onConteGenerated) {
-        console.log('📞 콘티 생성 완료 - onConteGenerated 콜백 즉시 호출 (프로젝트 상태 업데이트)...')
-        onConteGenerated(processedConteList, false) // isImageUpdate = false (프로젝트 상태 업데이트)
-        console.log('✅ 콘티 생성 완료 - onConteGenerated 콜백 호출 완료')
+        console.log('📞 콘티 생성 완료 - onConteGenerated 콜백 즉시 호출 (프로젝트 상태 업데이트)...');
+        onConteGenerated(processedConteList, false); // isImageUpdate = false (프로젝트 상태 업데이트)
+        console.log('✅ 콘티 생성 완료 - onConteGenerated 콜백 호출 완료');
       } else {
-        console.log('⚠️ 콘티 생성 완료 - onConteGenerated 콜백이 없음')
+        console.log('⚠️ 콘티 생성 완료 - onConteGenerated 콜백이 없음');
       }
       
       // UI 업데이트
-      setShowResult(true)
-      completeConteGeneration(processedConteList)
-      toast.success(`${processedConteList.length}개의 캡션 카드가 생성되었습니다.`)
+      setShowResult(true);
+      completeConteGeneration(processedConteList);
+      toast.success(`${processedConteList.length}개의 캡션 카드가 생성되었습니다.`);
 
       // 씬 이미지 생성 시작 (백그라운드에서 진행)
-      console.log('🎨 씬 이미지 생성 시작 (백그라운드)...')
+      console.log('🎨 씬 이미지 생성 시작 (백그라운드)...');
       
       // 이미지 생성 시작 시 부모 컴포넌트에 알림
       if (onImageGenerationUpdate) {
-        onImageGenerationUpdate(true, 0)
+        onImageGenerationUpdate(true, 0);
       }
       
       // 이미지 생성을 백그라운드에서 비동기로 실행
       generateSceneImages(processedConteList)
         .then(async (conteWithImages) => {
-          console.log('✅ 백그라운드 이미지 생성 완료:', conteWithImages.length, '개')
+          console.log('✅ 백그라운드 이미지 생성 완료:', conteWithImages.length, '개');
           
           // 이미지가 추가된 콘티 리스트를 로컬 상태에 업데이트
-          completeConteGeneration(conteWithImages)
+          completeConteGeneration(conteWithImages);
           
           // // 이미지 생성 완료 후 콘티를 DB에 저장
           // try {
@@ -385,15 +385,15 @@ const SceneGenerator = ({
           //   toast.error('콘티 생성은 완료되었지만 저장에 실패했습니다.')
           // }
           // 이미지 생성 완료 - 모든 콘티의 이미지 생성 상태 확인
-          const contesWithImages = conteWithImages.filter(conte => conte.imageUrl)
-          const totalContes = conteWithImages.length
-          const contesWithImagesCount = contesWithImages.length
+          const contesWithImages = conteWithImages.filter(conte => conte.imageUrl);
+          const totalContes = conteWithImages.length;
+          const contesWithImagesCount = contesWithImages.length;
           
           console.log('💾 이미지 생성 완료 상태 확인:', {
             totalContes,
             contesWithImagesCount,
-            allImagesGenerated: contesWithImagesCount === totalContes
-          })
+            allImagesGenerated: contesWithImagesCount === totalContes,
+          });
           
           // // 이미지 생성 완료 후 부모 컴포넌트에 업데이트된 콘티 데이터 전달 (DB 저장용)
           // if (onConteGenerated) {
@@ -403,52 +403,52 @@ const SceneGenerator = ({
           // }
           // 모든 콘티의 이미지가 생성된 경우에만 DB 저장 요청
           if (contesWithImagesCount === totalContes) {
-            console.log('✅ 모든 콘티의 이미지 생성 완료 - DB 저장 요청')
+            console.log('✅ 모든 콘티의 이미지 생성 완료 - DB 저장 요청');
             if (onConteGenerated) {
-              console.log('📞 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 (DB 저장)...')
-              onConteGenerated(conteWithImages, true) // isImageUpdate = true (DB 저장)
-              console.log('✅ 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 완료')
+              console.log('📞 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 (DB 저장)...');
+              onConteGenerated(conteWithImages, true); // isImageUpdate = true (DB 저장)
+              console.log('✅ 백그라운드 이미지 생성 완료 - onConteGenerated 콜백 호출 완료');
             }
           } else {
             console.log('⚠️ 일부 콘티의 이미지 생성 실패:', {
               successCount: contesWithImagesCount,
               totalCount: totalContes,
-              failedCount: totalContes - contesWithImagesCount
-            })
+              failedCount: totalContes - contesWithImagesCount,
+            });
             // 일부 실패 시 토스트 메시지 없이 조용히 처리
           }
           
-          console.log('✅ 모든 씬 이미지 생성 완료')
+          console.log('✅ 모든 씬 이미지 생성 완료');
           // toast.success('모든 씬 이미지가 생성되었습니다!')
         })
         .catch(imageError => {
-          console.error('❌ 백그라운드 이미지 생성 실패:', imageError)
-          toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.')
+          console.error('❌ 백그라운드 이미지 생성 실패:', imageError);
+          toast.error('일부 이미지 생성에 실패했습니다. 콘티는 정상적으로 생성되었습니다.');
         })
         .finally(() => {
           // 이미지 생성 완료 시 부모 컴포넌트에 알림
           if (onImageGenerationUpdate) {
-            onImageGenerationUpdate(false, 0)
+            onImageGenerationUpdate(false, 0);
           }
-          console.log('✅ 백그라운드 이미지 생성 프로세스 완료')
-        })
+          console.log('✅ 백그라운드 이미지 생성 프로세스 완료');
+        });
 
     } catch (error) {
-      console.error('❌ 캡션 카드 생성 실패:', error)
-      const errorMessage = error.message || '캡션 카드 생성에 실패했습니다.'
-      failConteGeneration(errorMessage)
+      console.error('❌ 캡션 카드 생성 실패:', error);
+      const errorMessage = error.message || '캡션 카드 생성에 실패했습니다.';
+      failConteGeneration(errorMessage);
       
       // 에러 발생 시에도 부모 컴포넌트에 알림
       if (onGenerationComplete) {
-        onGenerationComplete()
+        onGenerationComplete();
       }
       if (onConteGenerated) {
-        onConteGenerated(null) // null 전달로 실패 상태 명시
+        onConteGenerated(null); // null 전달로 실패 상태 명시
       }
       
-      toast.error(errorMessage)
+      toast.error(errorMessage);
     }
-  }
+  };
 
   /**
    * 타임라인 보기 핸들러
@@ -456,26 +456,26 @@ const SceneGenerator = ({
   const handleViewTimeline = () => {
     // 콘티 데이터를 로컬 스토리지에 저장하고 프로젝트 페이지로 이동
     if (generatedConte && generatedConte.length > 0) {
-      localStorage.setItem('currentConteData', JSON.stringify(generatedConte))
+      localStorage.setItem('currentConteData', JSON.stringify(generatedConte));
       
       // 실제 프로젝트 ID가 있으면 해당 프로젝트 페이지로, 없으면 임시 프로젝트로 이동
-      const targetProjectId = projectId || 'temp-project-id'
-      console.log('🎬 타임라인 이동 - 프로젝트 ID:', targetProjectId)
+      const targetProjectId = projectId || 'temp-project-id';
+      console.log('🎬 타임라인 이동 - 프로젝트 ID:', targetProjectId);
       
       // 프로젝트 페이지로 이동 (navigate 함수가 필요하므로 window.location 사용)
-      window.location.href = `/project/${targetProjectId}`
+      window.location.href = `/project/${targetProjectId}`;
     } else {
-      toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.')
+      toast.error('타임라인을 보려면 먼저 콘티를 생성해주세요.');
     }
-  }
+  };
 
   /**
    * 전체 캡션 카드 재생성 핸들러
    */
   const handleRegenerateAllConte = () => {
-    setShowResult(false)
-    handleGenerateConte()
-  }
+    setShowResult(false);
+    handleGenerateConte();
+  };
 
   /**
    * 캡션 카드 편집 핸들러
@@ -483,50 +483,50 @@ const SceneGenerator = ({
    * @param {number} cardIndex - 카드 인덱스
    */
   const handleEditConte = (card, cardIndex) => {
-    console.log('✏️ 편집 시작:', { card, cardIndex })
-    setEditingConte(card)
-    setEditingIndex(cardIndex)
-    setEditModalOpen(true)
-    console.log('✅ 편집 모달 상태 설정 완료')
-  }
+    console.log('✏️ 편집 시작:', { card, cardIndex });
+    setEditingConte(card);
+    setEditingIndex(cardIndex);
+    setEditModalOpen(true);
+    console.log('✅ 편집 모달 상태 설정 완료');
+  };
 
   /**
    * 편집 모달 닫기 핸들러
    */
   const handleEditModalClose = () => {
-    console.log('🔒 편집 모달 닫기')
-    setEditModalOpen(false)
-    setEditingConte(null)
-    setEditingIndex(-1)
-  }
+    console.log('🔒 편집 모달 닫기');
+    setEditModalOpen(false);
+    setEditingConte(null);
+    setEditingIndex(-1);
+  };
 
   /**
    * 편집된 콘티 저장 핸들러
    * @param {Object} editedConte - 편집된 콘티 데이터
    */
   const handleSaveConte = (editedConte) => {
-    console.log('💾 handleSaveConte 호출됨')
-    console.log('editingIndex:', editingIndex)
-    console.log('generatedConte.length:', generatedConte.length)
-    console.log('editedConte:', editedConte)
+    console.log('💾 handleSaveConte 호출됨');
+    console.log('editingIndex:', editingIndex);
+    console.log('generatedConte.length:', generatedConte.length);
+    console.log('editedConte:', editedConte);
     
     if (editingIndex >= 0 && editingIndex < generatedConte.length) {
-      console.log('✅ 유효한 편집 인덱스')
-      const updatedConteList = [...generatedConte]
-      updatedConteList[editingIndex] = editedConte
+      console.log('✅ 유효한 편집 인덱스');
+      const updatedConteList = [...generatedConte];
+      updatedConteList[editingIndex] = editedConte;
       
-      console.log('📝 업데이트된 콘티 리스트:', updatedConteList)
+      console.log('📝 업데이트된 콘티 리스트:', updatedConteList);
       
       // 스토어 업데이트
-      completeConteGeneration(updatedConteList)
+      completeConteGeneration(updatedConteList);
       
-      toast.success('캡션 카드가 저장되었습니다.')
+      toast.success('캡션 카드가 저장되었습니다.');
     } else {
-      console.error('❌ 유효하지 않은 편집 인덱스:', editingIndex)
-      toast.error('저장에 실패했습니다. 편집 인덱스가 유효하지 않습니다.')
+      console.error('❌ 유효하지 않은 편집 인덱스:', editingIndex);
+      toast.error('저장에 실패했습니다. 편집 인덱스가 유효하지 않습니다.');
     }
-    handleEditModalClose()
-  }
+    handleEditModalClose();
+  };
 
   /**
    * 콘티 재생성 핸들러
@@ -534,9 +534,9 @@ const SceneGenerator = ({
    */
   const handleRegenerateConte = (conte) => {
     // TODO: 개별 콘티 재생성 로직 구현
-    console.log('개별 콘티 재생성:', conte)
-    toast.info('개별 콘티 재생성 기능은 준비 중입니다.')
-  }
+    console.log('개별 콘티 재생성:', conte);
+    toast.info('개별 콘티 재생성 기능은 준비 중입니다.');
+  };
 
   /**
    * 이미지 재생성 핸들러
@@ -545,17 +545,17 @@ const SceneGenerator = ({
   const handleRegenerateImage = async (conte) => {
     try {
       // 이미지 생성 프롬프트 구성
-      const imagePrompt = `${conte.title}: ${conte.description}. ${conte.visualDescription || ''} ${conte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`
+      const imagePrompt = `${conte.title}: ${conte.description}. ${conte.visualDescription || ''} ${conte.genre || '영화'} 스타일, 시네마틱한 구도, 고품질 이미지`;
       
-      console.log('🎨 이미지 재생성 시작:', imagePrompt)
+      console.log('🎨 이미지 재생성 시작:', imagePrompt);
       
       // 이미지 생성 API 호출
       const imageResponse = await generateSceneImage({
         sceneDescription: imagePrompt,
         style: 'cinematic',
         genre: conte.genre || '일반',
-        size: '1024x1024'
-      })
+        size: '1024x1024',
+      });
       
       // 생성된 이미지 URL을 콘티에 추가
       const updatedConte = {
@@ -564,23 +564,23 @@ const SceneGenerator = ({
         imagePrompt: imagePrompt,
         imageGeneratedAt: imageResponse.generatedAt,
         imageModel: imageResponse.model,
-        isFreeTier: imageResponse.isFreeTier
-      }
+        isFreeTier: imageResponse.isFreeTier,
+      };
       
       // 스토어 업데이트
       if (editingIndex >= 0 && editingIndex < generatedConte.length) {
-        const updatedConteList = [...generatedConte]
-        updatedConteList[editingIndex] = updatedConte
-        completeConteGeneration(updatedConteList)
+        const updatedConteList = [...generatedConte];
+        updatedConteList[editingIndex] = updatedConte;
+        completeConteGeneration(updatedConteList);
       }
       
-      toast.success('이미지가 재생성되었습니다.')
+      toast.success('이미지가 재생성되었습니다.');
       
     } catch (error) {
-      console.error('❌ 이미지 재생성 실패:', error)
-      toast.error('이미지 재생성에 실패했습니다.')
+      console.error('❌ 이미지 재생성 실패:', error);
+      toast.error('이미지 재생성에 실패했습니다.');
     }
-  }
+  };
 
   /**
    * 설정 변경 핸들러
@@ -588,8 +588,8 @@ const SceneGenerator = ({
    * @param {any} value - 설정 값
    */
   const handleSettingChange = (key, value) => {
-    updateConteSettings({ [key]: value })
-  }
+    updateConteSettings({ [key]: value });
+  };
 
 
 
@@ -617,7 +617,7 @@ const SceneGenerator = ({
           onRegenerateConte={handleRegenerateConte}
         />
       </>
-    )
+    );
   }
 
   return (
@@ -638,7 +638,7 @@ const SceneGenerator = ({
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
-          py: 6 
+          py: 6, 
         }}>
           <CircularProgress size={80} sx={{ mb: 3 }} />
           <Typography variant="h5" gutterBottom>
@@ -664,7 +664,7 @@ const SceneGenerator = ({
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   '& .MuiLinearProgress-bar': {
                     backgroundColor: 'var(--color-accent)',
-                  }
+                  },
                 }}
               />
             </Box>
@@ -717,7 +717,7 @@ const SceneGenerator = ({
                       { value: 5, label: '5' },
                       { value: 10, label: '10' },
                       { value: 15, label: '15' },
-                      { value: 20, label: '20' }
+                      { value: 20, label: '20' },
                     ]}
                     sx={{
                       '& .MuiSlider-track': {
@@ -725,7 +725,7 @@ const SceneGenerator = ({
                       },
                       '& .MuiSlider-thumb': {
                         backgroundColor: 'var(--color-accent)',
-                      }
+                      },
                     }}
                   />
                 </Grid>
@@ -811,11 +811,11 @@ const SceneGenerator = ({
                 color: '#666',
               },
               px: 4,
-              py: 1.5
+              py: 1.5,
             }}
           >
             {isGenerating ? 'AI 씬 생성 중...' : 
-             generatingImages ? '씬 이미지 생성 중...' : 'AI 씬 생성하기'}
+              generatingImages ? '씬 이미지 생성 중...' : 'AI 씬 생성하기'}
           </Button>
         </Box>
       )}
@@ -837,13 +837,13 @@ const SceneGenerator = ({
               height: 8, 
               bgcolor: 'rgba(0, 0, 0, 0.1)', 
               borderRadius: 4,
-              overflow: 'hidden'
+              overflow: 'hidden',
             }}>
               <Box sx={{
                 width: `${imageGenerationProgress}%`,
                 height: '100%',
                 bgcolor: 'var(--color-accent)',
-                transition: 'width 0.3s ease'
+                transition: 'width 0.3s ease',
               }} />
             </Box>
           </Box>
@@ -868,7 +868,7 @@ const SceneGenerator = ({
         </Alert>
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default SceneGenerator 
+export default SceneGenerator; 

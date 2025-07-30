@@ -8,7 +8,8 @@ import {
   CreateCutDraftRequestDto
 } from './dto/request.dto';
 import { 
-  CutResponseDto
+  CutResponseDto,
+  CutDraftResponseDto
 } from './dto/response.dto';
 import { AiService } from 'src/ai/ai.service';
 import { SceneService } from 'src/scene/scene.service';
@@ -16,6 +17,7 @@ import { SceneResponseDto } from 'src/scene/dto/response.dto';
 import { ProjectService } from 'src/project/project.service';
 import { StorageFactoryService } from '../common/services/storage-factory.service';
 import * as fs from 'fs';
+import { ProjectResponseDto } from 'src/project/dto/response.dto';
 
 @Injectable()
 export class CutService {
@@ -39,7 +41,7 @@ export class CutService {
     return this.mapToResponseDto(savedCut);
   }
 
-  async createDraft(projectId: string, sceneId: string, createCutDraftRequestDto: CreateCutDraftRequestDto): Promise<CutResponseDto[]> {
+  async createDraft(projectId: string, sceneId: string, createCutDraftRequestDto: CreateCutDraftRequestDto): Promise<CutDraftResponseDto[]> {
     const project = await this.projectService.findById(projectId);
     const scene = await this.sceneService.findById(projectId, sceneId);
     const { maxCuts } = createCutDraftRequestDto;
@@ -946,9 +948,10 @@ estimatedDuration - ${scene.estimatedDuration}
   async generateImage(projectId: string, sceneId: string, cutId: string): Promise<string> {
     const cut = await this.findById(projectId, sceneId, cutId);
     const scene = await this.sceneService.findById(projectId, sceneId);
+    const project = await this.projectService.findById(projectId);
     
     // AI 이미지 생성 프롬프트 작성
-    const prompt = this.buildImageGenerationPrompt(scene, cut);
+    const prompt = this.buildImageGenerationPrompt(project, scene, cut);
     
     try {
       // AI 서비스를 통해 이미지 생성
@@ -1014,83 +1017,84 @@ estimatedDuration - ${scene.estimatedDuration}
     }
   }
 
-  private buildImageGenerationPrompt(scene: SceneResponseDto, cut: CutResponseDto): string {
+  private buildImageGenerationPrompt(project: ProjectResponseDto, scene: SceneResponseDto, cut: CutResponseDto): string {
     const { title, description, cameraSetup, subjectMovement, productionMethod } = cut;
+    const { cast, extra, location, weather, timeOfDay, scenePlace, sceneDateTime, vfxRequired, sfxRequired } = scene;
+    const { genre, tags, synopsis, story } = project;
+
+    // 기본 컷 정보
+    let prompt = `Cinematic film still: ${title || 'Cut'}. `;
     
-    let prompt = `영화 촬영 컷 이미지: ${title || '영화 촬영 컷'}`;
-    
+    // 컷 설명
     if (description) {
-      prompt += `\n설명: ${description}`;
+      prompt += `Scene description: ${description}. `;
     }
-    
-    // 씬 장소 정보 추가
-    if (scene && scene.location) {
-      prompt += `\n장소: ${scene.location.name || '미정'}`;
-      if (scene.location.address) {
-        prompt += ` (${scene.location.address})`;
-      }
-    }
-    
-    // 날씨 정보 추가
-    if (scene && scene.weather) {
-      prompt += `\n날씨: ${scene.weather}`;
-    }
-    
-    // 시간대 정보 추가
-    if (scene && scene.sceneDateTime) {
-      prompt += `\n시간대: ${scene.sceneDateTime}`;
-    }
-    
-    // 조명 정보 추가
-    if (scene && scene.lighting) {
-      prompt += `\n조명:`;
-      if (scene.lighting.description) {
-        prompt += ` ${scene.lighting.description}`;
-      }
-      if (scene.lighting.setup && scene.lighting.setup.overall) {
-        if (scene.lighting.setup.overall.mood) {
-          prompt += ` 분위기: ${scene.lighting.setup.overall.mood}`;
-        }
-        if (scene.lighting.setup.overall.colorTemperature) {
-          prompt += ` 색온도: ${scene.lighting.setup.overall.colorTemperature}`;
-        }
-      }
-    }
-    
-    // 시각적 설명 추가
-    if (scene && scene.visualDescription) {
-      prompt += `\n시각적 배경: ${scene.visualDescription}`;
-    }
-    
-    // 특수효과 정보 추가
-    if (cut.vfxEffects) {
-      prompt += `\n특수효과: ${cut.vfxEffects}`;
-    }
-    
+
+    // 카메라 설정
     if (cameraSetup) {
-      prompt += `\n카메라 설정:`;
-      if (cameraSetup.shotSize) prompt += ` 샷 사이즈: ${cameraSetup.shotSize}`;
-      if (cameraSetup.angleDirection) prompt += ` 앵글: ${cameraSetup.angleDirection}`;
-      if (cameraSetup.cameraMovement) prompt += ` 카메라 움직임: ${cameraSetup.cameraMovement}`;
-      if (cameraSetup.lensSpecs) prompt += ` 렌즈: ${cameraSetup.lensSpecs}`;
+      const { shotSize, angleDirection, cameraMovement, lensSpecs, cameraSettings } = cameraSetup;
+      prompt += `Camera setup: ${shotSize || 'medium'} shot, ${angleDirection || 'eye-level'} angle`;
+      if (cameraMovement) prompt += `, ${cameraMovement} movement`;
+      if (lensSpecs) prompt += `, ${lensSpecs} lens`;
+      if (cameraSettings) {
+        const { aperture, shutterSpeed, iso } = cameraSettings;
+        if (aperture) prompt += `, f/${aperture}`;
+        if (shutterSpeed) prompt += `, ${shutterSpeed} shutter`;
+        if (iso) prompt += `, ISO ${iso}`;
+      }
+      prompt += '. ';
     }
-    
+
+    // 피사체 움직임
     if (subjectMovement && subjectMovement.length > 0) {
-      prompt += `\n피사체:`;
-      subjectMovement.forEach(subject => {
-        prompt += ` ${subject.name}(${subject.type})`;
-        if (subject.position) prompt += ` 위치: ${subject.position}`;
-        if (subject.action) prompt += ` 행동: ${subject.action}`;
-        if (subject.emotion) prompt += ` 감정: ${subject.emotion}`;
-      });
+      prompt += `Subject movement: `;
+      const movements = subjectMovement.map(movement => 
+        `${movement.name || 'Character'} ${movement.action || 'acting'} ${movement.emotion || 'emotionally'} at ${movement.position || 'position'}`
+      ).join(', ');
+      prompt += movements + '. ';
     }
-    
+
+    // 씬 정보
+    if (location) prompt += `Location: ${location}. `;
+    if (weather) prompt += `Weather: ${weather}. `;
+    if (timeOfDay) prompt += `Time of day: ${timeOfDay}. `;
+    if (scenePlace) prompt += `Scene place: ${scenePlace}. `;
+    if (sceneDateTime) prompt += `Scene date/time: ${sceneDateTime}. `;
+
+    // 출연진 정보
+    if (cast && cast.length > 0) {
+      const castInfo = cast.map(actor => `${actor.role || 'Character'}: ${actor.name || 'Actor'}`).join(', ');
+      prompt += `Cast: ${castInfo}. `;
+    }
+    if (extra && extra.length > 0) {
+      const extraInfo = extra.map(extra => `${extra.role || 'Extra'}: ${extra.number || 'Background'}`).join(', ');
+      prompt += `Extras: ${extraInfo}. `;
+    }
+
+    // 특수 효과
+    if (vfxRequired) prompt += `VFX required: ${vfxRequired}. `;
+    if (sfxRequired) prompt += `SFX required: ${sfxRequired}. `;
+
+    // 프로젝트 정보
+    if (genre) prompt += `Genre: ${genre}. `;
+    if (tags && tags.length > 0) {
+      prompt += `Tags: ${tags.join(', ')}. `;
+    }
+    if (synopsis) {
+      prompt += `Project synopsis: ${synopsis}. `;
+    }
+    if (story) {
+      prompt += `Story context: ${story}. `;
+    }
+
+    // 제작 방법
     if (productionMethod) {
-      prompt += `\n제작 방법: ${productionMethod === 'ai_generated' ? 'AI 생성' : '실사 촬영'}`;
+      prompt += `Production method: ${productionMethod}. `;
     }
-    
-    prompt += `\n\n고품질 영화 촬영 컷 이미지, 시네마틱한 분위기, 전문적인 촬영 스타일, film still 스타일, Cinematic Composition`;
-    
+
+    // 시네마틱 스타일 강조
+    prompt += `High quality cinematic film still, professional cinematography, dramatic lighting, movie poster style, detailed composition, film grain, cinematic color grading.`;
+
     return prompt;
   }
 

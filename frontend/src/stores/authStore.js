@@ -1,6 +1,6 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import api from '../services/api'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import api from '../services/api';
 
 /**
  * 인증 상태 관리 스토어
@@ -37,26 +37,26 @@ const useAuthStore = create(
        * @param {string} token - JWT 토큰
        */
       setToken: (token) => {
-        set({ token })
+        set({ token });
         if (token) {
           // 토큰이 있으면 API 요청 헤더에 추가
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           // 보안 강화: 토큰을 세션 스토리지에도 저장 (httpOnly 쿠키 대안)
           try {
-            sessionStorage.setItem('auth-token', token)
+            sessionStorage.setItem('auth-token', token);
           } catch (error) {
-            console.warn('Failed to store token in sessionStorage:', error)
+            console.warn('Failed to store token in sessionStorage:', error);
           }
         } else {
           // 토큰이 없으면 헤더에서 제거
-          delete api.defaults.headers.common['Authorization']
+          delete api.defaults.headers.common['Authorization'];
           
           // 세션 스토리지에서도 제거
           try {
-            sessionStorage.removeItem('auth-token')
+            sessionStorage.removeItem('auth-token');
           } catch (error) {
-            console.warn('Failed to remove token from sessionStorage:', error)
+            console.warn('Failed to remove token from sessionStorage:', error);
           }
         }
       },
@@ -66,18 +66,18 @@ const useAuthStore = create(
        * @param {string} refreshToken - 리프레시 토큰
        */
       setRefreshToken: (refreshToken) => {
-        set({ refreshToken })
+        set({ refreshToken });
         if (refreshToken) {
           try {
-            sessionStorage.setItem('refresh-token', refreshToken)
+            sessionStorage.setItem('refresh-token', refreshToken);
           } catch (error) {
-            console.warn('Failed to store refresh token in sessionStorage:', error)
+            console.warn('Failed to store refresh token in sessionStorage:', error);
           }
         } else {
           try {
-            sessionStorage.removeItem('refresh-token')
+            sessionStorage.removeItem('refresh-token');
           } catch (error) {
-            console.warn('Failed to remove refresh token from sessionStorage:', error)
+            console.warn('Failed to remove refresh token from sessionStorage:', error);
           }
         }
       },
@@ -89,26 +89,26 @@ const useAuthStore = create(
        */
       login: async (accessToken) => {
         try {
-          set({ loading: true })
+          set({ loading: true });
           
           // NestJS 백엔드에 Google access token 전송하여 JWT 토큰 받기
-          const response = await api.post('/auth/login', { access_token: accessToken })
-          const { access_token, refresh_token, user } = response.data
+          const response = await api.post('/auth/login', { access_token: accessToken });
+          const { access_token, refresh_token, user } = response.data;
           
           // 토큰과 사용자 정보 설정
-          get().setToken(access_token)
-          get().setRefreshToken(refresh_token)
-          get().setUser(user)
+          get().setToken(access_token);
+          get().setRefreshToken(refresh_token);
+          get().setUser(user);
           
           // 자동 로그아웃 타이머 설정
-          get().setAutoLogoutTimer()
+          get().setAutoLogoutTimer();
           
-          set({ loading: false })
+          set({ loading: false });
           
-          return { success: true }
+          return { success: true };
         } catch (error) {
-          set({ loading: false })
-          return { success: false, error: error.message }
+          set({ loading: false });
+          return { success: false, error: error.message };
         }
       },
 
@@ -122,10 +122,10 @@ const useAuthStore = create(
           isAuthenticated: false, 
           token: null,
           refreshToken: null,
-          loading: false 
-        })
-        get().setToken(null)
-        get().setRefreshToken(null)
+          loading: false, 
+        });
+        get().setToken(null);
+        get().setRefreshToken(null);
       },
 
       /**
@@ -134,18 +134,18 @@ const useAuthStore = create(
        * @returns {boolean} 토큰이 만료되었는지 여부
        */
       isTokenExpired: (token) => {
-        if (!token) return true
+        if (!token) return true;
         
         try {
           // JWT 토큰의 페이로드 부분을 디코드
-          const payload = JSON.parse(atob(token.split('.')[1]))
-          const currentTime = Date.now() / 1000
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const currentTime = Date.now() / 1000;
           
           // 토큰 만료 시간 확인 (exp 필드)
-          return payload.exp < currentTime
+          return payload.exp < currentTime;
         } catch (error) {
-          console.error('Token decode error:', error)
-          return true
+          console.error('Token decode error:', error);
+          return true;
         }
       },
 
@@ -155,27 +155,27 @@ const useAuthStore = create(
        */
       refreshToken: async () => {
         try {
-          const currentRefreshToken = get().refreshToken
+          const currentRefreshToken = get().refreshToken;
           if (!currentRefreshToken) {
-            return false
+            return false;
           }
 
           // NestJS 백엔드에 토큰 갱신 요청
           const response = await api.post('/auth/refresh', {
-            refresh_token: currentRefreshToken
-          })
+            refresh_token: currentRefreshToken,
+          });
           
-          const { access_token: newToken, expires_in } = response.data
+          const { access_token: newToken, expires_in } = response.data;
           
           // 새 토큰 설정
-          get().setToken(newToken)
-          console.log('Token refreshed successfully')
-          return true
+          get().setToken(newToken);
+          console.log('Token refreshed successfully');
+          return true;
         } catch (error) {
-          console.error('Token refresh failed:', error)
+          console.error('Token refresh failed:', error);
           // 갱신 실패 시 로그아웃
-          get().logout()
-          return false
+          get().logout();
+          return false;
         }
       },
 
@@ -185,11 +185,11 @@ const useAuthStore = create(
        */
       forceAuthRefresh: async () => {
         try {
-          const result = await get().refreshToken()
-          return { success: result }
+          const result = await get().refreshToken();
+          return { success: result };
         } catch (error) {
-          console.error('Force auth refresh failed:', error)
-          return { success: false, error: error.message }
+          console.error('Force auth refresh failed:', error);
+          return { success: false, error: error.message };
         }
       },
 
@@ -199,33 +199,33 @@ const useAuthStore = create(
        */
       checkAuth: async () => {
         try {
-          const token = get().token
+          const token = get().token;
           if (!token) {
             // 토큰이 없으면 로딩 상태만 해제
-            set({ loading: false })
-            return
+            set({ loading: false });
+            return;
           }
 
           // 토큰 만료 확인
           if (get().isTokenExpired(token)) {
-            console.log('Token expired, attempting refresh...')
+            console.log('Token expired, attempting refresh...');
             // 토큰 갱신 시도
-            const refreshSuccess = await get().refreshToken()
+            const refreshSuccess = await get().refreshToken();
             if (!refreshSuccess) {
-              console.log('Token refresh failed, logging out...')
-              get().logout()
-              return
+              console.log('Token refresh failed, logging out...');
+              get().logout();
+              return;
             }
           }
 
           // NestJS 백엔드에 현재 사용자 정보 요청
-          const response = await api.get('/profile')
-          get().setUser(response.data)
-          set({ loading: false })
+          const response = await api.get('/profile');
+          get().setUser(response.data);
+          set({ loading: false });
         } catch (error) {
-          console.error('Auth check error:', error)
+          console.error('Auth check error:', error);
           // 인증 실패 시 로그아웃 처리
-          get().logout()
+          get().logout();
         }
       },
 
@@ -235,22 +235,22 @@ const useAuthStore = create(
        */
       setAutoLogoutTimer: (timeoutMinutes = 30) => {
         // 기존 타이머 제거
-        const currentTimer = get().autoLogoutTimer
+        const currentTimer = get().autoLogoutTimer;
         if (currentTimer) {
-          clearTimeout(currentTimer)
+          clearTimeout(currentTimer);
         }
 
         // 새 타이머 설정 (30분 기본값)
         const timer = setTimeout(() => {
-          console.log('Auto logout due to inactivity')
-          get().logout()
+          console.log('Auto logout due to inactivity');
+          get().logout();
           // 사용자에게 알림 (선택사항)
           if (typeof window !== 'undefined' && window.toast) {
-            window.toast.warning('장시간 미사용으로 자동 로그아웃되었습니다.')
+            window.toast.warning('장시간 미사용으로 자동 로그아웃되었습니다.');
           }
-        }, timeoutMinutes * 60 * 1000)
+        }, timeoutMinutes * 60 * 1000);
 
-        set({ autoLogoutTimer: timer })
+        set({ autoLogoutTimer: timer });
       },
 
       /**
@@ -258,7 +258,7 @@ const useAuthStore = create(
        * 사용자 활동 시 호출
        */
       resetAutoLogoutTimer: () => {
-        get().setAutoLogoutTimer()
+        get().setAutoLogoutTimer();
       },
 
       /**
@@ -269,25 +269,25 @@ const useAuthStore = create(
         // 다른 탭에서 로그아웃 시 현재 탭도 로그아웃
         window.addEventListener('storage', (event) => {
           if (event.key === 'auth-storage' && event.newValue === null) {
-            console.log('Session sync: logging out due to other tab logout')
-            get().logout()
+            console.log('Session sync: logging out due to other tab logout');
+            get().logout();
           }
-        })
+        });
 
         // 페이지 언로드 시 세션 정리
         window.addEventListener('beforeunload', () => {
           // 필요한 경우 세션 정리 로직
-        })
+        });
 
         // 사용자 활동 감지 (자동 로그아웃 타이머 리셋)
-        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
         activityEvents.forEach(event => {
           document.addEventListener(event, () => {
             if (get().isAuthenticated) {
-              get().resetAutoLogoutTimer()
+              get().resetAutoLogoutTimer();
             }
-          })
-        })
+          });
+        });
       },
 
       /**
@@ -297,21 +297,21 @@ const useAuthStore = create(
       initialize: async () => {
         try {
           // 세션 동기화 설정
-          get().setupSessionSync()
+          get().setupSessionSync();
           
-          await get().checkAuth()
+          await get().checkAuth();
         } catch (error) {
-          console.error('App initialization error:', error)
+          console.error('App initialization error:', error);
           // 초기화 실패 시 로그아웃 상태로 설정
           set({ 
             user: null, 
             isAuthenticated: false, 
             token: null,
             refreshToken: null,
-            loading: false 
-          })
+            loading: false, 
+          });
         }
-      }
+      },
     }),
     {
       // 로컬 스토리지 설정
@@ -321,10 +321,10 @@ const useAuthStore = create(
         token: state.token,
         refreshToken: state.refreshToken,
         user: state.user,
-        isAuthenticated: state.isAuthenticated 
-      })
-    }
-  )
-)
+        isAuthenticated: state.isAuthenticated, 
+      }),
+    },
+  ),
+);
 
-export { useAuthStore } 
+export { useAuthStore }; 

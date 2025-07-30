@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -20,8 +20,8 @@ import {
   Skeleton,
   LinearProgress,
   Alert,
-  Collapse
-} from '@mui/material'
+  Collapse,
+} from '@mui/material';
 import { 
   ExpandMore,
   Movie,
@@ -39,10 +39,10 @@ import {
   Star,
   Info,
   Help,
-  Timeline
-} from '@mui/icons-material'
-import toast from 'react-hot-toast'
-import { SCENE_TYPES, GRAPH_RELATIONSHIPS, groupScenes } from '../../data/sceneCardStructure'
+  Timeline,
+} from '@mui/icons-material';
+import toast from 'react-hot-toast';
+import { SCENE_TYPES, GRAPH_RELATIONSHIPS, groupScenes } from '../../data/sceneCardStructure';
 
 /**
  * 생성된 씬 결과 표시 컴포넌트
@@ -56,52 +56,52 @@ const SceneResult = ({
   isGenerating = false,
   generatingImages = false,
   imageGenerationProgress = 0,
-  onViewTimeline = null
+  onViewTimeline = null,
 }) => {
   // 로컬 상태 관리
-  const [expandedScene, setExpandedScene] = useState(0) // 확장된 씬 인덱스
-  const [groupBy, setGroupBy] = useState('none') // 그룹화 기준
-  const [showTypeReason, setShowTypeReason] = useState({}) // 타입 분류 이유 표시 상태
+  const [expandedScene, setExpandedScene] = useState(0); // 확장된 씬 인덱스
+  const [groupBy, setGroupBy] = useState('none'); // 그룹화 기준
+  const [showTypeReason, setShowTypeReason] = useState({}); // 타입 분류 이유 표시 상태
 
   /**
    * 씬 확장/축소 핸들러
    * @param {number} sceneIndex - 씬 인덱스
    */
   const handleSceneExpand = (sceneIndex) => {
-    setExpandedScene(expandedScene === sceneIndex ? -1 : sceneIndex)
-  }
+    setExpandedScene(expandedScene === sceneIndex ? -1 : sceneIndex);
+  };
 
   /**
    * 씬 편집 핸들러
    * @param {number} sceneIndex - 편집할 씬 인덱스
    */
   const handleEditScene = (sceneIndex) => {
-    console.log('🎬 SceneResult 편집 핸들러 호출:', { sceneIndex, onEdit: !!onEdit })
+    console.log('🎬 SceneResult 편집 핸들러 호출:', { sceneIndex, onEdit: !!onEdit });
     if (onEdit) {
-      console.log('✅ onEdit 함수 호출:', { card: sceneList[sceneIndex], sceneIndex })
-      onEdit(sceneList[sceneIndex], sceneIndex)
+      console.log('✅ onEdit 함수 호출:', { card: sceneList[sceneIndex], sceneIndex });
+      onEdit(sceneList[sceneIndex], sceneIndex);
     } else {
-      console.error('❌ onEdit 함수가 없습니다!')
+      console.error('❌ onEdit 함수가 없습니다!');
     }
-    toast.success('씬 편집 모드로 전환되었습니다.')
-  }
+    toast.success('씬 편집 모드로 전환되었습니다.');
+  };
 
   /**
    * 씬 재생성 핸들러
    */
   const handleRegenerateScene = () => {
     if (onRegenerate) {
-      onRegenerate()
+      onRegenerate();
     }
-  }
+  };
 
   /**
    * 씬 저장 핸들러
    */
   const handleSaveConte = () => {
     // TODO: 캡션 카드 저장 API 연동
-    toast.success('캡션 카드가 저장되었습니다.')
-  }
+    toast.success('캡션 카드가 저장되었습니다.');
+  };
 
   /**
    * 타입 분류 이유 토글 핸들러
@@ -110,9 +110,9 @@ const SceneResult = ({
   const handleToggleTypeReason = (sceneIndex) => {
     setShowTypeReason(prev => ({
       ...prev,
-      [sceneIndex]: !prev[sceneIndex]
-    }))
-  }
+      [sceneIndex]: !prev[sceneIndex],
+    }));
+  };
 
   /**
    * 씬 타입에 따른 아이콘 반환
@@ -121,14 +121,14 @@ const SceneResult = ({
    */
   const getSceneTypeIcon = (type) => {
     switch (type) {
-      case CAPTION_CARD_TYPES.GENERATED_VIDEO:
-        return <Movie color="primary" />
-      case CAPTION_CARD_TYPES.LIVE_ACTION:
-        return <Videocam color="secondary" />
-      default:
-        return <Movie />
+    case CAPTION_CARD_TYPES.GENERATED_VIDEO:
+      return <Movie color="primary" />;
+    case CAPTION_CARD_TYPES.LIVE_ACTION:
+      return <Videocam color="secondary" />;
+    default:
+      return <Movie />;
     }
-  }
+  };
 
   /**
    * 씬 타입에 따른 라벨 반환
@@ -137,14 +137,14 @@ const SceneResult = ({
    */
   const getSceneTypeLabel = (type) => {
     switch (type) {
-      case CAPTION_CARD_TYPES.GENERATED_VIDEO:
-        return 'AI 생성 비디오'
-      case CAPTION_CARD_TYPES.LIVE_ACTION:
-        return '실사 촬영'
-      default:
-        return '미분류'
+    case CAPTION_CARD_TYPES.GENERATED_VIDEO:
+      return 'AI 생성 비디오';
+    case CAPTION_CARD_TYPES.LIVE_ACTION:
+      return '실사 촬영';
+    default:
+      return '미분류';
     }
-  }
+  };
 
   /**
    * 씬 타입 분류 이유 분석 및 반환
@@ -154,8 +154,8 @@ const SceneResult = ({
   const analyzeTypeReason = (card) => {
     const reasons = {
       generated_video: [],
-      live_action: []
-    }
+      live_action: [],
+    };
 
     // AI 생성 비디오로 분류되는 이유들
     if (card.visualEffects && (
@@ -163,7 +163,7 @@ const SceneResult = ({
       card.visualEffects.includes('CG') ||
       card.visualEffects.includes('특수효과')
     )) {
-      reasons.generated_video.push('AI 시각효과나 특수효과가 포함된 장면')
+      reasons.generated_video.push('AI 시각효과나 특수효과가 포함된 장면');
     }
     
     if (card.visualDescription && (
@@ -175,7 +175,7 @@ const SceneResult = ({
       card.visualDescription.includes('초능력') ||
       card.visualDescription.includes('시간여행')
     )) {
-      reasons.generated_video.push('환상적이거나 초자연적인 요소가 포함된 장면')
+      reasons.generated_video.push('환상적이거나 초자연적인 요소가 포함된 장면');
     }
     
     if (card.description && (
@@ -184,7 +184,7 @@ const SceneResult = ({
       card.description.includes('애니메이션') ||
       card.description.includes('디지털')
     )) {
-      reasons.generated_video.push('특수효과나 CG가 필요한 장면')
+      reasons.generated_video.push('특수효과나 CG가 필요한 장면');
     }
 
     // 단순한 자연 풍경 장면 (AI 생성이 적합)
@@ -196,7 +196,7 @@ const SceneResult = ({
       card.visualDescription.includes('숲') ||
       card.visualDescription.includes('산')
     )) {
-      reasons.generated_video.push('단순한 자연 풍경 장면 (AI 생성이 적합)')
+      reasons.generated_video.push('단순한 자연 풍경 장면 (AI 생성이 적합)');
     }
 
     // 실사 촬영으로 분류되는 이유들
@@ -205,7 +205,7 @@ const SceneResult = ({
       card.characterLayout.includes('배우') ||
       card.characterLayout.includes('연기')
     )) {
-      reasons.live_action.push('실제 배우의 연기가 중요한 장면')
+      reasons.live_action.push('실제 배우의 연기가 중요한 장면');
     }
     
     if (card.props && (
@@ -213,7 +213,7 @@ const SceneResult = ({
       card.props.includes('물리적') ||
       card.props.includes('접촉')
     )) {
-      reasons.live_action.push('실제 소품과 물리적 상호작용이 필요한 장면')
+      reasons.live_action.push('실제 소품과 물리적 상호작용이 필요한 장면');
     }
     
     if (card.lighting && (
@@ -240,7 +240,7 @@ const SceneResult = ({
           card.keywords.location.includes('엘리베이터') ||
           card.keywords.location.includes('계단')
         ))
-      )
+      );
       
       // 날씨 무관성 감지 (더 포괄적으로)
       const isWeatherIrrelevant = card.weather && (
@@ -251,17 +251,17 @@ const SceneResult = ({
         card.weather.includes('내부') ||
         card.weather.includes('조명으로 대체') ||
         card.weather.includes('인공 조명')
-      )
+      );
       
       // 실내 장면이거나 날씨가 무관한 경우 제외
       if (!isIndoorScene && !isWeatherIrrelevant) {
-        reasons.live_action.push('특정 날씨 조건이 필요한 장면')
+        reasons.live_action.push('특정 날씨 조건이 필요한 장면');
       }
     }
     
     // 장소 정보는 keywords.location만 사용 (AI가 생성한 정확한 장소 정보)
     if (card.keywords && card.keywords.location && card.keywords.location !== '기본 장소') {
-      reasons.live_action.push('특정 실제 장소에서 촬영이 필요한 장면')
+      reasons.live_action.push('특정 실제 장소에서 촬영이 필요한 장면');
     }
 
     // 감정 표현이나 인간적 상호작용이 중심인 장면
@@ -272,12 +272,12 @@ const SceneResult = ({
       card.description.includes('눈물') ||
       card.description.includes('웃음')
     )) {
-      reasons.live_action.push('실제 감정 표현이나 인간적 상호작용이 중심인 장면')
+      reasons.live_action.push('실제 감정 표현이나 인간적 상호작용이 중심인 장면');
     }
 
     // 대사가 많은 장면은 실사 촬영이 적합
     if (card.dialogue && card.dialogue.length > 50) {
-      reasons.live_action.push('대사가 많은 장면 (실제 배우의 연기가 필요)')
+      reasons.live_action.push('대사가 많은 장면 (실제 배우의 연기가 필요)');
     }
 
     // 감정적 대사가 포함된 장면
@@ -288,20 +288,20 @@ const SceneResult = ({
       card.dialogue.includes('ㅠ') ||
       card.dialogue.includes('ㅜ')
     )) {
-      reasons.live_action.push('감정적 대사가 포함된 장면')
+      reasons.live_action.push('감정적 대사가 포함된 장면');
     }
 
     // 기본 분류 이유 (분석 결과가 없는 경우)
     if (reasons.generated_video.length === 0 && reasons.live_action.length === 0) {
       if (card.type === CAPTION_CARD_TYPES.GENERATED_VIDEO) {
-        reasons.generated_video.push('AI 생성이 적합한 장면으로 판단됨')
+        reasons.generated_video.push('AI 생성이 적합한 장면으로 판단됨');
       } else {
-        reasons.live_action.push('실사 촬영이 적합한 장면으로 판단됨')
+        reasons.live_action.push('실사 촬영이 적합한 장면으로 판단됨');
       }
     }
 
-    return reasons
-  }
+    return reasons;
+  };
 
   /**
    * 타입 분류 이유 표시 컴포넌트
@@ -310,9 +310,9 @@ const SceneResult = ({
    * @returns {JSX.Element} 타입 분류 이유 표시
    */
   const renderTypeReason = (card, sceneIndex) => {
-    const reasons = analyzeTypeReason(card)
-    const currentType = card.type
-    const currentReasons = reasons[currentType] || []
+    const reasons = analyzeTypeReason(card);
+    const currentType = card.type;
+    const currentReasons = reasons[currentType] || [];
 
     return (
       <Box sx={{ mt: 2 }}>
@@ -381,8 +381,8 @@ const SceneResult = ({
           </Box>
         </Collapse>
       </Box>
-    )
-  }
+    );
+  };
 
   /**
    * 키워드 노드 표시 컴포넌트
@@ -405,8 +405,8 @@ const SceneResult = ({
               maxWidth: '100%',
               '& .MuiChip-label': {
                 whiteSpace: 'normal',
-                textAlign: 'left'
-              }
+                textAlign: 'left',
+              },
             }}
           />
         </Grid>
@@ -420,8 +420,8 @@ const SceneResult = ({
               maxWidth: '100%',
               '& .MuiChip-label': {
                 whiteSpace: 'normal',
-                textAlign: 'left'
-              }
+                textAlign: 'left',
+              },
             }}
           />
         </Grid>
@@ -484,7 +484,7 @@ const SceneResult = ({
         )}
       </Grid>
     </Box>
-  )
+  );
 
   /**
    * 가중치 정보 표시 컴포넌트
@@ -539,7 +539,7 @@ const SceneResult = ({
         </Grid>
       </Grid>
     </Box>
-  )
+  );
 
   /**
    * 시간 문자열을 분으로 변환하는 함수
@@ -547,16 +547,16 @@ const SceneResult = ({
    * @returns {number} 분 단위 시간
    */
   const parseDurationToMinutes = (duration) => {
-    if (!duration) return 0
+    if (!duration) return 0;
     
-    const minutesMatch = duration.match(/(\d+)분/)
-    const secondsMatch = duration.match(/(\d+)초/)
+    const minutesMatch = duration.match(/(\d+)분/);
+    const secondsMatch = duration.match(/(\d+)초/);
     
-    const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0
-    const seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0
+    const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
+    const seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0;
     
-    return minutes + (seconds / 60)
-  }
+    return minutes + (seconds / 60);
+  };
 
   /**
    * 분을 시간 문자열로 변환하는 함수
@@ -564,15 +564,15 @@ const SceneResult = ({
    * @returns {string} 시간 문자열
    */
   const formatDuration = (totalMinutes) => {
-    const minutes = Math.floor(totalMinutes)
-    const seconds = Math.round((totalMinutes - minutes) * 60)
+    const minutes = Math.floor(totalMinutes);
+    const seconds = Math.round((totalMinutes - minutes) * 60);
     
     if (seconds === 0) {
-      return `${minutes}분`
+      return `${minutes}분`;
     } else {
-      return `${minutes}분 ${seconds}초`
+      return `${minutes}분 ${seconds}초`;
     }
-  }
+  };
 
   /**
    * 대사 분석 및 시간 계산 함수
@@ -580,18 +580,18 @@ const SceneResult = ({
    * @returns {Object} 대사 분석 결과
    */
   const analyzeDialogue = (dialogue) => {
-    if (!dialogue) return { length: 0, wordCount: 0, estimatedTime: 0, hasEmotion: false }
+    if (!dialogue) return { length: 0, wordCount: 0, estimatedTime: 0, hasEmotion: false };
     
-    const length = dialogue.length
-    const wordCount = dialogue.split(/\s+/).length
+    const length = dialogue.length;
+    const wordCount = dialogue.split(/\s+/).length;
     const hasEmotion = dialogue.includes('!') || 
                       dialogue.includes('?') || 
                       dialogue.includes('...') || 
                       dialogue.includes('ㅠ') || 
-                      dialogue.includes('ㅜ')
+                      dialogue.includes('ㅜ');
     
     // 대사 시간 계산 (1분당 약 150자 기준)
-    const estimatedTime = Math.ceil(length / 150)
+    const estimatedTime = Math.ceil(length / 150);
     
     return {
       length,
@@ -600,9 +600,9 @@ const SceneResult = ({
       hasEmotion,
       isShort: length < 50,
       isMedium: length >= 50 && length < 100,
-      isLong: length >= 100
-    }
-  }
+      isLong: length >= 100,
+    };
+  };
 
   if (!conteList || conteList.length === 0) {
     return (
@@ -614,7 +614,7 @@ const SceneResult = ({
           캡션 카드 생성 탭에서 스토리를 바탕으로 캡션 카드를 생성해주세요.
         </Typography>
       </Box>
-    )
+    );
   }
 
   return (
@@ -642,7 +642,7 @@ const SceneResult = ({
               backgroundColor: 'var(--color-primary)',
               '&:hover': {
                 backgroundColor: 'var(--color-accent)',
-              }
+              },
             }}
           >
             저장
@@ -656,7 +656,7 @@ const SceneResult = ({
                 backgroundColor: 'var(--color-success)',
                 '&:hover': {
                   backgroundColor: 'var(--color-success-dark)',
-                }
+                },
               }}
             >
               타임라인 보기
@@ -672,7 +672,7 @@ const SceneResult = ({
             key={card.id || index} 
             sx={{ 
               border: '1px solid #444',
-              backgroundColor: 'var(--color-card-bg)'
+              backgroundColor: 'var(--color-card-bg)',
             }}
           >
             <Accordion 
@@ -716,8 +716,8 @@ const SceneResult = ({
                     <IconButton
                       size="small"
                       onClick={(e) => {
-                        e.stopPropagation()
-                        handleEditConte(index)
+                        e.stopPropagation();
+                        handleEditConte(index);
                       }}
                     >
                       <Edit />
@@ -757,7 +757,7 @@ const SceneResult = ({
                       backgroundColor: 'rgba(0,0,0,0.05)', 
                       borderRadius: 1,
                       maxHeight: '200px',
-                      overflow: 'auto'
+                      overflow: 'auto',
                     }}>
                       <Typography variant="body2" sx={{ fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
                         {card.dialogue || '대사 없음'}
@@ -766,14 +766,14 @@ const SceneResult = ({
                     {card.dialogue && card.dialogue.length > 0 && (
                       <Typography variant="caption" color="text.secondary">
                         {(() => {
-                          const analysis = analyzeDialogue(card.dialogue)
-                          return `대사 길이: ${analysis.length}자 | 단어 수: ${analysis.wordCount}개 | 예상 발화 시간: ${analysis.estimatedTime}분${analysis.hasEmotion ? ' | 감정적 대사' : ''}`
+                          const analysis = analyzeDialogue(card.dialogue);
+                          return `대사 길이: ${analysis.length}자 | 단어 수: ${analysis.wordCount}개 | 예상 발화 시간: ${analysis.estimatedTime}분${analysis.hasEmotion ? ' | 감정적 대사' : ''}`;
                         })()}
                       </Typography>
                     )}
                     {(() => {
-                      const analysis = analyzeDialogue(card.dialogue)
-                      const sceneDuration = parseDurationToMinutes(card.estimatedDuration)
+                      const analysis = analyzeDialogue(card.dialogue);
+                      const sceneDuration = parseDurationToMinutes(card.estimatedDuration);
                       
                       if (!card.dialogue || analysis.length < 50) {
                         return (
@@ -783,7 +783,7 @@ const SceneResult = ({
                               장면의 시간({card.estimatedDuration})에 맞는 충분한 대사량을 생성해주세요.
                             </Typography>
                           </Alert>
-                        )
+                        );
                       } else if (analysis.estimatedTime < sceneDuration * 0.5) {
                         return (
                           <Alert severity="warning" sx={{ mt: 1 }}>
@@ -792,9 +792,9 @@ const SceneResult = ({
                               더 많은 대사를 추가하면 좋겠습니다.
                             </Typography>
                           </Alert>
-                        )
+                        );
                       }
-                      return null
+                      return null;
                     })()}
                   </Grid>
 
@@ -951,8 +951,8 @@ const SceneResult = ({
             <Typography variant="h6">
               {formatDuration(conteList.reduce((total, card) => {
                 const duration = card.estimatedDuration ? 
-                  parseDurationToMinutes(card.estimatedDuration) : 2
-                return total + duration
+                  parseDurationToMinutes(card.estimatedDuration) : 2;
+                return total + duration;
               }, 0))}
             </Typography>
           </Grid>
@@ -1048,31 +1048,31 @@ const SceneResult = ({
                     primaryTypographyProps={{ variant: 'body2' }}
                   />
                 </ListItem>
-                                 <ListItem sx={{ py: 0.5 }}>
-                   <ListItemIcon sx={{ minWidth: '24px' }}>
-                     <Typography variant="body2">•</Typography>
-                   </ListItemIcon>
-                   <ListItemText 
-                     primary="실제 감정 표현이나 인간적 상호작용이 중심인 장면"
-                     primaryTypographyProps={{ variant: 'body2' }}
-                   />
-                 </ListItem>
-                 <ListItem sx={{ py: 0.5 }}>
-                   <ListItemIcon sx={{ minWidth: '24px' }}>
-                     <Typography variant="body2">•</Typography>
-                   </ListItemIcon>
-                   <ListItemText 
-                     primary="대사가 많은 장면 (실제 배우의 연기가 필요)"
-                     primaryTypographyProps={{ variant: 'body2' }}
-                   />
-                 </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="실제 감정 표현이나 인간적 상호작용이 중심인 장면"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: '24px' }}>
+                    <Typography variant="body2">•</Typography>
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="대사가 많은 장면 (실제 배우의 연기가 필요)"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
               </List>
             </Grid>
           </Grid>
         </Box>
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default SceneResult 
+export default SceneResult; 

@@ -1,4 +1,4 @@
-import api from './api.js'
+import api from './api.js';
 
 /**
  * 프로필 관련 API 서비스
@@ -11,19 +11,19 @@ import api from './api.js'
  */
 export const getProfile = async () => {
   try {
-    const response = await api.get('/profile')
+    const response = await api.get('/profile');
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('프로필 조회 오류:', error)
+    console.error('프로필 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로필 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로필 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트를 즐겨찾기에 추가합니다.
@@ -32,19 +32,19 @@ export const getProfile = async () => {
  */
 export const addFavoriteProject = async (projectId) => {
   try {
-    const response = await api.post(`/profile/project/${projectId}/favorite`)
+    const response = await api.post(`/profile/project/${projectId}/favorite`);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('즐겨찾기 추가 오류:', error)
+    console.error('즐겨찾기 추가 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '즐겨찾기 추가에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '즐겨찾기 추가에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트를 즐겨찾기에서 제거합니다.
@@ -53,19 +53,19 @@ export const addFavoriteProject = async (projectId) => {
  */
 export const removeFavoriteProject = async (projectId) => {
   try {
-    const response = await api.delete(`/profile/project/${projectId}/favorite`)
+    const response = await api.delete(`/profile/project/${projectId}/favorite`);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('즐겨찾기 제거 오류:', error)
+    console.error('즐겨찾기 제거 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '즐겨찾기 제거에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '즐겨찾기 제거에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로필의 즐겨찾기 프로젝트 목록을 가져옵니다.
@@ -73,20 +73,20 @@ export const removeFavoriteProject = async (projectId) => {
  */
 export const getFavoriteProjects = async () => {
   try {
-    const response = await api.get('/profile')
-    const favoriteProjects = response.data.projects?.filter(project => project.isFavorite) || []
+    const response = await api.get('/profile');
+    const favoriteProjects = response.data.projects?.filter(project => project.isFavorite) || [];
     return {
       success: true,
-      data: favoriteProjects
-    }
+      data: favoriteProjects,
+    };
   } catch (error) {
-    console.error('즐겨찾기 프로젝트 조회 오류:', error)
+    console.error('즐겨찾기 프로젝트 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '즐겨찾기 프로젝트 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '즐겨찾기 프로젝트 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로필의 모든 프로젝트 목록을 가져옵니다.
@@ -94,19 +94,19 @@ export const getFavoriteProjects = async () => {
  */
 export const getProfileProjects = async () => {
   try {
-    const response = await api.get('/profile')
+    const response = await api.get('/profile');
     return {
       success: true,
-      data: response.data.projects || []
-    }
+      data: response.data.projects || [],
+    };
   } catch (error) {
-    console.error('프로필 프로젝트 조회 오류:', error)
+    console.error('프로필 프로젝트 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로필 프로젝트 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로필 프로젝트 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로필 정보를 업데이트합니다.
@@ -115,19 +115,19 @@ export const getProfileProjects = async () => {
  */
 export const updateProfile = async (profileData) => {
   try {
-    const response = await api.patch('/profile', profileData)
+    const response = await api.patch('/profile', profileData);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('프로필 업데이트 오류:', error)
+    console.error('프로필 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로필 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로필 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로필의 마지막 로그인 시간을 업데이트합니다.
@@ -136,20 +136,20 @@ export const updateProfile = async (profileData) => {
 export const updateLastLogin = async () => {
   try {
     const response = await api.patch('/profile', {
-      lastLoginAt: new Date().toISOString()
-    })
+      lastLoginAt: new Date().toISOString(),
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('마지막 로그인 시간 업데이트 오류:', error)
+    console.error('마지막 로그인 시간 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '마지막 로그인 시간 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '마지막 로그인 시간 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트가 즐겨찾기인지 확인합니다.
@@ -158,21 +158,21 @@ export const updateLastLogin = async () => {
  */
 export const isProjectFavorite = async (projectId) => {
   try {
-    const response = await api.get('/profile')
-    const project = response.data.projects?.find(p => p.projectId === projectId)
+    const response = await api.get('/profile');
+    const project = response.data.projects?.find(p => p.projectId === projectId);
     return {
       success: true,
-      data: project?.isFavorite || false
-    }
+      data: project?.isFavorite || false,
+    };
   } catch (error) {
-    console.error('즐겨찾기 확인 오류:', error)
+    console.error('즐겨찾기 확인 오류:', error);
     return {
       success: false,
       error: error.response?.data?.message || '즐겨찾기 확인에 실패했습니다.',
-      data: false
-    }
+      data: false,
+    };
   }
-}
+};
 
 /**
  * 프로필 API 서비스의 모든 함수들을 내보냅니다.
@@ -185,5 +185,5 @@ export default {
   getProfileProjects,
   updateProfile,
   updateLastLogin,
-  isProjectFavorite
-}
+  isProjectFavorite,
+};

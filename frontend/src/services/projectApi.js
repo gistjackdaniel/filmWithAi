@@ -1,4 +1,4 @@
-import api from './api.js'
+import api from './api.js';
 
 /**
  * 프로젝트 및 스토리 관리 API 서비스
@@ -18,41 +18,41 @@ export const createProject = async (projectData) => {
       storyLength: projectData.story?.length || 0,
       tags: projectData.tags,
       genre: projectData.genre,
-      requestData: projectData
-    })
+      requestData: projectData,
+    });
     
     const response = await api.post('/project', projectData, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     
     console.log('✅ 프로젝트 생성 API 응답 수신:', {
       status: response.status,
       projectId: response.data?._id,
       title: response.data?.title,
       createdAt: response.data?.createdAt,
-      responseData: response.data
-    })
+      responseData: response.data,
+    });
     
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
     console.error('❌ 프로젝트 생성 API 오류:', {
       errorType: error.constructor.name,
       message: error.message,
       responseStatus: error.response?.status,
-      responseData: error.response?.data
-    })
+      responseData: error.response?.data,
+    });
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 생성에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 생성에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 업데이트
@@ -65,21 +65,21 @@ export const updateProject = async (projectId, projectData) => {
     const response = await api.patch(`/project/${projectId}`, projectData, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 업데이트 오류:', error)
+    console.error('❌ 프로젝트 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리만 업데이트
@@ -92,21 +92,21 @@ export const updateStory = async (projectId, story) => {
     const response = await api.patch(`/project/${projectId}`, { story }, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 업데이트 오류:', error)
+    console.error('❌ 스토리 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 조회
@@ -116,20 +116,20 @@ export const updateStory = async (projectId, story) => {
 export const getProject = async (projectId) => {
   try {
     const response = await api.get(`/project/${projectId}`, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 조회 오류:', error)
+    console.error('❌ 프로젝트 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 사용자 프로젝트 목록 조회
@@ -138,20 +138,20 @@ export const getProject = async (projectId) => {
 export const getProjects = async () => {
   try {
     const response = await api.get('/project', {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 목록 조회 오류:', error)
+    console.error('❌ 프로젝트 목록 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 목록 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 목록 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 삭제
@@ -161,20 +161,20 @@ export const getProjects = async () => {
 export const deleteProject = async (projectId) => {
   try {
     const response = await api.delete(`/project/${projectId}`, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 삭제 오류:', error)
+    console.error('❌ 프로젝트 삭제 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 삭제에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 삭제에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 복원
@@ -184,20 +184,20 @@ export const deleteProject = async (projectId) => {
 export const restoreProject = async (projectId) => {
   try {
     const response = await api.post(`/project/${projectId}/restore`, {}, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 복원 오류:', error)
+    console.error('❌ 프로젝트 복원 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 복원에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 복원에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 즐겨찾기 프로젝트 목록 조회
@@ -206,20 +206,20 @@ export const restoreProject = async (projectId) => {
 export const getFavoriteProjects = async () => {
   try {
     const response = await api.get('/project/favorite', {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 즐겨찾기 프로젝트 조회 오류:', error)
+    console.error('❌ 즐겨찾기 프로젝트 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '즐겨찾기 프로젝트 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '즐겨찾기 프로젝트 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 자동 저장
@@ -232,21 +232,21 @@ export const autoSaveProject = async (projectId, projectData) => {
     const response = await api.patch(`/project/${projectId}`, projectData, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 자동 저장 오류:', error)
+    console.error('❌ 프로젝트 자동 저장 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 자동 저장에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 자동 저장에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 검색
@@ -257,20 +257,20 @@ export const searchProjects = async (query) => {
   try {
     const response = await api.get('/project', {
       timeout: 10000,
-      params: { search: query }
-    })
+      params: { search: query },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 프로젝트 검색 오류:', error)
+    console.error('❌ 프로젝트 검색 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '프로젝트 검색에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '프로젝트 검색에 실패했습니다.',
+    };
   }
-}
+};
 
 // ===== 스토리 관련 API =====
 
@@ -281,28 +281,28 @@ export const searchProjects = async (query) => {
  */
 export const generateStory = async (projectId) => {
   try {
-    console.log('📝 스토리 생성 시작:', { projectId })
+    console.log('📝 스토리 생성 시작:', { projectId });
     
     const response = await api.post(`/project/${projectId}/generate-story`, {}, {
       timeout: 300000, // 5분 - AI 생성 시간 고려
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     
-    console.log('✅ 스토리 생성 완료:', response.data._id)
+    console.log('✅ 스토리 생성 완료:', response.data._id);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 생성 오류:', error)
+    console.error('❌ 스토리 생성 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 생성에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 생성에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 생성 상태 확인
@@ -312,20 +312,20 @@ export const generateStory = async (projectId) => {
 export const checkStoryGenerationStatus = async (projectId) => {
   try {
     const response = await api.get(`/project/${projectId}/generate-story/status`, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 생성 상태 확인 오류:', error)
+    console.error('❌ 스토리 생성 상태 확인 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 생성 상태 확인에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 생성 상태 확인에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 생성 취소
@@ -335,20 +335,20 @@ export const checkStoryGenerationStatus = async (projectId) => {
 export const cancelStoryGeneration = async (projectId) => {
   try {
     const response = await api.delete(`/project/${projectId}/generate-story`, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 생성 취소 오류:', error)
+    console.error('❌ 스토리 생성 취소 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 생성 취소에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 생성 취소에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 분석
@@ -360,21 +360,21 @@ export const analyzeStory = async (projectId) => {
     const response = await api.post(`/project/${projectId}/analyze-story`, {}, {
       timeout: 60000, // 1분
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 분석 오류:', error)
+    console.error('❌ 스토리 분석 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 분석에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 분석에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 요약 생성
@@ -386,21 +386,21 @@ export const generateStorySummary = async (projectId) => {
     const response = await api.post(`/project/${projectId}/summary`, {}, {
       timeout: 60000, // 1분
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 요약 생성 오류:', error)
+    console.error('❌ 스토리 요약 생성 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 요약 생성에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 요약 생성에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 생성 히스토리 조회
@@ -410,20 +410,20 @@ export const generateStorySummary = async (projectId) => {
 export const getStoryGenerationHistory = async (projectId) => {
   try {
     const response = await api.get(`/project/${projectId}/generate-story/history`, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 생성 히스토리 조회 오류:', error)
+    console.error('❌ 스토리 생성 히스토리 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 생성 히스토리 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 생성 히스토리 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 품질 검증
@@ -435,21 +435,21 @@ export const validateStoryQuality = async (story) => {
     const response = await api.post('/story/validate-quality', { story }, {
       timeout: 30000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 품질 검증 오류:', error)
+    console.error('❌ 스토리 품질 검증 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 품질 검증에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 품질 검증에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 개선 제안
@@ -461,21 +461,21 @@ export const getStoryImprovementSuggestions = async (projectId) => {
     const response = await api.post(`/project/${projectId}/story/improve`, {}, {
       timeout: 60000, // 1분
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 개선 제안 오류:', error)
+    console.error('❌ 스토리 개선 제안 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 개선 제안에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 개선 제안에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 버전 관리
@@ -488,21 +488,21 @@ export const createStoryVersion = async (projectId, version) => {
     const response = await api.post(`/project/${projectId}/story/version`, { version }, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 버전 생성 오류:', error)
+    console.error('❌ 스토리 버전 생성 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 버전 생성에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 버전 생성에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 버전 목록 조회
@@ -512,20 +512,20 @@ export const createStoryVersion = async (projectId, version) => {
 export const getStoryVersions = async (projectId) => {
   try {
     const response = await api.get(`/project/${projectId}/story/versions`, {
-      timeout: 10000
-    })
+      timeout: 10000,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 버전 목록 조회 오류:', error)
+    console.error('❌ 스토리 버전 목록 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 버전 목록 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 버전 목록 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 버전 복원
@@ -538,21 +538,21 @@ export const restoreStoryVersion = async (projectId, versionId) => {
     const response = await api.post(`/project/${projectId}/story/version/${versionId}/restore`, {}, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 버전 복원 오류:', error)
+    console.error('❌ 스토리 버전 복원 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 버전 복원에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 버전 복원에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 공유
@@ -565,21 +565,21 @@ export const shareStory = async (projectId, shareOptions) => {
     const response = await api.post(`/project/${projectId}/story/share`, shareOptions, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 공유 오류:', error)
+    console.error('❌ 스토리 공유 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 공유에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 공유에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 스토리 내보내기
@@ -592,21 +592,21 @@ export const exportStory = async (projectId, format = 'pdf') => {
     const response = await api.post(`/project/${projectId}/story/export`, { format }, {
       timeout: 60000, // 1분
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+        'Content-Type': 'application/json',
+      },
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('❌ 스토리 내보내기 오류:', error)
+    console.error('❌ 스토리 내보내기 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '스토리 내보내기에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '스토리 내보내기에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 프로젝트 및 스토리 API 서비스의 모든 함수들을 내보냅니다.
@@ -637,5 +637,5 @@ export default {
   getStoryVersions,
   restoreStoryVersion,
   shareStory,
-  exportStory
-} 
+  exportStory,
+}; 

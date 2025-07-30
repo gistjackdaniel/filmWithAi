@@ -62,20 +62,32 @@ export class AiService {
           messages,
           max_tokens: options.max_tokens || 10000,
           temperature: options.temperature || 0.7,
-          ...options
         },
         {
           headers: {
             'Authorization': `Bearer ${this.openaiApiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: options.timeout || 60000
+          timeout: options.timeout || 300000 // 5분으로 증가
         }
       );
 
       return response.data.choices[0].message.content.trim();
     } catch (error) {
-      this.logger.error('OpenAI API 호출 중 오류 발생:', error.message);
+      this.logger.error('OpenAI API 호출 중 오류 발생:', {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          timeout: error.config?.timeout,
+          headers: error.config?.headers,
+        }
+      });
       throw new BadRequestException('AI 서비스 호출에 실패했습니다.');
     }
   }
@@ -100,7 +112,7 @@ export class AiService {
             'Authorization': `Bearer ${this.openaiApiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: options.timeout || 60000
+          timeout: options.timeout || 300000 // 5분으로 증가
         }
       );
 

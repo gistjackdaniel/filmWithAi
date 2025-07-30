@@ -5,12 +5,12 @@ import {
   Button,
   Box,
   Typography,
-  Collapse
+  Collapse,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
   Help as HelpIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 /**
@@ -22,7 +22,7 @@ const ErrorMessage = ({
   onRetry, 
   onClose, 
   show = true,
-  variant = 'error' // 'error', 'warning', 'info'
+  variant = 'error', // 'error', 'warning', 'info'
 }) => {
   // 에러 타입별 메시지 매핑
   const getErrorMessage = (error) => {
@@ -33,7 +33,7 @@ const ErrorMessage = ({
       return {
         title: '네트워크 연결 오류',
         message: '인터넷 연결을 확인하고 다시 시도해주세요.',
-        solution: 'Wi-Fi 또는 모바일 데이터 연결을 확인해주세요.'
+        solution: 'Wi-Fi 또는 모바일 데이터 연결을 확인해주세요.',
       };
     }
 
@@ -42,7 +42,7 @@ const ErrorMessage = ({
       return {
         title: '인증 오류',
         message: '로그인이 필요하거나 세션이 만료되었습니다.',
-        solution: '다시 로그인해주세요.'
+        solution: '다시 로그인해주세요.',
       };
     }
 
@@ -51,7 +51,7 @@ const ErrorMessage = ({
       return {
         title: '서버 오류',
         message: '서버에 일시적인 문제가 발생했습니다.',
-        solution: '잠시 후 다시 시도해주세요.'
+        solution: '잠시 후 다시 시도해주세요.',
       };
     }
 
@@ -60,7 +60,7 @@ const ErrorMessage = ({
       return {
         title: '요청 한도 초과',
         message: '너무 많은 요청을 보냈습니다.',
-        solution: '잠시 후 다시 시도해주세요.'
+        solution: '잠시 후 다시 시도해주세요.',
       };
     }
 
@@ -68,7 +68,7 @@ const ErrorMessage = ({
     return {
       title: '오류가 발생했습니다',
       message: error.message || '예상치 못한 오류가 발생했습니다.',
-      solution: '페이지를 새로고침하거나 잠시 후 다시 시도해주세요.'
+      solution: '페이지를 새로고침하거나 잠시 후 다시 시도해주세요.',
     };
   };
 
@@ -88,8 +88,8 @@ const ErrorMessage = ({
                 sx={{
                   color: 'inherit',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                  }
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
                 }}
               >
                 재시도
@@ -103,8 +103,8 @@ const ErrorMessage = ({
                 sx={{
                   color: 'inherit',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                  }
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
                 }}
               >
                 닫기
@@ -115,12 +115,12 @@ const ErrorMessage = ({
         sx={{
           mb: 2,
           backgroundColor: variant === 'error' ? 'var(--color-danger)' : 
-                         variant === 'warning' ? 'var(--color-accent)' : 
-                         'var(--color-primary)',
+            variant === 'warning' ? 'var(--color-accent)' : 
+              'var(--color-primary)',
           color: variant === 'error' ? '#fff' : '#000',
           '& .MuiAlert-icon': {
-            color: 'inherit'
-          }
+            color: 'inherit',
+          },
         }}
       >
         <AlertTitle sx={{ fontWeight: 600 }}>

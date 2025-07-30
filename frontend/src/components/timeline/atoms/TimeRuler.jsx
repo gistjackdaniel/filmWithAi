@@ -1,12 +1,12 @@
-import React, { useMemo, useState, useCallback } from 'react'
-import { Box, Typography } from '@mui/material'
+import React, { useMemo, useState, useCallback } from 'react';
+import { Box, Typography } from '@mui/material';
 import { 
   formatTimeFromSeconds,
   calculateTimeScale,
   timeToPixels,
   pixelsToTime,
-  calculateTickInterval
-} from '../../../utils/timelineUtils'
+  calculateTickInterval,
+} from '../../../utils/timelineUtils';
 
 /**
  * 시간 눈금 컴포넌트
@@ -25,107 +25,107 @@ const TimeRuler = ({
   showCurrentTime = true,
   showGrid = true,
   onTimeClick,
-  sx = {}
+  sx = {},
 }) => {
-  const [hoverTime, setHoverTime] = useState(null)
-  const [hoverPosition, setHoverPosition] = useState(0)
+  const [hoverTime, setHoverTime] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState(0);
 
   // 시간 스케일 계산 - 외부에서 전달된 값 우선 사용
   const calculatedTimeScale = useMemo(() => {
-    if (timeScale !== null) return timeScale
-    return calculateTimeScale(zoomLevel, baseScale)
-  }, [timeScale, zoomLevel, baseScale])
+    if (timeScale !== null) return timeScale;
+    return calculateTimeScale(zoomLevel, baseScale);
+  }, [timeScale, zoomLevel, baseScale]);
 
   // 타임라인 너비 계산 - 카드들과 동일한 방식 사용
   // 동적 시간 스케일 계산 - 외부에서 전달된 값 우선 사용
   const dynamicTimeScale = useMemo(() => {
     // 외부에서 전달된 timeScale이 있으면 우선 사용
     if (timeScale !== null) {
-      return timeScale
+      return timeScale;
     }
     
     // 그렇지 않으면 내부 계산
-    const basePixelsPerSecond = 10 // 기본 1초당 10px
-    const zoomedPixelsPerSecond = basePixelsPerSecond * zoomLevel
-    const calculatedTimeScale = 1 / zoomedPixelsPerSecond // 픽셀당 시간 (초)
+    const basePixelsPerSecond = 10; // 기본 1초당 10px
+    const zoomedPixelsPerSecond = basePixelsPerSecond * zoomLevel;
+    const calculatedTimeScale = 1 / zoomedPixelsPerSecond; // 픽셀당 시간 (초)
     
-    return calculatedTimeScale
-  }, [timeScale, zoomLevel])
+    return calculatedTimeScale;
+  }, [timeScale, zoomLevel]);
 
   const timelineWidth = useMemo(() => {
-    if (totalDuration <= 0) return 0
+    if (totalDuration <= 0) return 0;
     // 카드들과 동일한 pixelsPerSecond 계산 사용
-    const pixelsPerSecond = 1 / dynamicTimeScale
-    const totalWidth = totalDuration * pixelsPerSecond
-    const minWidth = Math.max(1000, totalWidth) // 최소 1000px 보장
+    const pixelsPerSecond = 1 / dynamicTimeScale;
+    const totalWidth = totalDuration * pixelsPerSecond;
+    const minWidth = Math.max(1000, totalWidth); // 최소 1000px 보장
     
-    return minWidth
-  }, [totalDuration, dynamicTimeScale])
+    return minWidth;
+  }, [totalDuration, dynamicTimeScale]);
 
   // 줌 레벨에 따른 동적 눈금 간격 계산 - 초 단위 동기화
   const tickInterval = useMemo(() => {
     // 줌 레벨에 따라 눈금 간격 조정하되, 항상 초 단위와 동기화
-    if (zoomLevel <= 1) return 60 // 1분 간격
-    if (zoomLevel <= 2) return 30 // 30초 간격
-    if (zoomLevel <= 4) return 10 // 10초 간격
-    if (zoomLevel <= 8) return 5  // 5초 간격
-    if (zoomLevel <= 16) return 2 // 2초 간격
-    return 1 // 1초 간격
-  }, [zoomLevel])
+    if (zoomLevel <= 1) return 60; // 1분 간격
+    if (zoomLevel <= 2) return 30; // 30초 간격
+    if (zoomLevel <= 4) return 10; // 10초 간격
+    if (zoomLevel <= 8) return 5;  // 5초 간격
+    if (zoomLevel <= 16) return 2; // 2초 간격
+    return 1; // 1초 간격
+  }, [zoomLevel]);
 
   // 줌 레벨에 따른 눈금 표시 간격 조정
   const displayTickInterval = useMemo(() => {
     // 줌 레벨이 높을수록 더 촘촘한 눈금 표시
-    const baseInterval = tickInterval
-    const zoomFactor = Math.max(1, zoomLevel / 4) // 줌 레벨에 따른 표시 간격 조정
+    const baseInterval = tickInterval;
+    const zoomFactor = Math.max(1, zoomLevel / 4); // 줌 레벨에 따른 표시 간격 조정
     
     // 최소 1초, 최대 60초 간격으로 제한
-    return Math.max(1, Math.min(60, Math.floor(baseInterval / zoomFactor)))
-  }, [tickInterval, zoomLevel])
+    return Math.max(1, Math.min(60, Math.floor(baseInterval / zoomFactor)));
+  }, [tickInterval, zoomLevel]);
 
   // 눈금 표시 여부 결정
   const shouldDisplayTick = useCallback((time) => {
     // 줌 레벨에 따른 표시 조건
     if (zoomLevel <= 1) {
-      return time % 60 === 0 // 1분 간격만 표시
+      return time % 60 === 0; // 1분 간격만 표시
     } else if (zoomLevel <= 2) {
-      return time % 30 === 0 // 30초 간격 표시
+      return time % 30 === 0; // 30초 간격 표시
     } else if (zoomLevel <= 4) {
-      return time % 10 === 0 // 10초 간격 표시
+      return time % 10 === 0; // 10초 간격 표시
     } else if (zoomLevel <= 8) {
-      return time % 5 === 0 // 5초 간격 표시
+      return time % 5 === 0; // 5초 간격 표시
     } else if (zoomLevel <= 16) {
-      return time % 2 === 0 // 2초 간격 표시
+      return time % 2 === 0; // 2초 간격 표시
     } else {
-      return true // 모든 초 표시
+      return true; // 모든 초 표시
     }
-  }, [zoomLevel])
+  }, [zoomLevel]);
 
   // 눈금 위치 계산 - 동적 시간 스케일에 맞게 조정
   const ticks = useMemo(() => {
-    if (totalDuration <= 0) return []
+    if (totalDuration <= 0) return [];
     
-    const ticks = []
-    const pixelsPerSecond = 1 / dynamicTimeScale
+    const ticks = [];
+    const pixelsPerSecond = 1 / dynamicTimeScale;
     
     // 줌 레벨에 따라 눈금 간격 조정
-    let tickStep = 1
-    if (zoomLevel <= 1) tickStep = 60 // 1분 간격
-    else if (zoomLevel <= 2) tickStep = 30 // 30초 간격
-    else if (zoomLevel <= 4) tickStep = 10 // 10초 간격
-    else if (zoomLevel <= 8) tickStep = 5  // 5초 간격
-    else if (zoomLevel <= 16) tickStep = 2 // 2초 간격
-    else tickStep = 1 // 1초 간격
+    let tickStep = 1;
+    if (zoomLevel <= 1) tickStep = 60; // 1분 간격
+    else if (zoomLevel <= 2) tickStep = 30; // 30초 간격
+    else if (zoomLevel <= 4) tickStep = 10; // 10초 간격
+    else if (zoomLevel <= 8) tickStep = 5;  // 5초 간격
+    else if (zoomLevel <= 16) tickStep = 2; // 2초 간격
+    else tickStep = 1; // 1초 간격
     
     // 0초부터 시작하여 동적 간격으로 눈금 생성
     for (let time = 0; time <= totalDuration; time += tickStep) {
-      const position = time * pixelsPerSecond
+      const position = time * pixelsPerSecond;
       
       // 줌 레벨에 따른 주요 눈금 판별 - 초 단위 동기화
       const isMajor = time % 60 === 0 || // 1분 간격
                      (zoomLevel > 4 && time % 30 === 0) || // 30초 간격
                      (zoomLevel > 8 && time % 10 === 0) || // 10초 간격
-                     (zoomLevel > 16 && time % 5 === 0)    // 5초 간격
+                     (zoomLevel > 16 && time % 5 === 0);    // 5초 간격
       
       // 표시할 눈금만 필터링
       if (shouldDisplayTick(time)) {
@@ -133,24 +133,24 @@ const TimeRuler = ({
           time,
           position,
           isMajor,
-          displayTime: true
-        })
+          displayTime: true,
+        });
       }
     }
     
-    return ticks
-  }, [totalDuration, dynamicTimeScale, zoomLevel, shouldDisplayTick])
+    return ticks;
+  }, [totalDuration, dynamicTimeScale, zoomLevel, shouldDisplayTick]);
 
   // pixelsPerSecond 계산
   const pixelsPerSecond = useMemo(() => {
-    return 1 / dynamicTimeScale
-  }, [dynamicTimeScale])
+    return 1 / dynamicTimeScale;
+  }, [dynamicTimeScale]);
 
   // 현재 시간 위치 계산 - 동적 시간 스케일에 맞게 조정
   const currentTimePosition = useMemo(() => {
-    const position = currentTime * pixelsPerSecond
-    return position
-  }, [currentTime, pixelsPerSecond])
+    const position = currentTime * pixelsPerSecond;
+    return position;
+  }, [currentTime, pixelsPerSecond]);
 
   // 재생 상태에 따른 playhead 스타일
   const playheadStyle = useMemo(() => ({
@@ -172,46 +172,46 @@ const TimeRuler = ({
       height: 0,
       borderLeft: '6px solid transparent',
       borderRight: '6px solid transparent',
-      borderTop: '12px solid #FFD700'
-    }
-  }), [currentTimePosition])
+      borderTop: '12px solid #FFD700',
+    },
+  }), [currentTimePosition]);
 
   // 시간 클릭 핸들러
   const handleTimeClick = (time) => {
     if (onTimeClick) {
-      onTimeClick(time)
+      onTimeClick(time);
     }
-  }
+  };
 
   // 마우스 클릭으로 시간 설정
   const handleRulerClick = (event) => {
-    if (!onTimeClick) return
+    if (!onTimeClick) return;
     
-    const rect = event.currentTarget.getBoundingClientRect()
-    const scrollContainer = event.currentTarget.closest('[data-scroll-container]')
-    const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0
-    const clickX = event.clientX - rect.left + scrollLeft
-    const clickedTime = clickX / pixelsPerSecond
+    const rect = event.currentTarget.getBoundingClientRect();
+    const scrollContainer = event.currentTarget.closest('[data-scroll-container]');
+    const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0;
+    const clickX = event.clientX - rect.left + scrollLeft;
+    const clickedTime = clickX / pixelsPerSecond;
     
-    onTimeClick(Math.max(0, clickedTime))
-  }
+    onTimeClick(Math.max(0, clickedTime));
+  };
 
   // 마우스 호버 핸들러
   const handleMouseMove = (event) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const scrollContainer = event.currentTarget.closest('[data-scroll-container]')
-    const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0
-    const mouseX = event.clientX - rect.left + scrollLeft
-    const hoveredTime = mouseX / pixelsPerSecond
+    const rect = event.currentTarget.getBoundingClientRect();
+    const scrollContainer = event.currentTarget.closest('[data-scroll-container]');
+    const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0;
+    const mouseX = event.clientX - rect.left + scrollLeft;
+    const hoveredTime = mouseX / pixelsPerSecond;
     
-    setHoverPosition(mouseX)
-    setHoverTime(Math.max(0, hoveredTime))
-  }
+    setHoverPosition(mouseX);
+    setHoverTime(Math.max(0, hoveredTime));
+  };
 
   const handleMouseLeave = () => {
-    setHoverTime(null)
-    setHoverPosition(0)
-  }
+    setHoverTime(null);
+    setHoverPosition(0);
+  };
 
   return (
     <Box
@@ -222,7 +222,7 @@ const TimeRuler = ({
         backgroundColor: 'var(--color-card-bg)',
         borderBottom: '1px solid var(--color-scene-card-border)',
         overflow: 'hidden',
-        ...sx
+        ...sx,
       }}
       onClick={handleRulerClick}
       onMouseMove={handleMouseMove}
@@ -242,8 +242,8 @@ const TimeRuler = ({
             alignItems: 'center',
             cursor: onTimeClick ? 'pointer' : 'default',
             '&:hover': onTimeClick ? {
-              backgroundColor: 'rgba(212, 175, 55, 0.1)'
-            } : {}
+              backgroundColor: 'rgba(212, 175, 55, 0.1)',
+            } : {},
           }}
           onClick={() => handleTimeClick(tick.time)}
         >
@@ -253,7 +253,7 @@ const TimeRuler = ({
               width: tick.isMajor ? '2px' : '1px',
               height: tick.isMajor ? '12px' : '8px',
               backgroundColor: tick.isMajor ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              opacity: 0.6
+              opacity: 0.6,
             }}
           />
           
@@ -267,7 +267,7 @@ const TimeRuler = ({
                 fontSize: zoomLevel > 8 ? '8px' : '10px',
                 lineHeight: 1,
                 mt: 0.5,
-                userSelect: 'none'
+                userSelect: 'none',
               }}
             >
               {formatTimeFromSeconds(tick.time)}
@@ -287,7 +287,7 @@ const TimeRuler = ({
             width: '2px',
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             zIndex: 15,
-            pointerEvents: 'none'
+            pointerEvents: 'none',
           }}
         />
       )}
@@ -306,7 +306,7 @@ const TimeRuler = ({
             borderRadius: 1,
             fontSize: '10px',
             zIndex: 25,
-            pointerEvents: 'none'
+            pointerEvents: 'none',
           }}
         >
           {formatTimeFromSeconds(hoverTime)}
@@ -332,12 +332,12 @@ const TimeRuler = ({
               rgba(160, 163, 177, 0.1) ${1 / dynamicTimeScale}px,
               rgba(160, 163, 177, 0.1) ${1 / dynamicTimeScale + 1}px
             )`,
-            pointerEvents: 'none'
+            pointerEvents: 'none',
           }}
         />
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default TimeRuler 
+export default TimeRuler; 

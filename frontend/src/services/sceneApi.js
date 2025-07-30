@@ -1,4 +1,4 @@
-import api from './api.js'
+import api from './api.js';
 
 /**
  * 씬 관련 API 서비스
@@ -12,19 +12,19 @@ import api from './api.js'
  */
 export const getScenesByProject = async (projectId) => {
   try {
-    const response = await api.get(`/project/${projectId}/scene`)
+    const response = await api.get(`/project/${projectId}/scene`);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 목록 조회 오류:', error)
+    console.error('씬 목록 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 목록 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 목록 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 특정 씬의 상세 정보를 조회합니다.
@@ -34,19 +34,19 @@ export const getScenesByProject = async (projectId) => {
  */
 export const getSceneById = async (projectId, sceneId) => {
   try {
-    const response = await api.get(`/project/${projectId}/scene/${sceneId}`)
+    const response = await api.get(`/project/${projectId}/scene/${sceneId}`);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 상세 조회 오류:', error)
+    console.error('씬 상세 조회 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 상세 조회에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 상세 조회에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 새로운 씬을 생성합니다.
@@ -56,19 +56,19 @@ export const getSceneById = async (projectId, sceneId) => {
  */
 export const createScene = async (projectId, sceneData) => {
   try {
-    const response = await api.post(`/project/${projectId}/scene`, sceneData)
+    const response = await api.post(`/project/${projectId}/scene`, sceneData);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 생성 오류:', error)
+    console.error('씬 생성 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 생성에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 생성에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 기존 씬을 수정합니다.
@@ -79,19 +79,19 @@ export const createScene = async (projectId, sceneData) => {
  */
 export const updateScene = async (projectId, sceneId, sceneData) => {
   try {
-    const response = await api.put(`/project/${projectId}/scene/${sceneId}`, sceneData)
+    const response = await api.put(`/project/${projectId}/scene/${sceneId}`, sceneData);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 수정 오류:', error)
+    console.error('씬 수정 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 수정에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 수정에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬을 삭제합니다 (소프트 삭제).
@@ -101,19 +101,19 @@ export const updateScene = async (projectId, sceneId, sceneData) => {
  */
 export const deleteScene = async (projectId, sceneId) => {
   try {
-    const response = await api.delete(`/project/${projectId}/scene/${sceneId}`)
+    const response = await api.delete(`/project/${projectId}/scene/${sceneId}`);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 삭제 오류:', error)
+    console.error('씬 삭제 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 삭제에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 삭제에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 삭제된 씬을 복구합니다.
@@ -123,19 +123,19 @@ export const deleteScene = async (projectId, sceneId) => {
  */
 export const restoreScene = async (projectId, sceneId) => {
   try {
-    const response = await api.put(`/project/${projectId}/scene/${sceneId}/restore`)
+    const response = await api.put(`/project/${projectId}/scene/${sceneId}/restore`);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 복구 오류:', error)
+    console.error('씬 복구 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 복구에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 복구에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬 초안을 생성합니다.
@@ -145,19 +145,19 @@ export const restoreScene = async (projectId, sceneId) => {
  */
 export const createSceneDraft = async (projectId, draftData) => {
   try {
-    const response = await api.post(`/project/${projectId}/scene/draft`, draftData)
+    const response = await api.post(`/project/${projectId}/scene/draft`, draftData);
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 초안 생성 오류:', error)
+    console.error('씬 초안 생성 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 초안 생성에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 초안 생성에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 순서를 변경합니다.
@@ -169,20 +169,20 @@ export const createSceneDraft = async (projectId, draftData) => {
 export const updateSceneOrder = async (projectId, sceneId, newOrder) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      order: newOrder
-    })
+      order: newOrder,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 순서 변경 오류:', error)
+    console.error('씬 순서 변경 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 순서 변경에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 순서 변경에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 특별 요구사항을 업데이트합니다.
@@ -194,20 +194,20 @@ export const updateSceneOrder = async (projectId, sceneId, newOrder) => {
 export const updateSceneSpecialRequirements = async (projectId, sceneId, specialRequirements) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      specialRequirements
-    })
+      specialRequirements,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 특별 요구사항 업데이트 오류:', error)
+    console.error('씬 특별 요구사항 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 특별 요구사항 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 특별 요구사항 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 출연진 정보를 업데이트합니다.
@@ -219,20 +219,20 @@ export const updateSceneSpecialRequirements = async (projectId, sceneId, special
 export const updateSceneCast = async (projectId, sceneId, cast) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      cast
-    })
+      cast,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 출연진 업데이트 오류:', error)
+    console.error('씬 출연진 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 출연진 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 출연진 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 인력 구성 정보를 업데이트합니다.
@@ -244,20 +244,20 @@ export const updateSceneCast = async (projectId, sceneId, cast) => {
 export const updateSceneCrew = async (projectId, sceneId, crew) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      crew
-    })
+      crew,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 인력 구성 업데이트 오류:', error)
+    console.error('씬 인력 구성 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 인력 구성 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 인력 구성 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 장비 구성 정보를 업데이트합니다.
@@ -269,20 +269,20 @@ export const updateSceneCrew = async (projectId, sceneId, crew) => {
 export const updateSceneEquipment = async (projectId, sceneId, equipment) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      equipment
-    })
+      equipment,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 장비 구성 업데이트 오류:', error)
+    console.error('씬 장비 구성 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 장비 구성 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 장비 구성 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 조명 정보를 업데이트합니다.
@@ -294,20 +294,20 @@ export const updateSceneEquipment = async (projectId, sceneId, equipment) => {
 export const updateSceneLighting = async (projectId, sceneId, lighting) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      lighting
-    })
+      lighting,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 조명 업데이트 오류:', error)
+    console.error('씬 조명 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 조명 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 조명 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 위치 정보를 업데이트합니다.
@@ -319,20 +319,20 @@ export const updateSceneLighting = async (projectId, sceneId, lighting) => {
 export const updateSceneLocation = async (projectId, sceneId, location) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      location
-    })
+      location,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 위치 업데이트 오류:', error)
+    console.error('씬 위치 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 위치 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 위치 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬의 대화 정보를 업데이트합니다.
@@ -344,20 +344,20 @@ export const updateSceneLocation = async (projectId, sceneId, location) => {
 export const updateSceneDialogues = async (projectId, sceneId, dialogues) => {
   try {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}`, {
-      dialogues
-    })
+      dialogues,
+    });
     return {
       success: true,
-      data: response.data
-    }
+      data: response.data,
+    };
   } catch (error) {
-    console.error('씬 대화 업데이트 오류:', error)
+    console.error('씬 대화 업데이트 오류:', error);
     return {
       success: false,
-      error: error.response?.data?.message || '씬 대화 업데이트에 실패했습니다.'
-    }
+      error: error.response?.data?.message || '씬 대화 업데이트에 실패했습니다.',
+    };
   }
-}
+};
 
 /**
  * 씬 API 서비스의 모든 함수들을 내보냅니다.
@@ -377,5 +377,5 @@ export default {
   updateSceneEquipment,
   updateSceneLighting,
   updateSceneLocation,
-  updateSceneDialogues
-}
+  updateSceneDialogues,
+};

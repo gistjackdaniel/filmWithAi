@@ -795,7 +795,7 @@ export class CreateSceneRequestDto {
     description: '씬 시간대',
     example: '오후'
   })
-  @IsEnum(['새벽', '아침', '오후', '저녁', '밤', '낮'])
+  @IsEnum(['새벽', '아침', '점심', '저녁', '밤'])
   @IsNotEmpty()
   timeOfDay: string;
 

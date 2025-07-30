@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   Button, 
   Typography, 
   Container, 
   Paper,
-  CircularProgress
-} from '@mui/material'
-import { Google } from '@mui/icons-material'
-import { useGoogleLogin } from '@react-oauth/google'
-import { useAuthStore } from '../stores/authStore'
-import toast from 'react-hot-toast'
-import ErrorMessage from '../components/error/ErrorMessage'
+  CircularProgress,
+} from '@mui/material';
+import { Google } from '@mui/icons-material';
+import { useGoogleLogin } from '@react-oauth/google';
+import { useAuthStore } from '../stores/authStore';
+import toast from 'react-hot-toast';
+import ErrorMessage from '../components/error/ErrorMessage';
 
 /**
  * 로그인 페이지 컴포넌트
@@ -20,11 +20,11 @@ import ErrorMessage from '../components/error/ErrorMessage'
  */
 const LoginPage = () => {
   // 로컬 상태 관리
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Zustand 스토어에서 로그인 함수 가져오기
-  const { login } = useAuthStore()
+  const { login } = useAuthStore();
 
   /**
    * Google OAuth 로그인 설정
@@ -37,42 +37,42 @@ const LoginPage = () => {
     // access token을 직접 받기 위한 설정
     onSuccess: async (response) => {
       try {
-        setIsLoading(true)
-        setError(null) // 에러 상태 초기화
+        setIsLoading(true);
+        setError(null); // 에러 상태 초기화
         
         // 디버깅: Google OAuth 응답 구조 확인
-        console.log('Google OAuth Response:', response)
+        console.log('Google OAuth Response:', response);
         
         // 서버에 Google access_token을 JSON 객체로 전송하여 JWT 토큰 받기
-        const result = await login({ access_token: response.access_token })
+        const result = await login({ access_token: response.access_token });
         
         if (result.success) {
-          toast.success('로그인 성공! 환영합니다! 🎬')
+          toast.success('로그인 성공! 환영합니다! 🎬');
         } else {
-          setError(new Error(result.error || '로그인에 실패했습니다.'))
+          setError(new Error(result.error || '로그인에 실패했습니다.'));
         }
       } catch (error) {
-        console.error('Login error:', error)
-        setError(error)
+        console.error('Login error:', error);
+        setError(error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     },
     // 로그인 실패 시 콜백
     onError: (error) => {
-      console.error('Google OAuth Error:', error)
-      setError(new Error('Google 로그인에 실패했습니다. 다시 시도해주세요.'))
-      setIsLoading(false)
-    }
-  })
+      console.error('Google OAuth Error:', error);
+      setError(new Error('Google 로그인에 실패했습니다. 다시 시도해주세요.'));
+      setIsLoading(false);
+    },
+  });
 
   /**
    * 재시도 핸들러
    */
   const handleRetry = () => {
-    setError(null)
-    googleLogin()
-  }
+    setError(null);
+    googleLogin();
+  };
 
   return (
     <Container maxWidth="sm">
@@ -211,7 +211,7 @@ const LoginPage = () => {
             aria-describedby="login-description"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !isLoading) {
-                googleLogin()
+                googleLogin();
               }
             }}
             sx={{
@@ -258,7 +258,7 @@ const LoginPage = () => {
         </Paper>
       </Box>
     </Container>
-  )
-}
+  );
+};
 
-export default LoginPage 
+export default LoginPage; 

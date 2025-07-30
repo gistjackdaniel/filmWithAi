@@ -22,7 +22,7 @@ import {
 } from '@mui/material'
 import { Close, ExpandMore, Camera, VideoLibrary, MusicNote, Edit } from '@mui/icons-material'
 import { toast } from 'react-hot-toast'
-import timelineService from '../../services/timelineService'
+import api from '../../services/api'
 
 const CutEditModal = ({ 
   open, 
@@ -36,7 +36,7 @@ const CutEditModal = ({
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingDetails, setIsLoadingDetails] = useState(false)
 
-  // 컷 상세 정보 로드
+  // 컷 상세 정보 로드 (NestJS 백엔드 연동)
   const loadCutDetails = async (cutId) => {
     if (!projectId || !cutId) return
 
@@ -44,30 +44,31 @@ const CutEditModal = ({
       setIsLoadingDetails(true)
       console.log('🔍 CutEditModal 컷 상세 정보 로드:', { projectId, cutId })
       
-      const result = await timelineService.getCutDetails(projectId, cutId)
+      // NestJS 백엔드 API를 사용하여 컷 상세 정보 조회
+      const response = await api.get(`/project/${projectId}/cut/${cutId}`)
       
-      if (result.success) {
-        console.log('✅ CutEditModal 컷 상세 정보 로드 성공:', result.data)
+      if (response.data.success) {
+        const cutData = response.data.cut
+        console.log('✅ CutEditModal 컷 상세 정보 로드 성공:', cutData)
         console.log('🔍 CutEditModal 컷 데이터 상세:', {
-          shotSize: result.data.shotSize,
-          angleDirection: result.data.angleDirection,
-          cameraMovement: result.data.cameraMovement,
-          lensSpecs: result.data.lensSpecs,
-          composition: result.data.composition,
-          lighting: result.data.lighting,
-          weather: result.data.weather,
-          timeOfDay: result.data.timeOfDay,
-          vfxEffects: result.data.vfxEffects,
-          soundEffects: result.data.soundEffects,
-
-          dialogue: result.data.dialogue,
-          directorNotes: result.data.directorNotes,
-          narration: result.data.narration
+          shotSize: cutData.shotSize,
+          angleDirection: cutData.angleDirection,
+          cameraMovement: cutData.cameraMovement,
+          lensSpecs: cutData.lensSpecs,
+          composition: cutData.composition,
+          lighting: cutData.lighting,
+          weather: cutData.weather,
+          timeOfDay: cutData.timeOfDay,
+          vfxEffects: cutData.vfxEffects,
+          soundEffects: cutData.soundEffects,
+          dialogue: cutData.dialogue,
+          directorNotes: cutData.directorNotes,
+          narration: cutData.narration
         })
-        setEditedCut(result.data)
+        setEditedCut(cutData)
       } else {
-        console.error('❌ CutEditModal 컷 상세 정보 로드 실패:', result.error)
-        toast.error(result.error || '컷 상세 정보를 불러올 수 없습니다.')
+        console.error('❌ CutEditModal 컷 상세 정보 로드 실패:', response.data.message)
+        toast.error(response.data.message || '컷 상세 정보를 불러올 수 없습니다.')
       }
     } catch (error) {
       console.error('❌ CutEditModal 컷 상세 정보 로드 오류:', error)

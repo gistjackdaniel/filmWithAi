@@ -1,10 +1,10 @@
-import React, { useRef, useEffect, useCallback, forwardRef, useMemo } from 'react'
-import { Box } from '@mui/material'
+import React, { useRef, useEffect, useCallback, forwardRef, useMemo } from 'react';
+import { Box } from '@mui/material';
 import { 
   calculateTimeScale,
   timeToPixels,
-  calculateMinSceneWidth
-} from '../../../utils/timelineUtils'
+  calculateMinSceneWidth,
+} from '../../../utils/timelineUtils';
 
 /**
  * 타임라인 스크롤 컴포넌트
@@ -25,129 +25,129 @@ const TimelineScroll = forwardRef(({
   timeScale = null,
   ...props 
 }, ref) => {
-  const scrollRef = useRef(null)
-  const isScrolling = useRef(false)
-  const scrollTimeout = useRef(null)
+  const scrollRef = useRef(null);
+  const isScrolling = useRef(false);
+  const scrollTimeout = useRef(null);
 
   // 시간 스케일 계산
   const calculatedTimeScale = useMemo(() => {
-    if (timeScale !== null) return timeScale
-    return calculateTimeScale(zoomLevel, baseScale)
-  }, [timeScale, zoomLevel, baseScale])
+    if (timeScale !== null) return timeScale;
+    return calculateTimeScale(zoomLevel, baseScale);
+  }, [timeScale, zoomLevel, baseScale]);
 
   // 줌 레벨에 따른 동적 씬 너비 계산
   const sceneWidth = useMemo(() => {
-    return calculateMinSceneWidth(zoomLevel, 280) // 기본 너비 280px
-  }, [zoomLevel])
+    return calculateMinSceneWidth(zoomLevel, 280); // 기본 너비 280px
+  }, [zoomLevel]);
 
   // 스크롤 위치 복원
   useEffect(() => {
     if (scrollRef.current && scrollPosition > 0) {
-      scrollRef.current.scrollLeft = scrollPosition
+      scrollRef.current.scrollLeft = scrollPosition;
     }
-  }, [scrollPosition])
+  }, [scrollPosition]);
 
   // 스크롤 이벤트 핸들러
   const handleScroll = useCallback((event) => {
     if (!isScrolling.current) {
-      isScrolling.current = true
+      isScrolling.current = true;
     }
 
     // 스크롤 위치 변경 알림
     if (onScrollPositionChange) {
-      onScrollPositionChange(event.target.scrollLeft)
+      onScrollPositionChange(event.target.scrollLeft);
     }
 
     // 스크롤 종료 감지
     if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current)
+      clearTimeout(scrollTimeout.current);
     }
 
     scrollTimeout.current = setTimeout(() => {
-      isScrolling.current = false
-      onScroll?.(event)
-    }, 150) // 150ms 후 스크롤 종료로 판단
-  }, [onScroll, onScrollPositionChange])
+      isScrolling.current = false;
+      onScroll?.(event);
+    }, 150); // 150ms 후 스크롤 종료로 판단
+  }, [onScroll, onScrollPositionChange]);
 
   // 특정 위치로 스크롤
   const scrollToPosition = useCallback((position, smooth = true) => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
         left: position,
-        behavior: smooth ? 'smooth' : 'auto'
-      })
+        behavior: smooth ? 'smooth' : 'auto',
+      });
     }
-  }, [])
+  }, []);
 
   // 특정 씬으로 스크롤
   const scrollToScene = useCallback((sceneIndex, smooth = true) => {
     if (scrollRef.current) {
-      const sceneWidthWithGap = sceneWidth + 16 // gap 포함
-      const scrollPosition = sceneIndex * sceneWidthWithGap
-      scrollToPosition(scrollPosition, smooth)
+      const sceneWidthWithGap = sceneWidth + 16; // gap 포함
+      const scrollPosition = sceneIndex * sceneWidthWithGap;
+      scrollToPosition(scrollPosition, smooth);
     }
-  }, [scrollToPosition, sceneWidth])
+  }, [scrollToPosition, sceneWidth]);
 
   // 좌우 스크롤 버튼 핸들러
   const handleScrollLeft = useCallback(() => {
     if (scrollRef.current) {
-      const currentScroll = scrollRef.current.scrollLeft
-      const scrollAmount = 300 // 한 번에 스크롤할 양
-      scrollToPosition(Math.max(0, currentScroll - scrollAmount))
+      const currentScroll = scrollRef.current.scrollLeft;
+      const scrollAmount = 300; // 한 번에 스크롤할 양
+      scrollToPosition(Math.max(0, currentScroll - scrollAmount));
     }
-  }, [scrollToPosition])
+  }, [scrollToPosition]);
 
   const handleScrollRight = useCallback(() => {
     if (scrollRef.current) {
-      const currentScroll = scrollRef.current.scrollLeft
-      const scrollAmount = 300
-      const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth
-      scrollToPosition(Math.min(maxScroll, currentScroll + scrollAmount))
+      const currentScroll = scrollRef.current.scrollLeft;
+      const scrollAmount = 300;
+      const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth;
+      scrollToPosition(Math.min(maxScroll, currentScroll + scrollAmount));
     }
-  }, [scrollToPosition])
+  }, [scrollToPosition]);
 
   // 키보드 네비게이션
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (!scrollRef.current) return
+      if (!scrollRef.current) return;
 
       switch (event.key) {
-        case 'ArrowLeft':
-          event.preventDefault()
-          handleScrollLeft()
-          break
-        case 'ArrowRight':
-          event.preventDefault()
-          handleScrollRight()
-          break
-        case 'Home':
-          event.preventDefault()
-          scrollToPosition(0)
-          break
-        case 'End':
-          event.preventDefault()
-          const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth
-          scrollToPosition(maxScroll)
-          break
+      case 'ArrowLeft':
+        event.preventDefault();
+        handleScrollLeft();
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        handleScrollRight();
+        break;
+      case 'Home':
+        event.preventDefault();
+        scrollToPosition(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        const maxScroll = scrollRef.current.scrollWidth - scrollRef.current.clientWidth;
+        scrollToPosition(maxScroll);
+        break;
       }
-    }
+    };
 
     // 타임라인 컨테이너에 포커스가 있을 때만 키보드 이벤트 처리
-    const container = scrollRef.current
+    const container = scrollRef.current;
     if (container) {
-      container.addEventListener('keydown', handleKeyDown)
-      return () => container.removeEventListener('keydown', handleKeyDown)
+      container.addEventListener('keydown', handleKeyDown);
+      return () => container.removeEventListener('keydown', handleKeyDown);
     }
-  }, [handleScrollLeft, handleScrollRight, scrollToPosition])
+  }, [handleScrollLeft, handleScrollRight, scrollToPosition]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
       if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current)
+        clearTimeout(scrollTimeout.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   return (
     <Box
@@ -215,9 +215,9 @@ const TimelineScroll = forwardRef(({
     >
       {children}
     </Box>
-  )
-})
+  );
+});
 
-TimelineScroll.displayName = 'TimelineScroll'
+TimelineScroll.displayName = 'TimelineScroll';
 
-export default TimelineScroll 
+export default TimelineScroll; 

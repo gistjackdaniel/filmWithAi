@@ -57,6 +57,7 @@ const CutTimelineViewer = (props) => {
     onCutClick, // 컷 클릭 핸들러
     onCutEdit, // 컷 편집 핸들러
     onCutInfo, // 컷 정보 핸들러
+    onCutDelete, // 컷 삭제 핸들러 추가
     onCutsReorder, // 컷 순서 변경 핸들러
     onGenerateConte,
     onGenerateCuts, // 컷 생성 핸들러 추가
@@ -1374,6 +1375,7 @@ const CutTimelineViewer = (props) => {
                           onClick={() => handleCutClick(cut)}
                           onEdit={() => handleCutEdit(cut)}
                           onInfo={() => handleCutInfo(cut)}
+                          onDelete={onCutDelete} // 삭제 핸들러 추가
                           selected={selectedCutId === cut.id}
                           isMultiSelected={selectedCuts.has(cut.id)}
                           loading={loading}

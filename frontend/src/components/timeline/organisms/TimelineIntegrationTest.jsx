@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -8,20 +8,20 @@ import {
   ListItem, 
   ListItemText,
   Divider,
-  Chip
-} from '@mui/material'
-import { CheckCircle, Error, Warning, Info } from '@mui/icons-material'
-import TimelineViewer from './TimelineViewer'
-import useTimelineStore from '../../../stores/timelineStore'
+  Chip,
+} from '@mui/material';
+import { CheckCircle, Error, Warning, Info } from '@mui/icons-material';
+import TimelineViewer from './TimelineViewer';
+import useTimelineStore from '../../../stores/timelineStore';
 
 /**
  * 타임라인 통합 테스트 컴포넌트
  * 모든 타임라인 기능이 정상 작동하는지 확인
  */
 const TimelineIntegrationTest = () => {
-  const [testResults, setTestResults] = useState([])
-  const [isRunning, setIsRunning] = useState(false)
-  const [currentTest, setCurrentTest] = useState('')
+  const [testResults, setTestResults] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentTest, setCurrentTest] = useState('');
   
   const {
     scenes,
@@ -35,8 +35,8 @@ const TimelineIntegrationTest = () => {
     openModal,
     closeModal,
     setLoading,
-    setError
-  } = useTimelineStore()
+    setError,
+  } = useTimelineStore();
 
   // 테스트 케이스 정의
   const testCases = [
@@ -44,61 +44,61 @@ const TimelineIntegrationTest = () => {
       name: '기본 렌더링 테스트',
       description: '타임라인이 올바르게 렌더링되는지 확인',
       test: () => {
-        return scenes.length >= 0 && !loading
-      }
+        return scenes.length >= 0 && !loading;
+      },
     },
     {
       name: '씬 카드 클릭 테스트',
       description: '씬 카드를 클릭했을 때 선택 상태가 변경되는지 확인',
       test: () => {
-        if (scenes.length === 0) return true
-        const firstScene = scenes[0]
-        selectScene(firstScene.id)
-        return selectedSceneId === firstScene.id
-      }
+        if (scenes.length === 0) return true;
+        const firstScene = scenes[0];
+        selectScene(firstScene.id);
+        return selectedSceneId === firstScene.id;
+      },
     },
     {
       name: '모달 열기/닫기 테스트',
       description: '씬 상세 모달이 올바르게 열리고 닫히는지 확인',
       test: () => {
-        if (scenes.length === 0) return true
-        const firstScene = scenes[0]
-        openModal(firstScene)
-        const modalOpened = modalOpen && currentScene?.id === firstScene.id
+        if (scenes.length === 0) return true;
+        const firstScene = scenes[0];
+        openModal(firstScene);
+        const modalOpened = modalOpen && currentScene?.id === firstScene.id;
         
-        closeModal()
-        const modalClosed = !modalOpen && !currentScene
+        closeModal();
+        const modalClosed = !modalOpen && !currentScene;
         
-        return modalOpened && modalClosed
-      }
+        return modalOpened && modalClosed;
+      },
     },
     {
       name: '로딩 상태 테스트',
       description: '로딩 상태가 올바르게 표시되는지 확인',
       test: () => {
-        setLoading(true)
-        const loadingStarted = loading
+        setLoading(true);
+        const loadingStarted = loading;
         
-        setTimeout(() => setLoading(false), 100)
-        return loadingStarted
-      }
+        setTimeout(() => setLoading(false), 100);
+        return loadingStarted;
+      },
     },
     {
       name: '에러 상태 테스트',
       description: '에러 상태가 올바르게 처리되는지 확인',
       test: () => {
-        const testError = '테스트 에러 메시지'
-        setError(testError)
-        return error === testError
-      }
+        const testError = '테스트 에러 메시지';
+        setError(testError);
+        return error === testError;
+      },
     },
     {
       name: '빈 상태 테스트',
       description: '씬이 없을 때 빈 상태가 올바르게 표시되는지 확인',
       test: () => {
-        setScenes([])
-        return scenes.length === 0
-      }
+        setScenes([]);
+        return scenes.length === 0;
+      },
     },
     {
       name: '데이터 로드 테스트',
@@ -111,7 +111,7 @@ const TimelineIntegrationTest = () => {
             type: 'generated_video',
             description: '테스트 씬 1 - AI 비디오 생성',
             duration: 30,
-            createdAt: new Date()
+            createdAt: new Date(),
           },
           {
             id: 'test-2',
@@ -119,55 +119,55 @@ const TimelineIntegrationTest = () => {
             type: 'live_action',
             description: '테스트 씬 2 - 실사 촬영',
             duration: 45,
-            createdAt: new Date()
-          }
-        ]
-        setScenes(sampleScenes)
-        return scenes.length === 2
-      }
-    }
-  ]
+            createdAt: new Date(),
+          },
+        ];
+        setScenes(sampleScenes);
+        return scenes.length === 2;
+      },
+    },
+  ];
 
   // 테스트 실행
   const runTests = async () => {
-    setIsRunning(true)
-    setTestResults([])
+    setIsRunning(true);
+    setTestResults([]);
     
-    const results = []
+    const results = [];
     
     for (const testCase of testCases) {
-      setCurrentTest(testCase.name)
+      setCurrentTest(testCase.name);
       
       try {
-        const passed = await testCase.test()
+        const passed = await testCase.test();
         results.push({
           name: testCase.name,
           description: testCase.description,
           passed,
-          error: null
-        })
+          error: null,
+        });
       } catch (error) {
         results.push({
           name: testCase.name,
           description: testCase.description,
           passed: false,
-          error: error.message
-        })
+          error: error.message,
+        });
       }
       
       // 테스트 간 간격
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
-    setTestResults(results)
-    setIsRunning(false)
-    setCurrentTest('')
-  }
+    setTestResults(results);
+    setIsRunning(false);
+    setCurrentTest('');
+  };
 
   // 테스트 결과 요약
-  const passedTests = testResults.filter(result => result.passed).length
-  const totalTests = testResults.length
-  const successRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0
+  const passedTests = testResults.filter(result => result.passed).length;
+  const totalTests = testResults.length;
+  const successRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -264,14 +264,14 @@ const TimelineIntegrationTest = () => {
           loading={loading}
           selectedSceneId={selectedSceneId}
           onSceneClick={(scene) => {
-            selectScene(scene.id)
-            openModal(scene)
+            selectScene(scene.id);
+            openModal(scene);
           }}
           onSceneEdit={(scene) => {
-            console.log('씬 편집:', scene)
+            console.log('씬 편집:', scene);
           }}
           onSceneInfo={(scene) => {
-            openModal(scene)
+            openModal(scene);
           }}
           emptyMessage="테스트를 위해 샘플 데이터를 로드해주세요."
         />
@@ -282,7 +282,7 @@ const TimelineIntegrationTest = () => {
         backgroundColor: 'var(--color-card-bg)', 
         p: 2, 
         borderRadius: 'var(--spacing-border-radius)',
-        border: '1px solid var(--color-border)'
+        border: '1px solid var(--color-border)',
       }}>
         <Typography variant="h6" gutterBottom>
           현재 상태
@@ -324,7 +324,7 @@ const TimelineIntegrationTest = () => {
         </List>
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default TimelineIntegrationTest 
+export default TimelineIntegrationTest; 

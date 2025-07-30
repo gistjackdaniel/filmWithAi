@@ -1,7 +1,7 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { useAuthStore } from './authStore.js'
-import projectApi from '../services/projectApi.js'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { useAuthStore } from './authStore.js';
+import projectApi from '../services/projectApi.js';
 
 /**
  * 컷 관리 스토어
@@ -103,15 +103,15 @@ const useCutStore = create(
           currentSceneId: sceneId,
           cuts: [],
           currentCut: null,
-          currentCutId: null
-        })
+          currentCutId: null,
+        });
       },
 
       /**
        * 컷 목록 로딩 시작
        */
       startLoading: () => {
-        set({ isLoading: true, error: '' })
+        set({ isLoading: true, error: '' });
       },
 
       /**
@@ -122,8 +122,8 @@ const useCutStore = create(
         set({ 
           cuts: cuts || [],
           isLoading: false,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -133,8 +133,8 @@ const useCutStore = create(
       failLoading: (error) => {
         set({ 
           isLoading: false,
-          error: error || '컷 목록을 불러오는데 실패했습니다.'
-        })
+          error: error || '컷 목록을 불러오는데 실패했습니다.',
+        });
       },
 
       /**
@@ -143,26 +143,26 @@ const useCutStore = create(
        * @param {string} sceneId - 씬 ID
        */
       loadCuts: async (projectId, sceneId) => {
-        const { startLoading, completeLoading, failLoading } = get()
+        const { startLoading, completeLoading, failLoading } = get();
         
         if (!projectId || !sceneId) {
-          failLoading('프로젝트 ID와 씬 ID가 필요합니다.')
-          return
+          failLoading('프로젝트 ID와 씬 ID가 필요합니다.');
+          return;
         }
 
-        startLoading()
+        startLoading();
         
         try {
-          const result = await projectApi.getCutsByScene(projectId, sceneId)
+          const result = await projectApi.getCutsByScene(projectId, sceneId);
           
           if (result.success) {
-            completeLoading(result.data)
-            set({ currentProjectId: projectId, currentSceneId: sceneId })
+            completeLoading(result.data);
+            set({ currentProjectId: projectId, currentSceneId: sceneId });
           } else {
-            failLoading(result.error)
+            failLoading(result.error);
           }
         } catch (error) {
-          failLoading(error.message)
+          failLoading(error.message);
         }
       },
 
@@ -173,21 +173,21 @@ const useCutStore = create(
        * @param {string} cutId - 컷 ID
        */
       loadCut: async (projectId, sceneId, cutId) => {
-        if (!projectId || !sceneId || !cutId) return
+        if (!projectId || !sceneId || !cutId) return;
         
         try {
-          const result = await projectApi.getCutById(projectId, sceneId, cutId)
+          const result = await projectApi.getCutById(projectId, sceneId, cutId);
           
           if (result.success) {
             set({ 
               currentCut: result.data,
-              currentCutId: cutId
-            })
+              currentCutId: cutId,
+            });
           } else {
-            set({ error: result.error })
+            set({ error: result.error });
           }
         } catch (error) {
-          set({ error: error.message })
+          set({ error: error.message });
         }
       },
 
@@ -197,8 +197,8 @@ const useCutStore = create(
       startCreating: () => {
         set({ 
           isCreating: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -211,8 +211,8 @@ const useCutStore = create(
           currentCut: cut,
           currentCutId: cut._id,
           isCreating: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -222,8 +222,8 @@ const useCutStore = create(
       failCreating: (error) => {
         set({ 
           isCreating: false,
-          error: error || '컷 생성에 실패했습니다.'
-        })
+          error: error || '컷 생성에 실패했습니다.',
+        });
       },
 
       /**
@@ -233,25 +233,25 @@ const useCutStore = create(
        * @param {CutData} cutData - 컷 데이터
        */
       createCut: async (projectId, sceneId, cutData) => {
-        const { startCreating, completeCreating, failCreating } = get()
+        const { startCreating, completeCreating, failCreating } = get();
         
         if (!projectId || !sceneId) {
-          failCreating('프로젝트 ID와 씬 ID가 필요합니다.')
-          return
+          failCreating('프로젝트 ID와 씬 ID가 필요합니다.');
+          return;
         }
 
-        startCreating()
+        startCreating();
         
         try {
-          const result = await projectApi.createCut(projectId, sceneId, cutData)
+          const result = await projectApi.createCut(projectId, sceneId, cutData);
           
           if (result.success) {
-            completeCreating(result.data)
+            completeCreating(result.data);
           } else {
-            failCreating(result.error)
+            failCreating(result.error);
           }
         } catch (error) {
-          failCreating(error.message)
+          failCreating(error.message);
         }
       },
 
@@ -261,8 +261,8 @@ const useCutStore = create(
       startUpdating: () => {
         set({ 
           isUpdating: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -272,13 +272,13 @@ const useCutStore = create(
       completeUpdating: (updatedCut) => {
         set((state) => ({
           cuts: state.cuts.map(cut => 
-            cut._id === updatedCut._id ? updatedCut : cut
+            cut._id === updatedCut._id ? updatedCut : cut,
           ),
           currentCut: updatedCut,
           isUpdating: false,
           error: '',
-          hasUnsavedChanges: false
-        }))
+          hasUnsavedChanges: false,
+        }));
       },
 
       /**
@@ -288,8 +288,8 @@ const useCutStore = create(
       failUpdating: (error) => {
         set({ 
           isUpdating: false,
-          error: error || '컷 수정에 실패했습니다.'
-        })
+          error: error || '컷 수정에 실패했습니다.',
+        });
       },
 
       /**
@@ -300,25 +300,25 @@ const useCutStore = create(
        * @param {CutData} cutData - 수정할 컷 데이터
        */
       updateCut: async (projectId, sceneId, cutId, cutData) => {
-        const { startUpdating, completeUpdating, failUpdating } = get()
+        const { startUpdating, completeUpdating, failUpdating } = get();
         
         if (!projectId || !sceneId || !cutId) {
-          failUpdating('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.')
-          return
+          failUpdating('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.');
+          return;
         }
 
-        startUpdating()
+        startUpdating();
         
         try {
-          const result = await projectApi.updateCut(projectId, sceneId, cutId, cutData)
+          const result = await projectApi.updateCut(projectId, sceneId, cutId, cutData);
           
           if (result.success) {
-            completeUpdating(result.data)
+            completeUpdating(result.data);
           } else {
-            failUpdating(result.error)
+            failUpdating(result.error);
           }
         } catch (error) {
-          failUpdating(error.message)
+          failUpdating(error.message);
         }
       },
 
@@ -328,8 +328,8 @@ const useCutStore = create(
       startDeleting: () => {
         set({ 
           isDeleting: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -342,8 +342,8 @@ const useCutStore = create(
           currentCut: state.currentCut?._id === cutId ? null : state.currentCut,
           currentCutId: state.currentCutId === cutId ? null : state.currentCutId,
           isDeleting: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -353,8 +353,8 @@ const useCutStore = create(
       failDeleting: (error) => {
         set({ 
           isDeleting: false,
-          error: error || '컷 삭제에 실패했습니다.'
-        })
+          error: error || '컷 삭제에 실패했습니다.',
+        });
       },
 
       /**
@@ -364,25 +364,25 @@ const useCutStore = create(
        * @param {string} cutId - 컷 ID
        */
       deleteCut: async (projectId, sceneId, cutId) => {
-        const { startDeleting, completeDeleting, failDeleting } = get()
+        const { startDeleting, completeDeleting, failDeleting } = get();
         
         if (!projectId || !sceneId || !cutId) {
-          failDeleting('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.')
-          return
+          failDeleting('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.');
+          return;
         }
 
-        startDeleting()
+        startDeleting();
         
         try {
-          const result = await projectApi.deleteCut(projectId, sceneId, cutId)
+          const result = await projectApi.deleteCut(projectId, sceneId, cutId);
           
           if (result.success) {
-            completeDeleting(cutId)
+            completeDeleting(cutId);
           } else {
-            failDeleting(result.error)
+            failDeleting(result.error);
           }
         } catch (error) {
-          failDeleting(error.message)
+          failDeleting(error.message);
         }
       },
 
@@ -392,8 +392,8 @@ const useCutStore = create(
       startCreatingDraft: () => {
         set({ 
           isCreatingDraft: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -405,8 +405,8 @@ const useCutStore = create(
           cuts: [...draftCuts, ...state.cuts],
           draftCuts: draftCuts,
           isCreatingDraft: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -416,8 +416,8 @@ const useCutStore = create(
       failCreatingDraft: (error) => {
         set({ 
           isCreatingDraft: false,
-          error: error || '컷 초안 생성에 실패했습니다.'
-        })
+          error: error || '컷 초안 생성에 실패했습니다.',
+        });
       },
 
       /**
@@ -427,25 +427,25 @@ const useCutStore = create(
        * @param {Object} draftData - 초안 생성 데이터
        */
       createCutDraft: async (projectId, sceneId, draftData) => {
-        const { startCreatingDraft, completeCreatingDraft, failCreatingDraft } = get()
+        const { startCreatingDraft, completeCreatingDraft, failCreatingDraft } = get();
         
         if (!projectId || !sceneId) {
-          failCreatingDraft('프로젝트 ID와 씬 ID가 필요합니다.')
-          return
+          failCreatingDraft('프로젝트 ID와 씬 ID가 필요합니다.');
+          return;
         }
 
-        startCreatingDraft()
+        startCreatingDraft();
         
         try {
-          const result = await projectApi.createCutDraft(projectId, sceneId, draftData)
+          const result = await projectApi.createCutDraft(projectId, sceneId, draftData);
           
           if (result.success) {
-            completeCreatingDraft(result.data)
+            completeCreatingDraft(result.data);
           } else {
-            failCreatingDraft(result.error)
+            failCreatingDraft(result.error);
           }
         } catch (error) {
-          failCreatingDraft(error.message)
+          failCreatingDraft(error.message);
         }
       },
 
@@ -455,8 +455,8 @@ const useCutStore = create(
       startUploadingImage: () => {
         set({ 
           isUploadingImage: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -467,11 +467,11 @@ const useCutStore = create(
         set((state) => ({
           currentCut: state.currentCut ? { ...state.currentCut, imageUrl } : null,
           cuts: state.cuts.map(cut => 
-            cut._id === state.currentCutId ? { ...cut, imageUrl } : cut
+            cut._id === state.currentCutId ? { ...cut, imageUrl } : cut,
           ),
           isUploadingImage: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -481,8 +481,8 @@ const useCutStore = create(
       failUploadingImage: (error) => {
         set({ 
           isUploadingImage: false,
-          error: error || '이미지 업로드에 실패했습니다.'
-        })
+          error: error || '이미지 업로드에 실패했습니다.',
+        });
       },
 
       /**
@@ -493,30 +493,30 @@ const useCutStore = create(
        * @param {File} file - 업로드할 이미지 파일
        */
       uploadImage: async (projectId, sceneId, cutId, file) => {
-        const { startUploadingImage, completeUploadingImage, failUploadingImage } = get()
+        const { startUploadingImage, completeUploadingImage, failUploadingImage } = get();
         
         if (!projectId || !sceneId || !cutId) {
-          failUploadingImage('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.')
-          return
+          failUploadingImage('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.');
+          return;
         }
 
         if (!file) {
-          failUploadingImage('업로드할 이미지 파일이 필요합니다.')
-          return
+          failUploadingImage('업로드할 이미지 파일이 필요합니다.');
+          return;
         }
 
-        startUploadingImage()
+        startUploadingImage();
         
         try {
-          const result = await projectApi.uploadCutImage(projectId, sceneId, cutId, file)
+          const result = await projectApi.uploadCutImage(projectId, sceneId, cutId, file);
           
           if (result.success) {
-            completeUploadingImage(result.data)
+            completeUploadingImage(result.data);
           } else {
-            failUploadingImage(result.error)
+            failUploadingImage(result.error);
           }
         } catch (error) {
-          failUploadingImage(error.message)
+          failUploadingImage(error.message);
         }
       },
 
@@ -526,8 +526,8 @@ const useCutStore = create(
       startGeneratingImage: () => {
         set({ 
           isGeneratingImage: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -538,11 +538,11 @@ const useCutStore = create(
         set((state) => ({
           currentCut: state.currentCut ? { ...state.currentCut, imageUrl } : null,
           cuts: state.cuts.map(cut => 
-            cut._id === state.currentCutId ? { ...cut, imageUrl } : cut
+            cut._id === state.currentCutId ? { ...cut, imageUrl } : cut,
           ),
           isGeneratingImage: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -552,8 +552,8 @@ const useCutStore = create(
       failGeneratingImage: (error) => {
         set({ 
           isGeneratingImage: false,
-          error: error || 'AI 이미지 생성에 실패했습니다.'
-        })
+          error: error || 'AI 이미지 생성에 실패했습니다.',
+        });
       },
 
       /**
@@ -563,25 +563,25 @@ const useCutStore = create(
        * @param {string} cutId - 컷 ID
        */
       generateImage: async (projectId, sceneId, cutId) => {
-        const { startGeneratingImage, completeGeneratingImage, failGeneratingImage } = get()
+        const { startGeneratingImage, completeGeneratingImage, failGeneratingImage } = get();
         
         if (!projectId || !sceneId || !cutId) {
-          failGeneratingImage('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.')
-          return
+          failGeneratingImage('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.');
+          return;
         }
 
-        startGeneratingImage()
+        startGeneratingImage();
         
         try {
-          const result = await projectApi.generateCutImage(projectId, sceneId, cutId)
+          const result = await projectApi.generateCutImage(projectId, sceneId, cutId);
           
           if (result.success) {
-            completeGeneratingImage(result.data)
+            completeGeneratingImage(result.data);
           } else {
-            failGeneratingImage(result.error)
+            failGeneratingImage(result.error);
           }
         } catch (error) {
-          failGeneratingImage(error.message)
+          failGeneratingImage(error.message);
         }
       },
 
@@ -591,8 +591,8 @@ const useCutStore = create(
       startDeletingImage: () => {
         set({ 
           isDeletingImage: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -602,11 +602,11 @@ const useCutStore = create(
         set((state) => ({
           currentCut: state.currentCut ? { ...state.currentCut, imageUrl: null } : null,
           cuts: state.cuts.map(cut => 
-            cut._id === state.currentCutId ? { ...cut, imageUrl: null } : cut
+            cut._id === state.currentCutId ? { ...cut, imageUrl: null } : cut,
           ),
           isDeletingImage: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -616,8 +616,8 @@ const useCutStore = create(
       failDeletingImage: (error) => {
         set({ 
           isDeletingImage: false,
-          error: error || '이미지 삭제에 실패했습니다.'
-        })
+          error: error || '이미지 삭제에 실패했습니다.',
+        });
       },
 
       /**
@@ -627,25 +627,25 @@ const useCutStore = create(
        * @param {string} cutId - 컷 ID
        */
       deleteImage: async (projectId, sceneId, cutId) => {
-        const { startDeletingImage, completeDeletingImage, failDeletingImage } = get()
+        const { startDeletingImage, completeDeletingImage, failDeletingImage } = get();
         
         if (!projectId || !sceneId || !cutId) {
-          failDeletingImage('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.')
-          return
+          failDeletingImage('프로젝트 ID, 씬 ID, 컷 ID가 필요합니다.');
+          return;
         }
 
-        startDeletingImage()
+        startDeletingImage();
         
         try {
-          const result = await projectApi.deleteCutImage(projectId, sceneId, cutId)
+          const result = await projectApi.deleteCutImage(projectId, sceneId, cutId);
           
           if (result.success) {
-            completeDeletingImage()
+            completeDeletingImage();
           } else {
-            failDeletingImage(result.error)
+            failDeletingImage(result.error);
           }
         } catch (error) {
-          failDeletingImage(error.message)
+          failDeletingImage(error.message);
         }
       },
 
@@ -656,8 +656,8 @@ const useCutStore = create(
       setCurrentCut: (cut) => {
         set({ 
           currentCut: cut,
-          currentCutId: cut?._id || null
-        })
+          currentCutId: cut?._id || null,
+        });
       },
 
       /**
@@ -667,8 +667,8 @@ const useCutStore = create(
       setEditingCut: (cut) => {
         set({ 
           editingCut: cut,
-          hasUnsavedChanges: false
-        })
+          hasUnsavedChanges: false,
+        });
       },
 
       /**
@@ -678,8 +678,8 @@ const useCutStore = create(
       updateEditingCut: (updates) => {
         set((state) => ({
           editingCut: state.editingCut ? { ...state.editingCut, ...updates } : null,
-          hasUnsavedChanges: true
-        }))
+          hasUnsavedChanges: true,
+        }));
       },
 
       /**
@@ -688,8 +688,8 @@ const useCutStore = create(
       cancelEditing: () => {
         set({ 
           editingCut: null,
-          hasUnsavedChanges: false
-        })
+          hasUnsavedChanges: false,
+        });
       },
 
       /**
@@ -697,14 +697,14 @@ const useCutStore = create(
        * @param {string} imageUrl - 이미지 URL
        */
       setImagePreview: (imageUrl) => {
-        set({ imagePreview: imageUrl })
+        set({ imagePreview: imageUrl });
       },
 
       /**
        * 이미지 미리보기 제거
        */
       clearImagePreview: () => {
-        set({ imagePreview: null })
+        set({ imagePreview: null });
       },
 
       /**
@@ -713,8 +713,8 @@ const useCutStore = create(
        */
       setFilters: (filters) => {
         set((state) => ({
-          filters: { ...state.filters, ...filters }
-        }))
+          filters: { ...state.filters, ...filters },
+        }));
       },
 
       /**
@@ -723,14 +723,14 @@ const useCutStore = create(
        * @param {string} sortOrder - 정렬 순서
        */
       setSort: (sortBy, sortOrder = 'asc') => {
-        set({ sortBy, sortOrder })
+        set({ sortBy, sortOrder });
       },
 
       /**
        * 에러 초기화
        */
       clearError: () => {
-        set({ error: '' })
+        set({ error: '' });
       },
 
       /**
@@ -768,7 +768,7 @@ const useCutStore = create(
           cutHistory: [],
           historyIndex: -1,
           imagePreview: null,
-        })
+        });
       },
 
       // ===== 계산된 상태 (getter) =====
@@ -778,73 +778,73 @@ const useCutStore = create(
        * @returns {Array} 필터링된 컷 목록
        */
       getFilteredCuts: () => {
-        const { cuts, filters, sortBy, sortOrder } = get()
+        const { cuts, filters, sortBy, sortOrder } = get();
         
-        let filteredCuts = [...cuts]
+        let filteredCuts = [...cuts];
         
         // 검색 필터
         if (filters.searchQuery) {
-          const query = filters.searchQuery.toLowerCase()
+          const query = filters.searchQuery.toLowerCase();
           filteredCuts = filteredCuts.filter(cut =>
             cut.title.toLowerCase().includes(query) ||
             cut.description.toLowerCase().includes(query) ||
-            cut.visualNotes.toLowerCase().includes(query)
-          )
+            cut.visualNotes.toLowerCase().includes(query),
+          );
         }
         
         // 샷 타입 필터
         if (filters.shotType) {
           filteredCuts = filteredCuts.filter(cut =>
-            cut.shotType === filters.shotType
-          )
+            cut.shotType === filters.shotType,
+          );
         }
         
         // 카메라 앵글 필터
         if (filters.cameraAngle) {
           filteredCuts = filteredCuts.filter(cut =>
-            cut.cameraAngle === filters.cameraAngle
-          )
+            cut.cameraAngle === filters.cameraAngle,
+          );
         }
         
         // 분위기 필터
         if (filters.mood) {
           filteredCuts = filteredCuts.filter(cut =>
-            cut.mood === filters.mood
-          )
+            cut.mood === filters.mood,
+          );
         }
         
         // 시간대 필터
         if (filters.timeOfDay) {
           filteredCuts = filteredCuts.filter(cut =>
-            cut.timeOfDay === filters.timeOfDay
-          )
+            cut.timeOfDay === filters.timeOfDay,
+          );
         }
         
         // 날씨 필터
         if (filters.weather) {
           filteredCuts = filteredCuts.filter(cut =>
-            cut.weather === filters.weather
-          )
+            cut.weather === filters.weather,
+          );
         }
         
         // 정렬
         filteredCuts.sort((a, b) => {
-          let aValue = a[sortBy]
-          let bValue = b[sortBy]
+          let aValue = a[sortBy];
+          let bValue = b[sortBy];
           
           if (sortBy === 'order') {
-            aValue = a.order || 0
-            bValue = b.order || 0
+            aValue = a.order || 0;
+            bValue = b.order || 0;
           }
           
           if (sortOrder === 'asc') {
-            return aValue > bValue ? 1 : -1
+            return aValue > bValue ? 1 : -1;
           } else {
-            return aValue < bValue ? 1 : -1
+            return aValue < bValue ? 1 : -1;
           }
-        })
+        });
         
-        return filteredCuts
+        return filteredCuts;
       },
 
       /**
@@ -852,8 +852,8 @@ const useCutStore = create(
        * @returns {boolean} 로딩 중 여부
        */
       isLoading: () => {
-        const { isLoading, isCreating, isUpdating, isDeleting, isCreatingDraft, isUploadingImage, isGeneratingImage, isDeletingImage } = get()
-        return isLoading || isCreating || isUpdating || isDeleting || isCreatingDraft || isUploadingImage || isGeneratingImage || isDeletingImage
+        const { isLoading, isCreating, isUpdating, isDeleting, isCreatingDraft, isUploadingImage, isGeneratingImage, isDeletingImage } = get();
+        return isLoading || isCreating || isUpdating || isDeleting || isCreatingDraft || isUploadingImage || isGeneratingImage || isDeletingImage;
       },
 
       /**
@@ -861,8 +861,8 @@ const useCutStore = create(
        * @returns {boolean} 현재 컷 존재 여부
        */
       hasCurrentCut: () => {
-        const { currentCut } = get()
-        return !!currentCut
+        const { currentCut } = get();
+        return !!currentCut;
       },
 
       /**
@@ -870,8 +870,8 @@ const useCutStore = create(
        * @returns {boolean} 편집 중인 컷 존재 여부
        */
       hasEditingCut: () => {
-        const { editingCut } = get()
-        return !!editingCut
+        const { editingCut } = get();
+        return !!editingCut;
       },
 
       /**
@@ -879,8 +879,8 @@ const useCutStore = create(
        * @returns {boolean} 저장되지 않은 변경사항 존재 여부
        */
       hasUnsavedChanges: () => {
-        const { hasUnsavedChanges } = get()
-        return hasUnsavedChanges
+        const { hasUnsavedChanges } = get();
+        return hasUnsavedChanges;
       },
 
       /**
@@ -888,8 +888,8 @@ const useCutStore = create(
        * @returns {Array} 이미지가 있는 컷 목록
        */
       getCutsWithImages: () => {
-        const { cuts } = get()
-        return cuts.filter(cut => cut.imageUrl)
+        const { cuts } = get();
+        return cuts.filter(cut => cut.imageUrl);
       },
 
       /**
@@ -897,19 +897,19 @@ const useCutStore = create(
        * @returns {Array} 이미지가 없는 컷 목록
        */
       getCutsWithoutImages: () => {
-        const { cuts } = get()
-        return cuts.filter(cut => !cut.imageUrl)
-      }
+        const { cuts } = get();
+        return cuts.filter(cut => !cut.imageUrl);
+      },
     }),
     {
       name: 'cut-storage', // 로컬 스토리지 키
       partialize: (state) => ({ 
         filters: state.filters,
         sortBy: state.sortBy,
-        sortOrder: state.sortOrder
-      })
-    }
-  )
-)
+        sortOrder: state.sortOrder,
+      }),
+    },
+  ),
+);
 
-export default useCutStore
+export default useCutStore;

@@ -25,7 +25,7 @@ export const spacing = {
   timelineGap: 16,      // 타임라인 카드 간격
   sceneCardGap: 12,     // 씬 카드 내부 요소 간격
   trackPadding: 20,     // 타임라인 트랙 패딩
-}
+};
 
 /**
  * CSS 변수로 내보내기
@@ -48,6 +48,6 @@ export const cssSpacingVariables = `
     --spacing-scene-card-gap: ${spacing.sceneCardGap}px;
     --spacing-track-padding: ${spacing.trackPadding}px;
   }
-`
+`;
 
-export default spacing 
+export default spacing; 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react';
 import {
   Box,
   Avatar,
@@ -16,7 +16,7 @@ import {
   Button,
   TextField,
   Alert,
-} from '@mui/material'
+} from '@mui/material';
 import {
   AccountCircle,
   Edit,
@@ -24,9 +24,9 @@ import {
   Settings,
   Person,
   Email,
-} from '@mui/icons-material'
-import { useAuthStore } from '../stores/authStore'
-import toast from 'react-hot-toast'
+} from '@mui/icons-material';
+import { useAuthStore } from '../../stores/authStore';
+import toast from 'react-hot-toast';
 
 /**
  * 사용자 프로필 컴포넌트
@@ -34,30 +34,30 @@ import toast from 'react-hot-toast'
  */
 const UserProfile = () => {
   // 로컬 상태 관리
-  const [anchorEl, setAnchorEl] = useState(null)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
-  })
-  const [isEditing, setIsEditing] = useState(false)
+  });
+  const [isEditing, setIsEditing] = useState(false);
 
   // Zustand 스토어에서 사용자 정보와 로그아웃 함수 가져오기
-  const { user, logout } = useAuthStore()
+  const { user, logout } = useAuthStore();
 
   /**
    * 메뉴 열기
    */
   const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget)
-  }
+    setAnchorEl(event.currentTarget);
+  };
 
   /**
    * 메뉴 닫기
    */
   const handleMenuClose = () => {
-    setAnchorEl(null)
-  }
+    setAnchorEl(null);
+  };
 
   /**
    * 프로필 편집 다이얼로그 열기
@@ -66,19 +66,19 @@ const UserProfile = () => {
     setEditForm({
       name: user?.name || '',
       email: user?.email || '',
-    })
-    setEditDialogOpen(true)
-    handleMenuClose()
-  }
+    });
+    setEditDialogOpen(true);
+    handleMenuClose();
+  };
 
   /**
    * 프로필 편집 다이얼로그 닫기
    */
   const handleEditDialogClose = () => {
-    setEditDialogOpen(false)
-    setEditForm({ name: '', email: '' })
-    setIsEditing(false)
-  }
+    setEditDialogOpen(false);
+    setEditForm({ name: '', email: '' });
+    setIsEditing(false);
+  };
 
   /**
    * 폼 입력 처리
@@ -86,57 +86,57 @@ const UserProfile = () => {
   const handleFormChange = (field, value) => {
     setEditForm(prev => ({
       ...prev,
-      [field]: value
-    }))
-  }
+      [field]: value,
+    }));
+  };
 
   /**
    * 프로필 업데이트 처리
    */
   const handleUpdateProfile = async () => {
     try {
-      setIsEditing(true)
+      setIsEditing(true);
       
       // 실제 구현에서는 API 호출
       // await api.put('/user/profile', editForm)
       
       // 임시로 성공 메시지만 표시
-      toast.success('프로필이 업데이트되었습니다!')
-      handleEditDialogClose()
+      toast.success('프로필이 업데이트되었습니다!');
+      handleEditDialogClose();
     } catch (error) {
-      toast.error('프로필 업데이트에 실패했습니다.')
+      toast.error('프로필 업데이트에 실패했습니다.');
     } finally {
-      setIsEditing(false)
+      setIsEditing(false);
     }
-  }
+  };
 
   /**
    * 로그아웃 처리
    */
   const handleLogout = () => {
-    handleMenuClose()
-    logout()
-    toast.success('로그아웃되었습니다.')
-  }
+    handleMenuClose();
+    logout();
+    toast.success('로그아웃되었습니다.');
+  };
 
   // 사용자 이니셜 생성 (이름의 첫 글자들)
   const getUserInitials = (name) => {
-    if (!name) return 'U'
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(word => word.charAt(0))
       .join('')
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
 
   // 사용자 아바타 색상 생성
   const getAvatarColor = (name) => {
-    if (!name) return '#2E3A59'
-    const colors = ['#2E3A59', '#D4AF37', '#2ECC71', '#E74C3C', '#9B59B6']
-    const index = name.charCodeAt(0) % colors.length
-    return colors[index]
-  }
+    if (!name) return '#2E3A59';
+    const colors = ['#2E3A59', '#D4AF37', '#2ECC71', '#E74C3C', '#9B59B6'];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
 
   return (
     <>
@@ -148,8 +148,8 @@ const UserProfile = () => {
         aria-haspopup="true"
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            handleMenuOpen(e)
+            e.preventDefault();
+            handleMenuOpen(e);
           }
         }}
         sx={{
@@ -359,7 +359,7 @@ const UserProfile = () => {
         </DialogActions>
       </Dialog>
     </>
-  )
-}
+  );
+};
 
-export default UserProfile 
+export default UserProfile; 

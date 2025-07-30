@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { Box, Typography, Chip, IconButton, Tooltip, LinearProgress } from '@mui/material'
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Box, Typography, Chip, IconButton, Tooltip, LinearProgress } from '@mui/material';
 import { 
   PlayArrow, 
   Pause, 
@@ -10,14 +10,14 @@ import {
   Movie,
   Videocam,
   Error,
-  Refresh
-} from '@mui/icons-material'
-import { useDndContext, useSortable } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
-import VideoPlayer from '../atoms/VideoPlayer'
-import SceneCard from '../atoms/SceneCard'
-import { useTimelineStore } from '../../../stores/timelineStore'
-import { useTheme } from '@mui/material/styles'
+  Refresh,
+} from '@mui/icons-material';
+import { useDndContext, useSortable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import VideoPlayer from '../atoms/VideoPlayer';
+import SceneCard from '../atoms/SceneCard';
+import { useTimelineStore } from '../../../stores/timelineStore';
+import { useTheme } from '@mui/material/styles';
 
 /**
  * V1 타임라인 컴포넌트
@@ -28,16 +28,16 @@ const TimelineV1 = ({
   projectId, 
   onSceneSelect, 
   onSceneEdit,
-  isEditing = false 
+  isEditing = false, 
 }) => {
-  const theme = useTheme()
-  const containerRef = useRef(null)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [volume, setVolume] = useState(0.8)
-  const [isMuted, setIsMuted] = useState(false)
-  const [selectedSceneId, setSelectedSceneId] = useState(null)
-  const [loadingStates, setLoadingStates] = useState({})
+  const theme = useTheme();
+  const containerRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [selectedSceneId, setSelectedSceneId] = useState(null);
+  const [loadingStates, setLoadingStates] = useState({});
 
   // 타임라인 스토어에서 데이터 가져오기
   const { 
@@ -46,27 +46,27 @@ const TimelineV1 = ({
     updateScenesOrder,
     updateScene,
     loading,
-    error 
-  } = useTimelineStore()
+    error, 
+  } = useTimelineStore();
 
   // 현재 프로젝트의 씬들만 필터링
   const projectScenes = scenes.filter(scene => 
-    scene.projectId === projectId || scene.projectId === currentProjectId
-  )
+    scene.projectId === projectId || scene.projectId === currentProjectId,
+  );
 
   /**
    * 재생/일시정지 토글
    */
   const handlePlayPause = useCallback(() => {
-    setIsPlaying(!isPlaying)
-  }, [isPlaying])
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
 
   /**
    * 볼륨 토글
    */
   const handleVolumeToggle = useCallback(() => {
-    setIsMuted(!isMuted)
-  }, [isMuted])
+    setIsMuted(!isMuted);
+  }, [isMuted]);
 
   /**
    * 전체화면 토글
@@ -74,31 +74,31 @@ const TimelineV1 = ({
   const handleFullscreen = useCallback(() => {
     if (containerRef.current) {
       if (document.fullscreenElement) {
-        document.exitFullscreen()
+        document.exitFullscreen();
       } else {
-        containerRef.current.requestFullscreen()
+        containerRef.current.requestFullscreen();
       }
     }
-  }, [])
+  }, []);
 
   /**
    * 씬 선택 핸들러
    */
   const handleSceneSelect = useCallback((sceneId) => {
-    setSelectedSceneId(sceneId)
+    setSelectedSceneId(sceneId);
     if (onSceneSelect) {
-      onSceneSelect(sceneId)
+      onSceneSelect(sceneId);
     }
-  }, [onSceneSelect])
+  }, [onSceneSelect]);
 
   /**
    * 씬 편집 핸들러
    */
   const handleSceneEdit = useCallback((sceneId) => {
     if (onSceneEdit) {
-      onSceneEdit(sceneId)
+      onSceneEdit(sceneId);
     }
-  }, [onSceneEdit])
+  }, [onSceneEdit]);
 
   /**
    * 비디오 로딩 상태 업데이트
@@ -106,33 +106,33 @@ const TimelineV1 = ({
   const handleVideoLoading = useCallback((sceneId, isLoading) => {
     setLoadingStates(prev => ({
       ...prev,
-      [sceneId]: isLoading
-    }))
-  }, [])
+      [sceneId]: isLoading,
+    }));
+  }, []);
 
   /**
    * 드래그 앤 드롭 핸들러
    */
   const handleDragEnd = useCallback((event) => {
-    const { active, over } = event
+    const { active, over } = event;
     
     if (active.id !== over?.id) {
-      const oldIndex = projectScenes.findIndex(scene => scene.id === active.id)
-      const newIndex = projectScenes.findIndex(scene => scene.id === over?.id)
+      const oldIndex = projectScenes.findIndex(scene => scene.id === active.id);
+      const newIndex = projectScenes.findIndex(scene => scene.id === over?.id);
       
       if (oldIndex !== -1 && newIndex !== -1) {
-        updateScenesOrder(projectId, oldIndex, newIndex)
+        updateScenesOrder(projectId, oldIndex, newIndex);
       }
     }
-  }, [projectScenes, projectId, updateScenesOrder])
+  }, [projectScenes, projectId, updateScenesOrder]);
 
   // DnD 컨텍스트 설정
   const { sensors, setNodeRef } = useDndContext({
     onDragEnd: handleDragEnd,
     sensors: [
       // 센서 설정
-    ]
-  })
+    ],
+  });
 
   return (
     <Box
@@ -145,7 +145,7 @@ const TimelineV1 = ({
         borderRadius: 1,
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
       }}
     >
       {/* 타임라인 헤더 */}
@@ -156,7 +156,7 @@ const TimelineV1 = ({
           justifyContent: 'space-between',
           p: 2,
           borderBottom: `1px solid ${theme.palette.divider}`,
-          backgroundColor: theme.palette.grey[100]
+          backgroundColor: theme.palette.grey[100],
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -231,7 +231,7 @@ const TimelineV1 = ({
             p: 2,
             display: 'flex',
             flexDirection: 'column',
-            gap: 2
+            gap: 2,
           }}
         >
           {projectScenes.length === 0 ? (
@@ -262,8 +262,8 @@ const TimelineV1 = ({
         </Box>
       )}
     </Box>
-  )
-}
+  );
+};
 
 /**
  * V1 타임라인의 개별 씬 컴포넌트
@@ -276,11 +276,11 @@ const TimelineV1Scene = ({
   onSelect, 
   onEdit, 
   onLoadingChange,
-  volume 
+  volume, 
 }) => {
-  const theme = useTheme()
-  const [isVideoLoading, setIsVideoLoading] = useState(false)
-  const [videoError, setVideoError] = useState(null)
+  const theme = useTheme();
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState(null);
 
   // 드래그 앤 드롭 설정
   const {
@@ -289,45 +289,45 @@ const TimelineV1Scene = ({
     setNodeRef,
     transform,
     transition,
-    isDragging
-  } = useSortable({ id: scene.id })
+    isDragging,
+  } = useSortable({ id: scene.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1
-  }
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   /**
    * 비디오 로딩 상태 변경
    */
   const handleVideoLoadingChange = useCallback((loading) => {
-    setIsVideoLoading(loading)
-    onLoadingChange(scene.id, loading)
-  }, [scene.id, onLoadingChange])
+    setIsVideoLoading(loading);
+    onLoadingChange(scene.id, loading);
+  }, [scene.id, onLoadingChange]);
 
   /**
    * 비디오 에러 처리
    */
   const handleVideoError = useCallback((error) => {
-    setVideoError(error)
-    console.error('Video error:', error)
-  }, [])
+    setVideoError(error);
+    console.error('Video error:', error);
+  }, []);
 
   /**
    * 씬 클릭 핸들러
    */
   const handleSceneClick = useCallback(() => {
-    onSelect(scene.id)
-  }, [scene.id, onSelect])
+    onSelect(scene.id);
+  }, [scene.id, onSelect]);
 
   /**
    * 편집 버튼 클릭 핸들러
    */
   const handleEditClick = useCallback((e) => {
-    e.stopPropagation()
-    onEdit(scene.id)
-  }, [scene.id, onEdit])
+    e.stopPropagation();
+    onEdit(scene.id);
+  }, [scene.id, onEdit]);
 
   return (
     <Box
@@ -343,8 +343,8 @@ const TimelineV1Scene = ({
         transition: 'all 0.2s ease',
         '&:hover': {
           borderColor: theme.palette.primary.light,
-          boxShadow: theme.shadows[4]
-        }
+          boxShadow: theme.shadows[4],
+        },
       }}
       onClick={handleSceneClick}
     >
@@ -356,7 +356,7 @@ const TimelineV1Scene = ({
           justifyContent: 'space-between',
           p: 1.5,
           backgroundColor: theme.palette.grey[50],
-          borderBottom: `1px solid ${theme.palette.divider}`
+          borderBottom: `1px solid ${theme.palette.divider}`,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -401,7 +401,7 @@ const TimelineV1Scene = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'rgba(0,0,0,0.1)',
-              zIndex: 1
+              zIndex: 1,
             }}
           >
             <LinearProgress sx={{ width: '80%' }} />
@@ -416,7 +416,7 @@ const TimelineV1Scene = ({
               alignItems: 'center',
               justifyContent: 'center',
               height: 200,
-              backgroundColor: theme.palette.grey[100]
+              backgroundColor: theme.palette.grey[100],
             }}
           >
             <Error color="error" sx={{ fontSize: 32, mb: 1 }} />
@@ -452,7 +452,7 @@ const TimelineV1Scene = ({
               textOverflow: 'ellipsis',
               display: '-webkit-box',
               WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical'
+              WebkitBoxOrient: 'vertical',
             }}
           >
             {scene.description}
@@ -460,7 +460,7 @@ const TimelineV1Scene = ({
         )}
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default TimelineV1 
+export default TimelineV1; 

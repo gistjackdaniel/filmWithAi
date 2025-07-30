@@ -10,17 +10,17 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Alert
+  Alert,
 } from '@mui/material';
 import {
   Google as GoogleIcon,
   Email as EmailIcon,
   GitHub as GitHubIcon,
   Facebook as FacebookIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 
 /**
@@ -67,7 +67,7 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
       console.error('Google OAuth Error:', error);
       setError(new Error('Google 로그인에 실패했습니다.'));
       setIsLoading(false);
-    }
+    },
   });
 
   // 이메일/비밀번호 로그인 (향후 구현 예정)
@@ -101,7 +101,7 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
       icon: <GoogleIcon />,
       color: '#4285F4',
       handler: () => googleLogin(),
-      available: true
+      available: true,
     },
     {
       id: 'email',
@@ -109,7 +109,7 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
       icon: <EmailIcon />,
       color: '#D4AF37',
       handler: () => setAuthMethod('email'),
-      available: false // 개발 중
+      available: false, // 개발 중
     },
     {
       id: 'github',
@@ -117,7 +117,7 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
       icon: <GitHubIcon />,
       color: '#333',
       handler: handleGitHubLogin,
-      available: false // 개발 중
+      available: false, // 개발 중
     },
     {
       id: 'facebook',
@@ -125,8 +125,8 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
       icon: <FacebookIcon />,
       color: '#1877F2',
       handler: handleFacebookLogin,
-      available: false // 개발 중
-    }
+      available: false, // 개발 중
+    },
   ];
 
   return (
@@ -143,8 +143,8 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
         sx: {
           backgroundColor: 'var(--color-card-bg)',
           color: 'var(--color-text-primary)',
-          borderRadius: 3
-        }
+          borderRadius: 3,
+        },
       }}
     >
       <DialogTitle 
@@ -153,7 +153,7 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          pb: 1
+          pb: 1,
         }}
       >
         <Typography variant="h5" component="h2" sx={{ fontWeight: 600 }}>
@@ -247,12 +247,12 @@ const AuthOptions = ({ open, onClose, onSuccess }) => {
                     color: method.available ? method.color : 'var(--color-text-secondary)',
                     '&:hover': method.available ? {
                       borderColor: method.color,
-                      backgroundColor: `${method.color}10`
+                      backgroundColor: `${method.color}10`,
                     } : {},
                     '&:disabled': {
                       borderColor: 'var(--color-text-secondary)',
-                      color: 'var(--color-text-secondary)'
-                    }
+                      color: 'var(--color-text-secondary)',
+                    },
                   }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>

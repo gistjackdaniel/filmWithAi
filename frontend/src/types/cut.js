@@ -14,7 +14,7 @@ export const CameraSettings = {
   aperture: String,
   shutterSpeed: String,
   iso: String,
-}
+};
 
 /**
  * 피사체 타입
@@ -33,7 +33,7 @@ export const Subject = {
   action: String,
   emotion: String,
   description: String,
-}
+};
 
 /**
  * 특수 촬영 타입
@@ -50,7 +50,7 @@ export const SpecialCinematography = {
   jib: Boolean,
   underwater: Boolean,
   aerial: Boolean,
-}
+};
 
 /**
  * 특수 효과 타입
@@ -77,7 +77,7 @@ export const SpecialEffects = {
   fire: Boolean,
   explosion: Boolean,
   stunt: Boolean,
-}
+};
 
 /**
  * 특수 조명 타입
@@ -96,7 +96,7 @@ export const SpecialLighting = {
   uvLight: Boolean,
   movingLight: Boolean,
   colorChanger: Boolean,
-}
+};
 
 /**
  * 안전 요구사항 타입
@@ -109,7 +109,7 @@ export const Safety = {
   requiresMedic: Boolean,
   requiresFireSafety: Boolean,
   requiresSafetyOfficer: Boolean,
-}
+};
 
 /**
  * 특수 요구사항 타입
@@ -124,7 +124,7 @@ export const SpecialRequirements = {
   specialEffects: SpecialEffects,
   specialLighting: SpecialLighting,
   safety: Safety,
-}
+};
 
 /**
  * 카메라 설정 타입
@@ -141,7 +141,7 @@ export const CameraSetup = {
   cameraMovement: String,
   lensSpecs: String,
   cameraSettings: CameraSettings,
-}
+};
 
 /**
  * 컷 생성 요청 타입
@@ -182,7 +182,7 @@ export const CreateCutRequest = {
   estimatedDuration: Number,
   specialRequirements: SpecialRequirements,
   imageUrl: String,
-}
+};
 
 /**
  * 컷 수정 요청 타입
@@ -219,7 +219,7 @@ export const UpdateCutRequest = {
   specialRequirements: SpecialRequirements,
   imageUrl: String,
   order: Number,
-}
+};
 
 /**
  * 컷 초안 생성 요청 타입
@@ -230,7 +230,7 @@ export const UpdateCutRequest = {
 export const CreateCutDraftRequest = {
   maxCuts: Number,
   genre: String,
-}
+};
 
 /**
  * 이미지 업로드 요청 타입
@@ -239,7 +239,7 @@ export const CreateCutDraftRequest = {
  */
 export const UploadImageRequest = {
   file: File,
-}
+};
 
 /**
  * 컷 응답 타입
@@ -286,7 +286,7 @@ export const CutResponse = {
   imageUrl: String,
   createdAt: Date,
   updatedAt: Date,
-}
+};
 
 /**
  * 컷 목록 응답 타입
@@ -299,7 +299,7 @@ export const CutListResponse = {
   success: Boolean,
   data: [CutResponse],
   message: String,
-}
+};
 
 /**
  * 컷 상세 응답 타입
@@ -312,7 +312,7 @@ export const CutDetailResponse = {
   success: Boolean,
   data: CutResponse,
   message: String,
-}
+};
 
 /**
  * 이미지 생성 응답 타입
@@ -325,7 +325,7 @@ export const ImageGenerationResponse = {
   success: Boolean,
   data: String,
   message: String,
-}
+};
 
 // 기본 컷 객체 생성 함수
 export const createDefaultCut = () => ({
@@ -392,80 +392,80 @@ export const createDefaultCut = () => ({
   imageUrl: '',
   createdAt: new Date(),
   updatedAt: new Date(),
-})
+});
 
 // 컷 유효성 검사 함수
 export const validateCut = (cut) => {
-  const errors = []
+  const errors = [];
   
   if (!cut.sceneId || cut.sceneId.trim() === '') {
-    errors.push('씬 ID는 필수입니다.')
+    errors.push('씬 ID는 필수입니다.');
   }
   
   if (!cut.projectId || cut.projectId.trim() === '') {
-    errors.push('프로젝트 ID는 필수입니다.')
+    errors.push('프로젝트 ID는 필수입니다.');
   }
   
   if (!cut.order || cut.order < 1) {
-    errors.push('순서는 1 이상이어야 합니다.')
+    errors.push('순서는 1 이상이어야 합니다.');
   }
   
   if (!cut.title || cut.title.trim() === '') {
-    errors.push('컷 제목은 필수입니다.')
+    errors.push('컷 제목은 필수입니다.');
   }
   
   if (!cut.description || cut.description.trim() === '') {
-    errors.push('컷 설명은 필수입니다.')
+    errors.push('컷 설명은 필수입니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 컷 정렬 함수
 export const sortCuts = (cuts, sortBy = 'order', order = 'asc') => {
   return [...cuts].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
+    let aValue = a[sortBy];
+    let bValue = b[sortBy];
     
     if (sortBy === 'order') {
-      aValue = parseInt(aValue) || 0
-      bValue = parseInt(bValue) || 0
+      aValue = parseInt(aValue) || 0;
+      bValue = parseInt(bValue) || 0;
     }
     
     if (order === 'asc') {
-      return aValue > bValue ? 1 : -1
+      return aValue > bValue ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1
+      return aValue < bValue ? 1 : -1;
     }
-  })
-}
+  });
+};
 
 // 컷 필터링 함수
 export const filterCuts = (cuts, filters) => {
   return cuts.filter(cut => {
     // 제목 필터
     if (filters.title && !cut.title.toLowerCase().includes(filters.title.toLowerCase())) {
-      return false
+      return false;
     }
     
     // 설명 필터
     if (filters.description && !cut.description.toLowerCase().includes(filters.description.toLowerCase())) {
-      return false
+      return false;
     }
     
     // 제작 방법 필터
     if (filters.productionMethod && cut.productionMethod !== filters.productionMethod) {
-      return false
+      return false;
     }
     
     // 샷 사이즈 필터
     if (filters.shotSize && cut.cameraSetup?.shotSize !== filters.shotSize) {
-      return false
+      return false;
     }
     
-    return true
-  })
-}
+    return true;
+  });
+};
 
 export default {
   CameraSettings,
@@ -488,4 +488,4 @@ export default {
   validateCut,
   sortCuts,
   filterCuts,
-}
+};

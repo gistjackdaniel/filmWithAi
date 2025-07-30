@@ -355,6 +355,65 @@ export class ExtraMemberResponseDto {
   number: number;
 }
 
+export class SceneDraftResponseDto {
+  @ApiProperty({ description: '씬 제목', example: 'Scene 1 - 주인공 도시 도착' })
+  title: string;
+
+  @ApiProperty({ description: '씬 설명', example: '주인공이 처음으로 도시에 도착하여 주변을 둘러보는 도입부 씬' })
+  description: string;
+
+  @ApiProperty({ description: '대화 목록', type: [DialogueResponseDto] })
+  dialogues: DialogueResponseDto[];
+
+  @ApiProperty({ description: '날씨', example: '맑음' })
+  weather: string;
+
+  @ApiProperty({ description: '조명 설정', type: LightingResponseDto })
+  lighting: LightingResponseDto;
+
+  @ApiProperty({ description: '시각적 설명', example: '도시의 고층빌딩들이 하늘을 가리고, 거리에는 사람들이 바쁘게 오가는 모습' })
+  visualDescription: string;
+
+  @ApiProperty({ description: '씬 시간', example: '2024년 1월 15일 오후 3시' })
+  sceneDateTime: string;
+
+  @ApiProperty({ description: 'VFX 필요 여부', example: false })
+  vfxRequired: boolean;
+
+  @ApiProperty({ description: 'SFX 필요 여부', example: true })
+  sfxRequired: boolean;
+
+  @ApiProperty({ description: '예상 지속 시간', example: '5분' })
+  estimatedDuration: string;
+
+  @ApiProperty({ description: '씬 위치', example: '서울 강남구 테헤란로' })
+  scenePlace: string;
+
+  @ApiProperty({ description: '실제 위치', type: RealLocationResponseDto })
+  location: RealLocationResponseDto;
+
+  @ApiProperty({ description: '씬 시간대', example: '오후' })
+  timeOfDay: string;
+
+  @ApiProperty({ description: '인력 구성', type: CrewResponseDto })
+  crew: CrewResponseDto;
+
+  @ApiProperty({ description: '장비 구성', type: EquipmentResponseDto })
+  equipment: EquipmentResponseDto;
+
+  @ApiProperty({ description: '출연진', type: [CastMemberResponseDto] })
+  cast: CastMemberResponseDto[];
+
+  @ApiProperty({ description: '추가 인원', type: [ExtraMemberResponseDto] })
+  extra: ExtraMemberResponseDto[];
+
+  @ApiProperty({ description: '특별 요구사항', example: ['도시 배경음 필요', '자연스러운 연기'] })
+  specialRequirements: string[];
+
+  @ApiProperty({ description: '순서', example: 1 })
+  order: number;
+}
+
 export class SceneResponseDto {
   @ApiProperty({ description: '씬 ID', example: '507f1f77bcf86cd799439011' })
   _id: Types.ObjectId;

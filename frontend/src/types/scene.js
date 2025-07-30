@@ -12,7 +12,7 @@
 export const Dialogue = {
   character: String,
   text: String,
-}
+};
 
 /**
  * 조명 설정 타입
@@ -25,7 +25,7 @@ export const LightSetup = {
   type: String,
   equipment: String,
   intensity: String,
-}
+};
 
 /**
  * 그립 모디파이어 타입
@@ -40,7 +40,7 @@ export const GripModifier = {
   diffusion: [String],
   reflectors: [String],
   colorGels: [String],
-}
+};
 
 /**
  * 조명 전체 설정 타입
@@ -51,7 +51,7 @@ export const GripModifier = {
 export const LightOverall = {
   colorTemperature: String,
   mood: String,
-}
+};
 
 /**
  * 조명 설정 타입
@@ -74,7 +74,7 @@ export const LightingSetup = {
   softLight: LightSetup,
   gripModifier: GripModifier,
   overall: LightOverall,
-}
+};
 
 /**
  * 조명 타입
@@ -85,7 +85,7 @@ export const LightingSetup = {
 export const Lighting = {
   description: String,
   setup: LightingSetup,
-}
+};
 
 /**
  * 실제 위치 타입
@@ -98,7 +98,7 @@ export const RealLocation = {
   name: String,
   address: String,
   group_name: String,
-}
+};
 
 /**
  * 인력 멤버 타입
@@ -111,7 +111,7 @@ export const CrewMember = {
   role: String,
   contact: String,
   profileId: String,
-}
+};
 
 /**
  * 인력 역할 타입
@@ -126,7 +126,7 @@ export const Direction = {
   assistantDirector: [CrewMember],
   scriptSupervisor: [CrewMember],
   continuity: [CrewMember],
-}
+};
 
 /**
  * 제작팀 타입
@@ -141,7 +141,7 @@ export const Production = {
   lineProducer: [CrewMember],
   productionManager: [CrewMember],
   productionAssistant: [CrewMember],
-}
+};
 
 /**
  * 촬영팀 타입
@@ -158,7 +158,7 @@ export const Cinematography = {
   firstAssistant: [CrewMember],
   secondAssistant: [CrewMember],
   dollyGrip: [CrewMember],
-}
+};
 
 /**
  * 조명팀 타입
@@ -173,7 +173,7 @@ export const LightingCrew = {
   bestBoy: [CrewMember],
   electrician: [CrewMember],
   generatorOperator: [CrewMember],
-}
+};
 
 /**
  * 음향팀 타입
@@ -188,7 +188,7 @@ export const Sound = {
   boomOperator: [CrewMember],
   soundAssistant: [CrewMember],
   utility: [CrewMember],
-}
+};
 
 /**
  * 미술팀 타입
@@ -209,7 +209,7 @@ export const Art = {
   makeupArtist: [CrewMember],
   costumeDesigner: [CrewMember],
   hairStylist: [CrewMember],
-}
+};
 
 /**
  * 인력 구성 타입
@@ -228,7 +228,7 @@ export const Crew = {
   lighting: LightingCrew,
   sound: Sound,
   art: Art,
-}
+};
 
 /**
  * 연출 장비 타입
@@ -241,7 +241,7 @@ export const DirectionEquipment = {
   monitors: [String],
   communication: [String],
   scriptBoards: [String],
-}
+};
 
 /**
  * 제작 장비 타입
@@ -254,7 +254,7 @@ export const ProductionEquipment = {
   scheduling: [String],
   safety: [String],
   transportation: [String],
-}
+};
 
 /**
  * 촬영 장비 타입
@@ -271,7 +271,7 @@ export const CinematographyEquipment = {
   supports: [String],
   filters: [String],
   accessories: [String],
-}
+};
 
 /**
  * 조명 장비 타입
@@ -294,7 +294,7 @@ export const LightingEquipment = {
   softLights: [String],
   gripModifiers: GripModifier,
   power: [String],
-}
+};
 
 /**
  * 음향 장비 타입
@@ -309,7 +309,7 @@ export const SoundEquipment = {
   recorders: [String],
   wireless: [String],
   monitoring: [String],
-}
+};
 
 /**
  * 미술 소품 타입
@@ -320,7 +320,7 @@ export const SoundEquipment = {
 export const ArtProps = {
   characterProps: [String],
   setProps: [String],
-}
+};
 
 /**
  * 미술 장비 타입
@@ -337,7 +337,7 @@ export const ArtEquipment = {
   setDressing: [String],
   costumes: [String],
   specialEffects: [String],
-}
+};
 
 /**
  * 장비 구성 타입
@@ -356,7 +356,7 @@ export const Equipment = {
   lighting: LightingEquipment,
   sound: SoundEquipment,
   art: ArtEquipment,
-}
+};
 
 /**
  * 출연진 멤버 타입
@@ -369,7 +369,7 @@ export const CastMember = {
   role: String,
   name: String,
   profileId: String,
-}
+};
 
 /**
  * 추가 인원 타입
@@ -380,7 +380,7 @@ export const CastMember = {
 export const ExtraMember = {
   role: String,
   number: Number,
-}
+};
 
 /**
  * 씬 생성 요청 타입
@@ -425,7 +425,7 @@ export const CreateSceneRequest = {
   extra: [ExtraMember],
   specialRequirements: [String],
   order: Number,
-}
+};
 
 /**
  * 씬 수정 요청 타입
@@ -470,7 +470,7 @@ export const UpdateSceneRequest = {
   extra: [ExtraMember],
   specialRequirements: [String],
   order: Number,
-}
+};
 
 /**
  * 씬 초안 생성 요청 타입
@@ -479,7 +479,7 @@ export const UpdateSceneRequest = {
  */
 export const CreateSceneDraftRequest = {
   maxScenes: Number,
-}
+};
 
 /**
  * 씬 응답 타입
@@ -534,7 +534,7 @@ export const SceneResponse = {
   isDeleted: Boolean,
   createdAt: Date,
   updatedAt: Date,
-}
+};
 
 /**
  * 씬 목록 응답 타입
@@ -547,7 +547,7 @@ export const SceneListResponse = {
   success: Boolean,
   data: [SceneResponse],
   message: String,
-}
+};
 
 /**
  * 씬 상세 응답 타입
@@ -560,7 +560,7 @@ export const SceneDetailResponse = {
   success: Boolean,
   data: SceneResponse,
   message: String,
-}
+};
 
 // 기본 씬 객체 생성 함수
 export const createDefaultScene = () => ({
@@ -702,118 +702,118 @@ export const createDefaultScene = () => ({
   isDeleted: false,
   createdAt: new Date(),
   updatedAt: new Date(),
-})
+});
 
 // 씬 유효성 검사 함수
 export const validateScene = (scene) => {
-  const errors = []
+  const errors = [];
   
   if (!scene.title || scene.title.trim() === '') {
-    errors.push('씬 제목은 필수입니다.')
+    errors.push('씬 제목은 필수입니다.');
   }
   
   if (!scene.description || scene.description.trim() === '') {
-    errors.push('씬 설명은 필수입니다.')
+    errors.push('씬 설명은 필수입니다.');
   }
   
   if (!scene.dialogues || scene.dialogues.length === 0) {
-    errors.push('씬 대사는 최소 하나 이상 필요합니다.')
+    errors.push('씬 대사는 최소 하나 이상 필요합니다.');
   }
   
   if (!scene.weather || scene.weather.trim() === '') {
-    errors.push('씬 날씨는 필수입니다.')
+    errors.push('씬 날씨는 필수입니다.');
   }
   
   if (!scene.visualDescription || scene.visualDescription.trim() === '') {
-    errors.push('씬 시각 설명은 필수입니다.')
+    errors.push('씬 시각 설명은 필수입니다.');
   }
   
   if (!scene.scenePlace || scene.scenePlace.trim() === '') {
-    errors.push('씬 장소는 필수입니다.')
+    errors.push('씬 장소는 필수입니다.');
   }
   
   if (!scene.sceneDateTime || scene.sceneDateTime.trim() === '') {
-    errors.push('씬 시간은 필수입니다.')
+    errors.push('씬 시간은 필수입니다.');
   }
   
   if (!scene.estimatedDuration || scene.estimatedDuration.trim() === '') {
-    errors.push('예상 지속 시간은 필수입니다.')
+    errors.push('예상 지속 시간은 필수입니다.');
   }
   
   if (!scene.timeOfDay || scene.timeOfDay.trim() === '') {
-    errors.push('씬 시간대는 필수입니다.')
+    errors.push('씬 시간대는 필수입니다.');
   }
   
   if (!scene.order || scene.order < 1) {
-    errors.push('순서는 1 이상이어야 합니다.')
+    errors.push('순서는 1 이상이어야 합니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 씬 정렬 함수
 export const sortScenes = (scenes, sortBy = 'order', order = 'asc') => {
   return [...scenes].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
+    let aValue = a[sortBy];
+    let bValue = b[sortBy];
     
     if (sortBy === 'order') {
-      aValue = parseInt(aValue) || 0
-      bValue = parseInt(bValue) || 0
+      aValue = parseInt(aValue) || 0;
+      bValue = parseInt(bValue) || 0;
     }
     
     if (order === 'asc') {
-      return aValue > bValue ? 1 : -1
+      return aValue > bValue ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1
+      return aValue < bValue ? 1 : -1;
     }
-  })
-}
+  });
+};
 
 // 씬 필터링 함수
 export const filterScenes = (scenes, filters) => {
   return scenes.filter(scene => {
     // 제목 필터
     if (filters.title && !scene.title.toLowerCase().includes(filters.title.toLowerCase())) {
-      return false
+      return false;
     }
     
     // 설명 필터
     if (filters.description && !scene.description.toLowerCase().includes(filters.description.toLowerCase())) {
-      return false
+      return false;
     }
     
     // 날씨 필터
     if (filters.weather && scene.weather !== filters.weather) {
-      return false
+      return false;
     }
     
     // 시간대 필터
     if (filters.timeOfDay && scene.timeOfDay !== filters.timeOfDay) {
-      return false
+      return false;
     }
     
     // VFX/SFX 필터
     if (filters.vfxRequired !== undefined && scene.vfxRequired !== filters.vfxRequired) {
-      return false
+      return false;
     }
     
     if (filters.sfxRequired !== undefined && scene.sfxRequired !== filters.sfxRequired) {
-      return false
+      return false;
     }
     
     // 순서 필터
     if (filters.minOrder && scene.order < filters.minOrder) {
-      return false
+      return false;
     }
     
     if (filters.maxOrder && scene.order > filters.maxOrder) {
-      return false
+      return false;
     }
     
-    return true
-  })
-}
+    return true;
+  });
+};
 
 export default {
   Dialogue,
@@ -851,4 +851,4 @@ export default {
   validateScene,
   sortScenes,
   filterScenes,
-} 
+}; 

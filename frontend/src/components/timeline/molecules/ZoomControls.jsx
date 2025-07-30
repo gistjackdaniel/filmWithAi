@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import { 
   Box, 
   IconButton, 
@@ -9,16 +9,16 @@ import {
   MenuItem,
   Button,
   TextField,
-  InputAdornment
-} from '@mui/material'
+  InputAdornment,
+} from '@mui/material';
 import { 
   ZoomIn, 
   ZoomOut, 
   Fullscreen,
   FullscreenExit,
   FitScreen,
-  KeyboardArrowDown
-} from '@mui/icons-material'
+  KeyboardArrowDown,
+} from '@mui/icons-material';
 
 /**
  * 줌 컨트롤 컴포넌트
@@ -37,74 +37,74 @@ const ZoomControls = ({
   showButtons = true,
   showFitButton = true,
   showMenu = true,
-  sx = {}
+  sx = {},
 }) => {
   // 줌 메뉴 상태
-  const [zoomMenuAnchor, setZoomMenuAnchor] = useState(null)
+  const [zoomMenuAnchor, setZoomMenuAnchor] = useState(null);
   // 직접 입력 모드 상태
-  const [isDirectInput, setIsDirectInput] = useState(false)
+  const [isDirectInput, setIsDirectInput] = useState(false);
   // 직접 입력 값
-  const [directInputValue, setDirectInputValue] = useState(zoomLevel.toString())
+  const [directInputValue, setDirectInputValue] = useState(zoomLevel.toString());
 
   // 줌 변경 핸들러
   const handleZoomChange = (newZoomLevel) => {
     if (onZoomChange) {
-      onZoomChange(Math.max(minZoom, Math.min(maxZoom, newZoomLevel)))
+      onZoomChange(Math.max(minZoom, Math.min(maxZoom, newZoomLevel)));
     }
-  }
+  };
 
   // 줌 인/아웃 핸들러
   const handleZoomIn = () => {
-    const newZoom = Math.min(maxZoom, zoomLevel * 2)
-    handleZoomChange(newZoom)
-  }
+    const newZoom = Math.min(maxZoom, zoomLevel * 2);
+    handleZoomChange(newZoom);
+  };
 
   const handleZoomOut = () => {
-    const newZoom = Math.max(minZoom, zoomLevel / 2)
-    handleZoomChange(newZoom)
-  }
+    const newZoom = Math.max(minZoom, zoomLevel / 2);
+    handleZoomChange(newZoom);
+  };
 
   // 줌 슬라이더 핸들러
   const handleSliderChange = (event, newValue) => {
-    const zoomValue = sliderValueToZoom(newValue)
-    handleZoomChange(zoomValue)
-  }
+    const zoomValue = sliderValueToZoom(newValue);
+    handleZoomChange(zoomValue);
+  };
 
   // 전체 보기 핸들러
   const handleFitToScreen = () => {
     if (onFitToScreen) {
-      onFitToScreen()
+      onFitToScreen();
     }
-  }
+  };
 
   // 직접 입력 핸들러
   const handleDirectInputChange = (event) => {
-    const value = event.target.value
-    setDirectInputValue(value)
-  }
+    const value = event.target.value;
+    setDirectInputValue(value);
+  };
 
   const handleDirectInputKeyDown = (event) => {
     if (event.key === 'Enter') {
-      const numValue = parseFloat(directInputValue)
+      const numValue = parseFloat(directInputValue);
       if (!isNaN(numValue) && numValue >= minZoom && numValue <= maxZoom) {
-        handleZoomChange(numValue)
-        setIsDirectInput(false)
+        handleZoomChange(numValue);
+        setIsDirectInput(false);
       }
     } else if (event.key === 'Escape') {
-      setDirectInputValue(zoomLevel.toString())
-      setIsDirectInput(false)
+      setDirectInputValue(zoomLevel.toString());
+      setIsDirectInput(false);
     }
-  }
+  };
 
   const handleDirectInputBlur = () => {
-    const numValue = parseFloat(directInputValue)
+    const numValue = parseFloat(directInputValue);
     if (!isNaN(numValue) && numValue >= minZoom && numValue <= maxZoom) {
-      handleZoomChange(numValue)
+      handleZoomChange(numValue);
     } else {
-      setDirectInputValue(zoomLevel.toString())
+      setDirectInputValue(zoomLevel.toString());
     }
-    setIsDirectInput(false)
-  }
+    setIsDirectInput(false);
+  };
 
   // 줌 레벨 옵션 (더 세밀한 배율 추가)
   const zoomOptions = [
@@ -116,19 +116,19 @@ const ZoomControls = ({
     { label: '16x', value: 16 },
     { label: '32x', value: 32 },
     { label: '50x', value: 50 },
-    { label: '100x', value: 100 }
-  ]
+    { label: '100x', value: 100 },
+  ];
 
   // 줌 레벨을 슬라이더 값으로 변환 (로그 스케일)
   const zoomToSliderValue = (zoom) => {
-    return Math.log2(zoom / minZoom) / Math.log2(maxZoom / minZoom) * 100
-  }
+    return Math.log2(zoom / minZoom) / Math.log2(maxZoom / minZoom) * 100;
+  };
 
   // 슬라이더 값을 줌 레벨로 변환
   const sliderValueToZoom = (sliderValue) => {
-    const ratio = sliderValue / 100
-    return minZoom * Math.pow(maxZoom / minZoom, ratio)
-  }
+    const ratio = sliderValue / 100;
+    return minZoom * Math.pow(maxZoom / minZoom, ratio);
+  };
 
   return (
     <Box
@@ -140,7 +140,7 @@ const ZoomControls = ({
         backgroundColor: 'var(--color-card-bg)',
         borderRadius: '8px',
         border: '1px solid var(--color-scene-card-border)',
-        ...sx
+        ...sx,
       }}
     >
       {/* 줌 아웃 버튼 */}
@@ -158,7 +158,7 @@ const ZoomControls = ({
               },
               '&.Mui-disabled': {
                 color: 'var(--color-text-disabled)',
-              }
+              },
             }}
           >
             <ZoomOut fontSize="small" />
@@ -191,7 +191,7 @@ const ZoomControls = ({
               '& .MuiSlider-rail': {
                 backgroundColor: 'var(--color-scene-card-border)',
                 height: 3,
-              }
+              },
             }}
           />
           
@@ -201,8 +201,8 @@ const ZoomControls = ({
               <Typography
                 variant="caption"
                 onClick={() => {
-                  setIsDirectInput(true)
-                  setDirectInputValue(zoomLevel.toString())
+                  setIsDirectInput(true);
+                  setDirectInputValue(zoomLevel.toString());
                 }}
                 sx={{
                   font: 'var(--font-caption)',
@@ -218,7 +218,7 @@ const ZoomControls = ({
                     backgroundColor: 'var(--color-hover)',
                     color: 'var(--color-accent)',
                     borderColor: 'var(--color-accent)',
-                  }
+                  },
                 }}
               >
                 {zoomLevel.toFixed(1)}x
@@ -242,15 +242,15 @@ const ZoomControls = ({
                   '& input': {
                     padding: '2px 4px',
                     textAlign: 'center',
-                  }
-                }
+                  },
+                },
               }}
               sx={{
                 width: '60px',
                 '& .MuiOutlinedInput-root': {
                   height: '24px',
                   fontSize: '0.75rem',
-                }
+                },
               }}
             />
           )}
@@ -272,7 +272,7 @@ const ZoomControls = ({
               },
               '&.Mui-disabled': {
                 color: 'var(--color-text-disabled)',
-              }
+              },
             }}
           >
             <ZoomIn fontSize="small" />
@@ -289,20 +289,20 @@ const ZoomControls = ({
               variant="outlined"
               onClick={(e) => setZoomMenuAnchor(e.currentTarget)}
               endIcon={<KeyboardArrowDown />}
-                          sx={{
-              minWidth: 'auto',
-              px: 1,
-              py: 0.5,
-              fontSize: '0.75rem',
-              color: 'var(--color-text-secondary)',
-              borderColor: 'var(--color-scene-card-border)',
-              backgroundColor: 'var(--color-card-bg)',
-              '&:hover': {
-                color: 'var(--color-accent)',
-                borderColor: 'var(--color-accent)',
-                backgroundColor: 'var(--color-hover)',
-              }
-            }}
+              sx={{
+                minWidth: 'auto',
+                px: 1,
+                py: 0.5,
+                fontSize: '0.75rem',
+                color: 'var(--color-text-secondary)',
+                borderColor: 'var(--color-scene-card-border)',
+                backgroundColor: 'var(--color-card-bg)',
+                '&:hover': {
+                  color: 'var(--color-accent)',
+                  borderColor: 'var(--color-accent)',
+                  backgroundColor: 'var(--color-hover)',
+                },
+              }}
             >
               배율
             </Button>
@@ -317,15 +317,15 @@ const ZoomControls = ({
                 backgroundColor: 'var(--color-card-bg)',
                 border: '1px solid var(--color-scene-card-border)',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              }
+              },
             }}
           >
             {zoomOptions.map((option) => (
               <MenuItem
                 key={option.value}
                 onClick={() => {
-                  handleZoomChange(option.value)
-                  setZoomMenuAnchor(null)
+                  handleZoomChange(option.value);
+                  setZoomMenuAnchor(null);
                 }}
                 selected={Math.abs(zoomLevel - option.value) < 0.1}
                 sx={{
@@ -340,8 +340,8 @@ const ZoomControls = ({
                     backgroundColor: 'var(--color-accent-light)',
                     '&:hover': {
                       backgroundColor: 'var(--color-accent-light)',
-                    }
-                  }
+                    },
+                  },
                 }}
               >
                 {option.label}
@@ -362,7 +362,7 @@ const ZoomControls = ({
               '&:hover': {
                 color: 'var(--color-accent)',
                 backgroundColor: 'var(--color-hover)',
-              }
+              },
             }}
           >
             <FitScreen fontSize="small" />
@@ -370,7 +370,7 @@ const ZoomControls = ({
         </Tooltip>
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default ZoomControls 
+export default ZoomControls; 

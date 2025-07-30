@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   Box, 
   Typography, 
@@ -6,16 +6,16 @@ import {
   LinearProgress, 
   Alert,
   IconButton,
-  Tooltip
-} from '@mui/material'
+  Tooltip,
+} from '@mui/material';
 import { 
   CloudUpload, 
   VideoFile, 
   Delete, 
   PlayArrow,
-  Pause
-} from '@mui/icons-material'
-import { useTheme } from '@mui/material/styles'
+  Pause,
+} from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 
 /**
  * 동영상 파일 업로드 컴포넌트
@@ -26,18 +26,18 @@ const VideoUploader = ({
   onVideoRemove,
   acceptedFormats = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv'],
   maxFileSize = 100 * 1024 * 1024, // 100MB
-  disabled = false 
+  disabled = false, 
 }) => {
-  const theme = useTheme()
-  const fileInputRef = useRef(null)
-  const videoRef = useRef(null)
+  const theme = useTheme();
+  const fileInputRef = useRef(null);
+  const videoRef = useRef(null);
   
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [uploadedVideo, setUploadedVideo] = useState(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [error, setError] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadedVideo, setUploadedVideo] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   /**
    * 파일 유효성 검사
@@ -45,93 +45,93 @@ const VideoUploader = ({
   const validateFile = useCallback((file) => {
     // 파일 크기 검사
     if (file.size > maxFileSize) {
-      throw new Error(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxFileSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
+      throw new Error(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxFileSize / 1024 / 1024)}MB까지 업로드 가능합니다.`);
     }
 
     // 파일 형식 검사
     if (!acceptedFormats.includes(file.type)) {
-      throw new Error('지원하지 않는 동영상 형식입니다. MP4, AVI, MOV, WMV 형식을 지원합니다.')
+      throw new Error('지원하지 않는 동영상 형식입니다. MP4, AVI, MOV, WMV 형식을 지원합니다.');
     }
 
-    return true
-  }, [maxFileSize, acceptedFormats])
+    return true;
+  }, [maxFileSize, acceptedFormats]);
 
   /**
    * 파일 처리
    */
   const processFile = useCallback(async (file) => {
     try {
-      setError(null)
-      setIsUploading(true)
-      setUploadProgress(0)
+      setError(null);
+      setIsUploading(true);
+      setUploadProgress(0);
 
       // 파일 유효성 검사
-      validateFile(file)
+      validateFile(file);
 
       // 실제 업로드 로직 (외부 핸들러 호출)
       if (onVideoUpload) {
         await onVideoUpload(file, (progress) => {
-          setUploadProgress(progress)
-        })
+          setUploadProgress(progress);
+        });
         
         // 업로드 성공 후 다이얼로그 닫기
-        setIsUploading(false)
-        setUploadProgress(100)
+        setIsUploading(false);
+        setUploadProgress(100);
       } else {
         // onVideoUpload가 없는 경우 내부에서 처리
-        const videoUrl = URL.createObjectURL(file)
+        const videoUrl = URL.createObjectURL(file);
         
         setUploadedVideo({
           file,
           url: videoUrl,
           name: file.name,
           size: file.size,
-          type: file.type
-        })
+          type: file.type,
+        });
         
-        setIsUploading(false)
-        setUploadProgress(100)
+        setIsUploading(false);
+        setUploadProgress(100);
       }
 
     } catch (err) {
-      setError(err.message)
-      setIsUploading(false)
-      setUploadProgress(0)
+      setError(err.message);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
-  }, [validateFile, onVideoUpload])
+  }, [validateFile, onVideoUpload]);
 
   /**
    * 파일 선택 핸들러
    */
   const handleFileSelect = useCallback((event) => {
-    const file = event.target.files[0]
+    const file = event.target.files[0];
     if (file) {
-      processFile(file)
+      processFile(file);
     }
-  }, [processFile])
+  }, [processFile]);
 
   /**
    * 드래그 앤 드롭 핸들러
    */
   const handleDragOver = useCallback((event) => {
-    event.preventDefault()
-    setIsDragOver(true)
-  }, [])
+    event.preventDefault();
+    setIsDragOver(true);
+  }, []);
 
   const handleDragLeave = useCallback((event) => {
-    event.preventDefault()
-    setIsDragOver(false)
-  }, [])
+    event.preventDefault();
+    setIsDragOver(false);
+  }, []);
 
   const handleDrop = useCallback((event) => {
-    event.preventDefault()
-    setIsDragOver(false)
+    event.preventDefault();
+    setIsDragOver(false);
     
-    const files = event.dataTransfer.files
+    const files = event.dataTransfer.files;
     if (files.length > 0) {
-      processFile(files[0])
+      processFile(files[0]);
     }
-  }, [processFile])
+  }, [processFile]);
 
   /**
    * 동영상 재생/일시정지 토글
@@ -139,36 +139,36 @@ const VideoUploader = ({
   const handlePlayPause = useCallback(() => {
     if (videoRef.current) {
       if (isPlaying) {
-        videoRef.current.pause()
+        videoRef.current.pause();
       } else {
-        videoRef.current.play()
+        videoRef.current.play();
       }
-      setIsPlaying(!isPlaying)
+      setIsPlaying(!isPlaying);
     }
-  }, [isPlaying])
+  }, [isPlaying]);
 
   /**
    * 동영상 제거
    */
   const handleRemoveVideo = useCallback(() => {
     if (uploadedVideo?.url) {
-      URL.revokeObjectURL(uploadedVideo.url)
+      URL.revokeObjectURL(uploadedVideo.url);
     }
-    setUploadedVideo(null)
-    setError(null)
-    setUploadProgress(0)
+    setUploadedVideo(null);
+    setError(null);
+    setUploadProgress(0);
     
     if (onVideoRemove) {
-      onVideoRemove()
+      onVideoRemove();
     }
-  }, [uploadedVideo, onVideoRemove])
+  }, [uploadedVideo, onVideoRemove]);
 
   /**
    * 파일 선택 버튼 클릭
    */
   const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
+    fileInputRef.current?.click();
+  }, []);
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -193,7 +193,7 @@ const VideoUploader = ({
             backgroundColor: isDragOver ? theme.palette.primary.light + '20' : 'transparent',
             transition: 'all 0.3s ease',
             cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.6 : 1
+            opacity: disabled ? 0.6 : 1,
           }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -204,7 +204,7 @@ const VideoUploader = ({
             sx={{ 
               fontSize: 48, 
               color: theme.palette.primary.main,
-              mb: 2 
+              mb: 2, 
             }} 
           />
           
@@ -254,7 +254,7 @@ const VideoUploader = ({
                 width: '100%',
                 height: 'auto',
                 maxHeight: '300px',
-                objectFit: 'cover'
+                objectFit: 'cover',
               }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
@@ -271,8 +271,8 @@ const VideoUploader = ({
                 backgroundColor: 'rgba(0,0,0,0.7)',
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: 'rgba(0,0,0,0.8)'
-                }
+                  backgroundColor: 'rgba(0,0,0,0.8)',
+                },
               }}
             >
               {isPlaying ? <Pause /> : <PlayArrow />}
@@ -301,7 +301,7 @@ const VideoUploader = ({
         </Box>
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default VideoUploader 
+export default VideoUploader; 

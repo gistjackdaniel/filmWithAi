@@ -31,7 +31,8 @@ import {
   UploadImageDto
 } from './dto/request.dto';
 import { 
-  CutResponseDto
+  CutResponseDto,
+  CutDraftResponseDto
 } from './dto/response.dto';
 import { JwtAuthGuard } from '../common/guard/jwt-auth.guard';
 import { CutService } from './cut.service';
@@ -71,7 +72,7 @@ export class CutController {
   @ApiResponse({ 
     status: HttpStatus.CREATED, 
     description: '컷 초안이 성공적으로 생성되었습니다. 사용자가 편집 후 createCut을 통해 저장할 수 있습니다.',
-    type: [CutResponseDto]
+    type: [CutDraftResponseDto]
   })
   @ApiResponse({ 
     status: HttpStatus.BAD_REQUEST, 
@@ -81,7 +82,7 @@ export class CutController {
     @Param('projectId') projectId: string, 
     @Param('sceneId') sceneId: string,
     @Body() createCutDraftRequestDto: CreateCutDraftRequestDto
-  ): Promise<CutResponseDto[]> {
+  ): Promise<CutDraftResponseDto[]> {
     return this.cutService.createDraft(projectId, sceneId, createCutDraftRequestDto);
   }
 

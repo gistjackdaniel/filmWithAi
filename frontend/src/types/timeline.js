@@ -20,7 +20,7 @@ export const Timeline = {
   totalDuration: Number,
   createdAt: Date,
   updatedAt: Date,
-}
+};
 
 /**
  * 캡션 카드 타입
@@ -50,7 +50,7 @@ export const CaptionCard = {
   },
   type: String,
   metadata: Object,
-}
+};
 
 /**
  * 타임라인 필터 옵션
@@ -85,8 +85,8 @@ export const TimelineFilter = {
   duration: {
     min: Number,
     max: Number,
-  }
-}
+  },
+};
 
 /**
  * 타임라인 정렬 옵션
@@ -100,7 +100,7 @@ export const TimelineSort = {
   END_TIME: 'end_time',          // 끝 시간순
   CREATED_AT: 'created_at',      // 생성일순
   TYPE: 'type',                  // 타입별
-}
+};
 
 /**
  * 스케줄링 결과 인터페이스
@@ -131,7 +131,7 @@ export const SchedulingResult = {
     totalCost: Number,
   }],
   optimizedWeight: Number,
-}
+};
 
 /**
  * 시간 기반 타임라인 설정 인터페이스
@@ -150,7 +150,7 @@ export const TimelineTimeSettings = {
   minSceneWidth: Number,
   tickInterval: Number,
   timeUnit: String,
-}
+};
 
 /**
  * 타임라인 생성 요청 타입
@@ -163,7 +163,7 @@ export const CreateTimelineRequest = {
   projectId: String,
   captionCards: [CaptionCard],
   totalDuration: Number,
-}
+};
 
 /**
  * 타임라인 수정 요청 타입
@@ -174,7 +174,7 @@ export const CreateTimelineRequest = {
 export const UpdateTimelineRequest = {
   captionCards: [CaptionCard],
   totalDuration: Number,
-}
+};
 
 /**
  * 타임라인 응답 타입
@@ -193,7 +193,7 @@ export const TimelineResponse = {
   totalDuration: Number,
   createdAt: Date,
   updatedAt: Date,
-}
+};
 
 /**
  * 타임라인 목록 응답 타입
@@ -206,7 +206,7 @@ export const TimelineListResponse = {
   success: Boolean,
   data: [TimelineResponse],
   message: String,
-}
+};
 
 /**
  * 타임라인 상세 응답 타입
@@ -219,7 +219,7 @@ export const TimelineDetailResponse = {
   success: Boolean,
   data: TimelineResponse,
   message: String,
-}
+};
 
 /**
  * API 응답 타입
@@ -234,7 +234,7 @@ export const ApiResponse = {
   message: String,
   data: Object,
   error: String,
-}
+};
 
 // 기본 타임라인 객체 생성 함수
 export const createDefaultTimeline = () => ({
@@ -244,7 +244,7 @@ export const createDefaultTimeline = () => ({
   totalDuration: 0,
   createdAt: new Date(),
   updatedAt: new Date(),
-})
+});
 
 // 기본 캡션 카드 객체 생성 함수
 export const createDefaultCaptionCard = () => ({
@@ -260,107 +260,107 @@ export const createDefaultCaptionCard = () => ({
   },
   type: 'scene',
   metadata: {},
-})
+});
 
 // 타임라인 유효성 검사 함수
 export const validateTimeline = (timeline) => {
-  const errors = []
+  const errors = [];
   
   if (!timeline.projectId || timeline.projectId.trim() === '') {
-    errors.push('프로젝트 ID는 필수입니다.')
+    errors.push('프로젝트 ID는 필수입니다.');
   }
   
   if (!timeline.captionCards || timeline.captionCards.length === 0) {
-    errors.push('캡션 카드는 최소 하나 이상 필요합니다.')
+    errors.push('캡션 카드는 최소 하나 이상 필요합니다.');
   }
   
   if (!timeline.totalDuration || timeline.totalDuration < 0) {
-    errors.push('총 지속 시간은 0 이상이어야 합니다.')
+    errors.push('총 지속 시간은 0 이상이어야 합니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 캡션 카드 유효성 검사 함수
 export const validateCaptionCard = (card) => {
-  const errors = []
+  const errors = [];
   
   if (!card.title || card.title.trim() === '') {
-    errors.push('카드 제목은 필수입니다.')
+    errors.push('카드 제목은 필수입니다.');
   }
   
   if (!card.description || card.description.trim() === '') {
-    errors.push('카드 설명은 필수입니다.')
+    errors.push('카드 설명은 필수입니다.');
   }
   
   if (!card.duration || card.duration < 0) {
-    errors.push('지속 시간은 0 이상이어야 합니다.')
+    errors.push('지속 시간은 0 이상이어야 합니다.');
   }
   
   if (!card.type || card.type.trim() === '') {
-    errors.push('카드 타입은 필수입니다.')
+    errors.push('카드 타입은 필수입니다.');
   }
   
-  return errors
-}
+  return errors;
+};
 
 // 타임라인 정렬 함수
 export const sortTimelines = (timelines, sortBy = 'createdAt', order = 'desc') => {
   return [...timelines].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
+    let aValue = a[sortBy];
+    let bValue = b[sortBy];
     
     if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
-      aValue = new Date(aValue).getTime()
-      bValue = new Date(bValue).getTime()
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
     }
     
     if (order === 'asc') {
-      return aValue > bValue ? 1 : -1
+      return aValue > bValue ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1
+      return aValue < bValue ? 1 : -1;
     }
-  })
-}
+  });
+};
 
 // 타임라인 필터링 함수
 export const filterTimelines = (timelines, filters) => {
   return timelines.filter(timeline => {
     // 프로젝트 ID 필터
     if (filters.projectId && timeline.projectId !== filters.projectId) {
-      return false
+      return false;
     }
     
     // 총 지속 시간 필터
     if (filters.minDuration && timeline.totalDuration < filters.minDuration) {
-      return false
+      return false;
     }
     
     if (filters.maxDuration && timeline.totalDuration > filters.maxDuration) {
-      return false
+      return false;
     }
     
     // 카드 수 필터
     if (filters.minCards && timeline.captionCards.length < filters.minCards) {
-      return false
+      return false;
     }
     
     if (filters.maxCards && timeline.captionCards.length > filters.maxCards) {
-      return false
+      return false;
     }
     
-    return true
-  })
-}
+    return true;
+  });
+};
 
 // 타임라인 통계 계산 함수
 export const calculateTimelineStatistics = (timeline) => {
-  const cardTypes = new Set()
-  const totalDuration = timeline.captionCards.reduce((sum, card) => sum + card.duration, 0)
+  const cardTypes = new Set();
+  const totalDuration = timeline.captionCards.reduce((sum, card) => sum + card.duration, 0);
   
   timeline.captionCards.forEach(card => {
-    if (card.type) cardTypes.add(card.type)
-  })
+    if (card.type) cardTypes.add(card.type);
+  });
   
   return {
     totalCards: timeline.captionCards.length,
@@ -368,8 +368,8 @@ export const calculateTimelineStatistics = (timeline) => {
     averageCardDuration: timeline.captionCards.length > 0 ? totalDuration / timeline.captionCards.length : 0,
     uniqueCardTypes: Array.from(cardTypes),
     timelineEfficiency: timeline.totalDuration > 0 ? (totalDuration / timeline.totalDuration) * 100 : 0,
-  }
-}
+  };
+};
 
 export default {
   Timeline,
@@ -391,4 +391,4 @@ export default {
   sortTimelines,
   filterTimelines,
   calculateTimelineStatistics,
-} 
+}; 

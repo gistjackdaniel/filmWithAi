@@ -1,7 +1,7 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { useAuthStore } from './authStore.js'
-import projectApi from '../services/projectApi.js'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { useAuthStore } from './authStore.js';
+import projectApi from '../services/projectApi.js';
 
 /**
  * 씬 관리 스토어
@@ -89,15 +89,15 @@ const useSceneStore = create(
           currentProjectId: projectId,
           scenes: [],
           currentScene: null,
-          currentSceneId: null
-        })
+          currentSceneId: null,
+        });
       },
 
       /**
        * 씬 목록 로딩 시작
        */
       startLoading: () => {
-        set({ isLoading: true, error: '' })
+        set({ isLoading: true, error: '' });
       },
 
       /**
@@ -108,8 +108,8 @@ const useSceneStore = create(
         set({ 
           scenes: scenes || [],
           isLoading: false,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -119,8 +119,8 @@ const useSceneStore = create(
       failLoading: (error) => {
         set({ 
           isLoading: false,
-          error: error || '씬 목록을 불러오는데 실패했습니다.'
-        })
+          error: error || '씬 목록을 불러오는데 실패했습니다.',
+        });
       },
 
       /**
@@ -128,26 +128,26 @@ const useSceneStore = create(
        * @param {string} projectId - 프로젝트 ID
        */
       loadScenes: async (projectId) => {
-        const { startLoading, completeLoading, failLoading } = get()
+        const { startLoading, completeLoading, failLoading } = get();
         
         if (!projectId) {
-          failLoading('프로젝트 ID가 필요합니다.')
-          return
+          failLoading('프로젝트 ID가 필요합니다.');
+          return;
         }
 
-        startLoading()
+        startLoading();
         
         try {
-          const result = await projectApi.getScenesByProject(projectId)
+          const result = await projectApi.getScenesByProject(projectId);
           
           if (result.success) {
-            completeLoading(result.data)
-            set({ currentProjectId: projectId })
+            completeLoading(result.data);
+            set({ currentProjectId: projectId });
           } else {
-            failLoading(result.error)
+            failLoading(result.error);
           }
         } catch (error) {
-          failLoading(error.message)
+          failLoading(error.message);
         }
       },
 
@@ -157,21 +157,21 @@ const useSceneStore = create(
        * @param {string} sceneId - 씬 ID
        */
       loadScene: async (projectId, sceneId) => {
-        if (!projectId || !sceneId) return
+        if (!projectId || !sceneId) return;
         
         try {
-          const result = await projectApi.getSceneById(projectId, sceneId)
+          const result = await projectApi.getSceneById(projectId, sceneId);
           
           if (result.success) {
             set({ 
               currentScene: result.data,
-              currentSceneId: sceneId
-            })
+              currentSceneId: sceneId,
+            });
           } else {
-            set({ error: result.error })
+            set({ error: result.error });
           }
         } catch (error) {
-          set({ error: error.message })
+          set({ error: error.message });
         }
       },
 
@@ -181,8 +181,8 @@ const useSceneStore = create(
       startCreating: () => {
         set({ 
           isCreating: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -195,8 +195,8 @@ const useSceneStore = create(
           currentScene: scene,
           currentSceneId: scene._id,
           isCreating: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -206,8 +206,8 @@ const useSceneStore = create(
       failCreating: (error) => {
         set({ 
           isCreating: false,
-          error: error || '씬 생성에 실패했습니다.'
-        })
+          error: error || '씬 생성에 실패했습니다.',
+        });
       },
 
       /**
@@ -216,25 +216,25 @@ const useSceneStore = create(
        * @param {SceneData} sceneData - 씬 데이터
        */
       createScene: async (projectId, sceneData) => {
-        const { startCreating, completeCreating, failCreating } = get()
+        const { startCreating, completeCreating, failCreating } = get();
         
         if (!projectId) {
-          failCreating('프로젝트 ID가 필요합니다.')
-          return
+          failCreating('프로젝트 ID가 필요합니다.');
+          return;
         }
 
-        startCreating()
+        startCreating();
         
         try {
-          const result = await projectApi.createScene(projectId, sceneData)
+          const result = await projectApi.createScene(projectId, sceneData);
           
           if (result.success) {
-            completeCreating(result.data)
+            completeCreating(result.data);
           } else {
-            failCreating(result.error)
+            failCreating(result.error);
           }
         } catch (error) {
-          failCreating(error.message)
+          failCreating(error.message);
         }
       },
 
@@ -244,8 +244,8 @@ const useSceneStore = create(
       startUpdating: () => {
         set({ 
           isUpdating: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -255,13 +255,13 @@ const useSceneStore = create(
       completeUpdating: (updatedScene) => {
         set((state) => ({
           scenes: state.scenes.map(scene => 
-            scene._id === updatedScene._id ? updatedScene : scene
+            scene._id === updatedScene._id ? updatedScene : scene,
           ),
           currentScene: updatedScene,
           isUpdating: false,
           error: '',
-          hasUnsavedChanges: false
-        }))
+          hasUnsavedChanges: false,
+        }));
       },
 
       /**
@@ -271,8 +271,8 @@ const useSceneStore = create(
       failUpdating: (error) => {
         set({ 
           isUpdating: false,
-          error: error || '씬 수정에 실패했습니다.'
-        })
+          error: error || '씬 수정에 실패했습니다.',
+        });
       },
 
       /**
@@ -282,25 +282,25 @@ const useSceneStore = create(
        * @param {SceneData} sceneData - 수정할 씬 데이터
        */
       updateScene: async (projectId, sceneId, sceneData) => {
-        const { startUpdating, completeUpdating, failUpdating } = get()
+        const { startUpdating, completeUpdating, failUpdating } = get();
         
         if (!projectId || !sceneId) {
-          failUpdating('프로젝트 ID와 씬 ID가 필요합니다.')
-          return
+          failUpdating('프로젝트 ID와 씬 ID가 필요합니다.');
+          return;
         }
 
-        startUpdating()
+        startUpdating();
         
         try {
-          const result = await projectApi.updateScene(projectId, sceneId, sceneData)
+          const result = await projectApi.updateScene(projectId, sceneId, sceneData);
           
           if (result.success) {
-            completeUpdating(result.data)
+            completeUpdating(result.data);
           } else {
-            failUpdating(result.error)
+            failUpdating(result.error);
           }
         } catch (error) {
-          failUpdating(error.message)
+          failUpdating(error.message);
         }
       },
 
@@ -310,8 +310,8 @@ const useSceneStore = create(
       startDeleting: () => {
         set({ 
           isDeleting: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -324,8 +324,8 @@ const useSceneStore = create(
           currentScene: state.currentScene?._id === sceneId ? null : state.currentScene,
           currentSceneId: state.currentSceneId === sceneId ? null : state.currentSceneId,
           isDeleting: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -335,8 +335,8 @@ const useSceneStore = create(
       failDeleting: (error) => {
         set({ 
           isDeleting: false,
-          error: error || '씬 삭제에 실패했습니다.'
-        })
+          error: error || '씬 삭제에 실패했습니다.',
+        });
       },
 
       /**
@@ -345,25 +345,25 @@ const useSceneStore = create(
        * @param {string} sceneId - 씬 ID
        */
       deleteScene: async (projectId, sceneId) => {
-        const { startDeleting, completeDeleting, failDeleting } = get()
+        const { startDeleting, completeDeleting, failDeleting } = get();
         
         if (!projectId || !sceneId) {
-          failDeleting('프로젝트 ID와 씬 ID가 필요합니다.')
-          return
+          failDeleting('프로젝트 ID와 씬 ID가 필요합니다.');
+          return;
         }
 
-        startDeleting()
+        startDeleting();
         
         try {
-          const result = await projectApi.deleteScene(projectId, sceneId)
+          const result = await projectApi.deleteScene(projectId, sceneId);
           
           if (result.success) {
-            completeDeleting(sceneId)
+            completeDeleting(sceneId);
           } else {
-            failDeleting(result.error)
+            failDeleting(result.error);
           }
         } catch (error) {
-          failDeleting(error.message)
+          failDeleting(error.message);
         }
       },
 
@@ -373,22 +373,22 @@ const useSceneStore = create(
        * @param {string} sceneId - 씬 ID
        */
       restoreScene: async (projectId, sceneId) => {
-        if (!projectId || !sceneId) return
+        if (!projectId || !sceneId) return;
         
         try {
-          const result = await projectApi.restoreScene(projectId, sceneId)
+          const result = await projectApi.restoreScene(projectId, sceneId);
           
           if (result.success) {
             // 복원된 씬을 목록에 추가
             set((state) => ({
               scenes: [result.data, ...state.scenes],
-              error: ''
-            }))
+              error: '',
+            }));
           } else {
-            set({ error: result.error })
+            set({ error: result.error });
           }
         } catch (error) {
-          set({ error: error.message })
+          set({ error: error.message });
         }
       },
 
@@ -398,8 +398,8 @@ const useSceneStore = create(
       startCreatingDraft: () => {
         set({ 
           isCreatingDraft: true,
-          error: ''
-        })
+          error: '',
+        });
       },
 
       /**
@@ -411,8 +411,8 @@ const useSceneStore = create(
           scenes: [...draftScenes, ...state.scenes],
           draftScenes: draftScenes,
           isCreatingDraft: false,
-          error: ''
-        }))
+          error: '',
+        }));
       },
 
       /**
@@ -422,8 +422,8 @@ const useSceneStore = create(
       failCreatingDraft: (error) => {
         set({ 
           isCreatingDraft: false,
-          error: error || '씬 초안 생성에 실패했습니다.'
-        })
+          error: error || '씬 초안 생성에 실패했습니다.',
+        });
       },
 
       /**
@@ -432,25 +432,25 @@ const useSceneStore = create(
        * @param {Object} draftData - 초안 생성 데이터
        */
       createSceneDraft: async (projectId, draftData) => {
-        const { startCreatingDraft, completeCreatingDraft, failCreatingDraft } = get()
+        const { startCreatingDraft, completeCreatingDraft, failCreatingDraft } = get();
         
         if (!projectId) {
-          failCreatingDraft('프로젝트 ID가 필요합니다.')
-          return
+          failCreatingDraft('프로젝트 ID가 필요합니다.');
+          return;
         }
 
-        startCreatingDraft()
+        startCreatingDraft();
         
         try {
-          const result = await projectApi.createSceneDraft(projectId, draftData)
+          const result = await projectApi.createSceneDraft(projectId, draftData);
           
           if (result.success) {
-            completeCreatingDraft(result.data)
+            completeCreatingDraft(result.data);
           } else {
-            failCreatingDraft(result.error)
+            failCreatingDraft(result.error);
           }
         } catch (error) {
-          failCreatingDraft(error.message)
+          failCreatingDraft(error.message);
         }
       },
 
@@ -461,8 +461,8 @@ const useSceneStore = create(
       setCurrentScene: (scene) => {
         set({ 
           currentScene: scene,
-          currentSceneId: scene?._id || null
-        })
+          currentSceneId: scene?._id || null,
+        });
       },
 
       /**
@@ -472,8 +472,8 @@ const useSceneStore = create(
       setEditingScene: (scene) => {
         set({ 
           editingScene: scene,
-          hasUnsavedChanges: false
-        })
+          hasUnsavedChanges: false,
+        });
       },
 
       /**
@@ -483,8 +483,8 @@ const useSceneStore = create(
       updateEditingScene: (updates) => {
         set((state) => ({
           editingScene: state.editingScene ? { ...state.editingScene, ...updates } : null,
-          hasUnsavedChanges: true
-        }))
+          hasUnsavedChanges: true,
+        }));
       },
 
       /**
@@ -493,8 +493,8 @@ const useSceneStore = create(
       cancelEditing: () => {
         set({ 
           editingScene: null,
-          hasUnsavedChanges: false
-        })
+          hasUnsavedChanges: false,
+        });
       },
 
       /**
@@ -503,8 +503,8 @@ const useSceneStore = create(
        */
       setFilters: (filters) => {
         set((state) => ({
-          filters: { ...state.filters, ...filters }
-        }))
+          filters: { ...state.filters, ...filters },
+        }));
       },
 
       /**
@@ -513,14 +513,14 @@ const useSceneStore = create(
        * @param {string} sortOrder - 정렬 순서
        */
       setSort: (sortBy, sortOrder = 'asc') => {
-        set({ sortBy, sortOrder })
+        set({ sortBy, sortOrder });
       },
 
       /**
        * 에러 초기화
        */
       clearError: () => {
-        set({ error: '' })
+        set({ error: '' });
       },
 
       /**
@@ -552,7 +552,7 @@ const useSceneStore = create(
           hasUnsavedChanges: false,
           sceneHistory: [],
           historyIndex: -1,
-        })
+        });
       },
 
       // ===== 계산된 상태 (getter) =====
@@ -562,65 +562,65 @@ const useSceneStore = create(
        * @returns {Array} 필터링된 씬 목록
        */
       getFilteredScenes: () => {
-        const { scenes, filters, sortBy, sortOrder } = get()
+        const { scenes, filters, sortBy, sortOrder } = get();
         
-        let filteredScenes = [...scenes]
+        let filteredScenes = [...scenes];
         
         // 검색 필터
         if (filters.searchQuery) {
-          const query = filters.searchQuery.toLowerCase()
+          const query = filters.searchQuery.toLowerCase();
           filteredScenes = filteredScenes.filter(scene =>
             scene.title.toLowerCase().includes(query) ||
-            scene.description.toLowerCase().includes(query)
-          )
+            scene.description.toLowerCase().includes(query),
+          );
         }
         
         // 시간대 필터
         if (filters.timeOfDay) {
           filteredScenes = filteredScenes.filter(scene =>
-            scene.timeOfDay === filters.timeOfDay
-          )
+            scene.timeOfDay === filters.timeOfDay,
+          );
         }
         
         // 날씨 필터
         if (filters.weather) {
           filteredScenes = filteredScenes.filter(scene =>
-            scene.weather === filters.weather
-          )
+            scene.weather === filters.weather,
+          );
         }
         
         // VFX 필터
         if (filters.vfxRequired !== null) {
           filteredScenes = filteredScenes.filter(scene =>
-            scene.vfxRequired === filters.vfxRequired
-          )
+            scene.vfxRequired === filters.vfxRequired,
+          );
         }
         
         // SFX 필터
         if (filters.sfxRequired !== null) {
           filteredScenes = filteredScenes.filter(scene =>
-            scene.sfxRequired === filters.sfxRequired
-          )
+            scene.sfxRequired === filters.sfxRequired,
+          );
         }
         
         // 정렬
         filteredScenes.sort((a, b) => {
-          let aValue = a[sortBy]
-          let bValue = b[sortBy]
+          let aValue = a[sortBy];
+          let bValue = b[sortBy];
           
           if (sortBy === 'order') {
-            aValue = a.order || 0
-            bValue = b.order || 0
+            aValue = a.order || 0;
+            bValue = b.order || 0;
           }
           
           if (sortOrder === 'asc') {
-            return aValue > bValue ? 1 : -1
+            return aValue > bValue ? 1 : -1;
           } else {
-            return aValue < bValue ? 1 : -1
+            return aValue < bValue ? 1 : -1;
           }
-        })
+        });
         
-        return filteredScenes
+        return filteredScenes;
       },
 
       /**
@@ -628,8 +628,8 @@ const useSceneStore = create(
        * @returns {boolean} 로딩 중 여부
        */
       isLoading: () => {
-        const { isLoading, isCreating, isUpdating, isDeleting, isCreatingDraft } = get()
-        return isLoading || isCreating || isUpdating || isDeleting || isCreatingDraft
+        const { isLoading, isCreating, isUpdating, isDeleting, isCreatingDraft } = get();
+        return isLoading || isCreating || isUpdating || isDeleting || isCreatingDraft;
       },
 
       /**
@@ -637,8 +637,8 @@ const useSceneStore = create(
        * @returns {boolean} 현재 씬 존재 여부
        */
       hasCurrentScene: () => {
-        const { currentScene } = get()
-        return !!currentScene
+        const { currentScene } = get();
+        return !!currentScene;
       },
 
       /**
@@ -646,8 +646,8 @@ const useSceneStore = create(
        * @returns {boolean} 편집 중인 씬 존재 여부
        */
       hasEditingScene: () => {
-        const { editingScene } = get()
-        return !!editingScene
+        const { editingScene } = get();
+        return !!editingScene;
       },
 
       /**
@@ -655,19 +655,19 @@ const useSceneStore = create(
        * @returns {boolean} 저장되지 않은 변경사항 존재 여부
        */
       hasUnsavedChanges: () => {
-        const { hasUnsavedChanges } = get()
-        return hasUnsavedChanges
-      }
+        const { hasUnsavedChanges } = get();
+        return hasUnsavedChanges;
+      },
     }),
     {
       name: 'scene-storage', // 로컬 스토리지 키
       partialize: (state) => ({ 
         filters: state.filters,
         sortBy: state.sortBy,
-        sortOrder: state.sortOrder
-      })
-    }
-  )
-)
+        sortOrder: state.sortOrder,
+      }),
+    },
+  ),
+);
 
-export default useSceneStore
+export default useSceneStore;

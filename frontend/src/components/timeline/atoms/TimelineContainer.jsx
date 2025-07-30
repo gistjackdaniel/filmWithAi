@@ -1,5 +1,5 @@
-import React from 'react'
-import { Box } from '@mui/material'
+import React from 'react';
+import { Box } from '@mui/material';
 
 /**
  * 타임라인 컨테이너 컴포넌트
@@ -47,7 +47,7 @@ const TimelineContainer = ({
     >
       {children}
     </Box>
-  )
-}
+  );
+};
 
-export default TimelineContainer 
+export default TimelineContainer; 

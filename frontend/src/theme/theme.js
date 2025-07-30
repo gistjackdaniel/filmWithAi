@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles';
 
 /**
  * SceneForge Material-UI 테마 설정
@@ -38,7 +38,7 @@ const darkPalette = {
   error: {
     main: '#E74C3C', // Cinematic Red - 삭제, 경고 등 눈에 띄는 알림에 적합한 강렬한 붉은색
   },
-}
+};
 
 // 라이트 테마 색상 팔레트
 const lightPalette = {
@@ -72,7 +72,7 @@ const lightPalette = {
   error: {
     main: '#E74C3C', // Cinematic Red
   },
-}
+};
 
 /**
  * 앱 테마 생성 함수
@@ -98,7 +98,7 @@ const createAppTheme = (mode = 'dark') => {
         'Fira Sans',
         'Droid Sans',
         'Helvetica Neue',
-        'sans-serif'
+        'sans-serif',
       ].join(','),
       
       // 제목 스타일
@@ -245,7 +245,7 @@ const createAppTheme = (mode = 'dark') => {
         },
       },
     },
-  })
-}
+  });
+};
 
-export default createAppTheme 
+export default createAppTheme; 

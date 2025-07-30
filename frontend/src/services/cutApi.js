@@ -1,4 +1,4 @@
-import api from './api.js'
+import api from './api.js';
 
 /**
  * 컷 관리 API 서비스
@@ -47,15 +47,15 @@ export const createCut = async (projectId, sceneId, cutData) => {
     const response = await api.post(`/project/${projectId}/scene/${sceneId}/cut`, cutData, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    return response.data
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 생성 오류:', error)
-    throw new Error('컷 생성 중 오류가 발생했습니다.')
+    console.error('❌ 컷 생성 오류:', error);
+    throw new Error('컷 생성 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 초안 생성 (AI 기반)
@@ -69,15 +69,15 @@ export const createCutDraft = async (projectId, sceneId, draftData) => {
     const response = await api.post(`/project/${projectId}/scene/${sceneId}/cut/draft`, draftData, {
       timeout: 300000, // 5분 - AI 생성 시간 고려
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    return response.data
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 초안 생성 오류:', error)
-    throw new Error('컷 초안 생성 중 오류가 발생했습니다.')
+    console.error('❌ 컷 초안 생성 오류:', error);
+    throw new Error('컷 초안 생성 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 목록 조회
@@ -88,14 +88,14 @@ export const createCutDraft = async (projectId, sceneId, draftData) => {
 export const getCuts = async (projectId, sceneId) => {
   try {
     const response = await api.get(`/project/${projectId}/scene/${sceneId}/cut`, {
-      timeout: 10000
-    })
-    return response.data
+      timeout: 10000,
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 목록 조회 오류:', error)
-    throw new Error('컷 목록 조회 중 오류가 발생했습니다.')
+    console.error('❌ 컷 목록 조회 오류:', error);
+    throw new Error('컷 목록 조회 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 상세 조회
@@ -107,14 +107,14 @@ export const getCuts = async (projectId, sceneId) => {
 export const getCut = async (projectId, sceneId, cutId) => {
   try {
     const response = await api.get(`/project/${projectId}/scene/${sceneId}/cut/${cutId}`, {
-      timeout: 10000
-    })
-    return response.data
+      timeout: 10000,
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 상세 조회 오류:', error)
-    throw new Error('컷 상세 조회 중 오류가 발생했습니다.')
+    console.error('❌ 컷 상세 조회 오류:', error);
+    throw new Error('컷 상세 조회 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 수정
@@ -129,15 +129,15 @@ export const updateCut = async (projectId, sceneId, cutId, cutData) => {
     const response = await api.put(`/project/${projectId}/scene/${sceneId}/cut/${cutId}`, cutData, {
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    return response.data
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 수정 오류:', error)
-    throw new Error('컷 수정 중 오류가 발생했습니다.')
+    console.error('❌ 컷 수정 오류:', error);
+    throw new Error('컷 수정 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 삭제
@@ -149,14 +149,14 @@ export const updateCut = async (projectId, sceneId, cutId, cutData) => {
 export const deleteCut = async (projectId, sceneId, cutId) => {
   try {
     const response = await api.delete(`/project/${projectId}/scene/${sceneId}/cut/${cutId}`, {
-      timeout: 10000
-    })
-    return response.data
+      timeout: 10000,
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 삭제 오류:', error)
-    throw new Error('컷 삭제 중 오류가 발생했습니다.')
+    console.error('❌ 컷 삭제 오류:', error);
+    throw new Error('컷 삭제 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 이미지 조회
@@ -168,14 +168,14 @@ export const deleteCut = async (projectId, sceneId, cutId) => {
 export const getCutImage = async (projectId, sceneId, cutId) => {
   try {
     const response = await api.get(`/project/${projectId}/scene/${sceneId}/cut/${cutId}/image`, {
-      timeout: 10000
-    })
-    return response.data
+      timeout: 10000,
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 이미지 조회 오류:', error)
-    throw new Error('컷 이미지 조회 중 오류가 발생했습니다.')
+    console.error('❌ 컷 이미지 조회 오류:', error);
+    throw new Error('컷 이미지 조회 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 이미지 업로드
@@ -187,21 +187,21 @@ export const getCutImage = async (projectId, sceneId, cutId) => {
  */
 export const uploadCutImage = async (projectId, sceneId, cutId, imageFile) => {
   try {
-    const formData = new FormData()
-    formData.append('file', imageFile)
+    const formData = new FormData();
+    formData.append('file', imageFile);
     
     const response = await api.post(`/project/${projectId}/scene/${sceneId}/cut/${cutId}/image`, formData, {
       timeout: 60000, // 1분
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    return response.data
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 이미지 업로드 오류:', error)
-    throw new Error('컷 이미지 업로드 중 오류가 발생했습니다.')
+    console.error('❌ 컷 이미지 업로드 오류:', error);
+    throw new Error('컷 이미지 업로드 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 이미지 삭제
@@ -213,14 +213,14 @@ export const uploadCutImage = async (projectId, sceneId, cutId, imageFile) => {
 export const deleteCutImage = async (projectId, sceneId, cutId) => {
   try {
     const response = await api.delete(`/project/${projectId}/scene/${sceneId}/cut/${cutId}/image`, {
-      timeout: 10000
-    })
-    return response.data
+      timeout: 10000,
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 이미지 삭제 오류:', error)
-    throw new Error('컷 이미지 삭제 중 오류가 발생했습니다.')
+    console.error('❌ 컷 이미지 삭제 오류:', error);
+    throw new Error('컷 이미지 삭제 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 컷 이미지 생성 (AI 기반)
@@ -234,15 +234,15 @@ export const generateCutImage = async (projectId, sceneId, cutId) => {
     const response = await api.post(`/project/${projectId}/scene/${sceneId}/cut/${cutId}/image/generate`, {}, {
       timeout: 300000, // 5분 - AI 생성 시간 고려
       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    return response.data
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 컷 이미지 생성 오류:', error)
-    throw new Error('컷 이미지 생성 중 오류가 발생했습니다.')
+    console.error('❌ 컷 이미지 생성 오류:', error);
+    throw new Error('컷 이미지 생성 중 오류가 발생했습니다.');
   }
-}
+};
 
 /**
  * 스토리지 정보 조회
@@ -251,14 +251,14 @@ export const generateCutImage = async (projectId, sceneId, cutId) => {
 export const getStorageInfo = async () => {
   try {
     const response = await api.get('/cut/storage-info', {
-      timeout: 10000
-    })
-    return response.data
+      timeout: 10000,
+    });
+    return response.data;
   } catch (error) {
-    console.error('❌ 스토리지 정보 조회 오류:', error)
-    throw new Error('스토리지 정보 조회 중 오류가 발생했습니다.')
+    console.error('❌ 스토리지 정보 조회 오류:', error);
+    throw new Error('스토리지 정보 조회 중 오류가 발생했습니다.');
   }
-}
+};
 
 export default {
   createCut,
@@ -271,5 +271,5 @@ export default {
   uploadCutImage,
   deleteCutImage,
   generateCutImage,
-  getStorageInfo
-} 
+  getStorageInfo,
+}; 

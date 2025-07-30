@@ -8,6 +8,7 @@ import {
   UpdateSceneRequestDto, 
 } from './dto/request.dto';
 import { 
+  SceneDraftResponseDto,
   SceneResponseDto
 } from './dto/response.dto';
 import { AiService } from 'src/ai/ai.service';
@@ -137,7 +138,7 @@ export class SceneService {
     return scene;
   }
 
-  async createDraft(projectId: string, createSceneDraftRequestDto: CreateSceneDraftRequestDto): Promise<SceneResponseDto[]> {
+  async createDraft(projectId: string, createSceneDraftRequestDto: CreateSceneDraftRequestDto): Promise<SceneDraftResponseDto[]> {
     const project = await this.projectService.findById(projectId);
 
     const scenePrompt = await this.buildScenePrompt(createSceneDraftRequestDto.maxScenes, project);
@@ -151,7 +152,7 @@ export class SceneService {
         role: 'user',
         content: scenePrompt
       }
-    ], { max_tokens: 10000, temperature: 0.7 });
+    ], { max_tokens: 10000, temperature: 0.7 }); // timeout은 axios 설정에서만 사용
 
     // AI 응답을 파싱해서 SceneResponseDto 형태로 변환
     const parsedScene = this.parseSceneDraftResponse(result);
@@ -159,7 +160,7 @@ export class SceneService {
     return parsedScene;
   }
 
-  private parseSceneDraftResponse(content: string): SceneResponseDto[] {
+  private parseSceneDraftResponse(content: string): SceneDraftResponseDto[] {
     // 마크다운 코드 블록 제거
     let jsonContent = content;
     
@@ -183,7 +184,7 @@ export class SceneService {
       const sceneList = JSON.parse(jsonContent);
       
       if (sceneList.scenes && Array.isArray(sceneList.scenes)) {
-        const sceneData: Array<SceneResponseDto> = sceneList.scenes.map((scene: any) => {
+        const sceneData: Array<SceneDraftResponseDto> = sceneList.scenes.map((scene: any) => {
           return {
             ...scene,
           };
@@ -194,8 +195,12 @@ export class SceneService {
         throw new Error('AI 응답을 파싱할 수 없습니다.');
       }
     } catch (error) {
-      console.error('JSON 파싱 실패:', error);
-      console.error('파싱 시도한 내용:', jsonContent);
+      console.error('JSON 파싱 실패:', {
+        message: error.message,
+        stack: error.stack,
+        content: jsonContent,
+        contentLength: jsonContent.length,
+      });
       throw new Error('AI 응답을 파싱할 수 없습니다.');
     }
   }
@@ -237,7 +242,7 @@ Scene 스키마에 따라 다음 필드들을 포함해야 합니다:
    - address: 실제 장소 주소
    - name: address에 해당하는 실제 장소 이름
    - group_name: 가까운 위치에 있는 Location의 집합 이름
-9. **timeOfDay**: 촬영 시간대 (enum: ['새벽', '아침', '오후', '저녁', '밤', '낮'])
+9. **timeOfDay**: 촬영 시간대 (enum: ['새벽', '아침', '오후', '저녁', '밤'])
 10. **estimatedDuration**: 예상 지속시간 (문자열, 예: "5분")
 
 **인력 구성:**
@@ -358,12 +363,11 @@ Scene 스키마에 따라 다음 필드들을 포함해야 합니다:
 - 대사가 없는 장면도 있지만, 대부분의 장면에는 적절한 대사가 있어야 합니다
 
 **시간대 구분:**
-- **새벽**: 오전 3시 ~ 6시
-- **아침**: 오전 6시 ~ 9시
-- **오후**: 오전 9시 ~ 오후 6시
-- **저녁**: 오후 6시 ~ 9시
-- **밤**: 오후 9시 ~ 오전 3시
-- **낮**: 해가 떠있는 시간대 (아침 + 오후)
+- **새벽**: 오전 0시 ~ 6시
+- **아침**: 오전 6시 ~ 11시
+- **점심**: 오전 11시 ~ 오후 4시
+- **저녁**: 오후 4시 ~ 8시
+- **밤**: 오후 8시 ~ 오전 12시
 
 **중요:**
 - 반드시 timeOfDay(촬영 시간대)를 명확히 설정해야 합니다
@@ -378,7 +382,7 @@ ${JSON.stringify(project)}
   {
     "scenes": [
       {
-        "order": 1,
+        "order": "씬 번호", // 1부터 시작하는 정수
         "title": "제목",
         "description": "설명",
         "dialogues": [
@@ -420,7 +424,7 @@ ${JSON.stringify(project)}
           "name": "address에 해당하는 실제 장소 이름",
           "group_name": "가까운 위치에 있는 Location의 집합 이름"
         },
-        "timeOfDay": "촬영 시간대 (새벽, 아침, 오후, 저녁, 밤, 낮)",
+        "timeOfDay": "촬영 시간대 (새벽, 아침, 점심, 저녁, 밤)",
         "crew": {
           "direction": {
             "director": [{"role": "역할"}],

@@ -5,10 +5,11 @@ import { SplashScreen } from './components/common'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import ProjectPage from './pages/ProjectPage'
-import ConteGenerationPage from './pages/ConteGenerationPage'
+import SynoStoryProjectGenerationPage from './pages/SynoStoryProjectGenerationPage'
+import SceneGenerationPage from './pages/SceneGenerationPage'
 import DirectStoryPage from './pages/DirectStoryPage'
-import SchedulerPage from './pages/SchedulerPage'
-import SimpleSchedulePage from './pages/SimpleSchedulePage'
+import DailyBreakdownPage from './pages/DailyBreakdownPage'
+import AllSchedulePage from './pages/AllSchedulePage'
 import { ProtectedRoute } from './components/common'
 import ErrorBoundary from './components/error/ErrorBoundary'
 
@@ -90,12 +91,22 @@ function App() {
           } 
         />
         
-        {/* 프로젝트 콘티 생성 페이지 라우트 */}
+        {/* 프로젝트 시놉시스 기반 스토리 생성 페이지 라우트 */}
         <Route 
-          path="/project/:projectId/conte" 
+          path="/project/:projectId/syno-story" 
           element={
             <ProtectedRoute>
-              <ConteGenerationPage />
+              <SynoStoryProjectGenerationPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* 씬 생성 페이지 라우트 */}
+        <Route 
+          path="/project/:projectId/scene-generation" 
+          element={
+            <ProtectedRoute>
+              <SceneGenerationPage />
             </ProtectedRoute>
           } 
         />
@@ -110,34 +121,34 @@ function App() {
           } 
         />
         
-        {/* 스케줄러 페이지 라우트 */}
+        {/* 일일 브레이크다운 페이지 라우트 */}
         <Route 
-          path="/scheduler" 
+          path="/daily-breakdown" 
           element={
             <ProtectedRoute>
-              <SchedulerPage />
+              <DailyBreakdownPage />
             </ProtectedRoute>
           } 
         />
         
 
         
-        {/* 간단한 스케줄 페이지 라우트 */}
+        {/* 전체 스케줄 페이지 라우트 */}
         <Route 
-          path="/simple-schedule" 
+          path="/all-schedule" 
           element={
             <ProtectedRoute>
-              <SimpleSchedulePage />
+              <AllSchedulePage />
             </ProtectedRoute>
           } 
         />
         
-        {/* 프로젝트별 간단한 스케줄 페이지 라우트 */}
+        {/* 프로젝트별 전체 스케줄 페이지 라우트 */}
         <Route 
-          path="/simple-schedule/:projectId" 
+          path="/all-schedule/:projectId" 
           element={
             <ProtectedRoute>
-              <SimpleSchedulePage />
+              <AllSchedulePage />
             </ProtectedRoute>
           } 
         />
@@ -147,7 +158,7 @@ function App() {
           path="/schedule/:projectId" 
           element={
             <ProtectedRoute>
-              <SimpleSchedulePage />
+              <AllSchedulePage />
             </ProtectedRoute>
           } 
         />

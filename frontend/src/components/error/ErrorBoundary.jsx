@@ -4,12 +4,12 @@ import {
   Typography,
   Button,
   Paper,
-  Container
+  Container,
 } from '@mui/material';
 import {
   Error as ErrorIcon,
   Refresh as RefreshIcon,
-  Home as HomeIcon
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,7 +23,7 @@ class ErrorBoundary extends React.Component {
     this.state = { 
       hasError: false, 
       error: null, 
-      errorInfo: null 
+      errorInfo: null, 
     };
   }
 
@@ -37,7 +37,7 @@ class ErrorBoundary extends React.Component {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error: error,
-      errorInfo: errorInfo
+      errorInfo: errorInfo,
     });
   }
 
@@ -62,7 +62,7 @@ const ErrorFallback = ({ error }) => {
 
   const handleGoHome = () => {
     // 라우터가 깨진 상황에서도 무조건 홈으로 이동
-    window.location.replace('/')
+    window.location.replace('/');
   };
 
   return (
@@ -73,14 +73,14 @@ const ErrorFallback = ({ error }) => {
           p: 4,
           textAlign: 'center',
           backgroundColor: 'var(--color-card-bg)',
-          color: 'var(--color-text-primary)'
+          color: 'var(--color-text-primary)',
         }}
       >
         <ErrorIcon 
           sx={{ 
             fontSize: 64, 
             color: 'var(--color-danger)', 
-            mb: 2 
+            mb: 2, 
           }} 
         />
         
@@ -93,7 +93,7 @@ const ErrorFallback = ({ error }) => {
           sx={{ 
             mb: 3, 
             color: 'var(--color-text-secondary)',
-            lineHeight: 1.6
+            lineHeight: 1.6,
           }}
         >
           예상치 못한 오류가 발생했습니다. 
@@ -107,7 +107,7 @@ const ErrorFallback = ({ error }) => {
               p: 2, 
               backgroundColor: 'var(--color-bg)',
               borderRadius: 1,
-              textAlign: 'left'
+              textAlign: 'left',
             }}
           >
             <Typography variant="h6" gutterBottom sx={{ color: 'var(--color-danger)' }}>
@@ -118,7 +118,7 @@ const ErrorFallback = ({ error }) => {
               sx={{ 
                 fontFamily: 'monospace',
                 color: 'var(--color-text-secondary)',
-                wordBreak: 'break-word'
+                wordBreak: 'break-word',
               }}
             >
               {error.toString()}
@@ -136,8 +136,8 @@ const ErrorFallback = ({ error }) => {
               color: '#000',
               '&:hover': {
                 backgroundColor: 'var(--color-primary)',
-                color: 'var(--color-text-primary)'
-              }
+                color: 'var(--color-text-primary)',
+              },
             }}
           >
             새로고침
@@ -153,8 +153,8 @@ const ErrorFallback = ({ error }) => {
               '&:hover': {
                 borderColor: 'var(--color-accent)',
                 backgroundColor: 'var(--color-accent)',
-                color: '#000'
-              }
+                color: '#000',
+              },
             }}
           >
             홈으로
