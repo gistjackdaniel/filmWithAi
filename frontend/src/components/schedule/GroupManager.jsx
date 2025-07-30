@@ -16,7 +16,7 @@ const GroupManager = ({ projectId }) => {
     setLoading(true);
     try {
       console.log('[GroupManager] Fetching groups for project:', projectId);
-      const res = await api.get(`/projects/${projectId}/groups`);
+      const res = await api.get(`/project/${projectId}/groups`);
       console.log('[GroupManager] Fetched groups:', res.data.data);
       setGroups(res.data.data || []);
     } catch (e) {
@@ -32,14 +32,14 @@ const GroupManager = ({ projectId }) => {
 
   const handleAdd = async () => {
     if (!newName || !newAddress) return;
-    await api.post(`/projects/${projectId}/groups`, { name: newName, address: newAddress });
+          await api.post(`/project/${projectId}/groups`, { name: newName, address: newAddress });
     setNewName('');
     setNewAddress('');
     fetchGroups();
   };
 
   const handleDelete = async (id) => {
-    await api.delete(`/projects/${projectId}/groups/${id}`);
+          await api.delete(`/project/${projectId}/groups/${id}`);
     fetchGroups();
   };
 

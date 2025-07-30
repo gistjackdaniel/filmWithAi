@@ -1,7 +1,6 @@
-
 import { CrewMember } from './crew-memeber.interface';
 
-export interface CrewRole {
+export interface Direction {
   director?: CrewMember[];
   assistantDirector?: CrewMember[];
   scriptSupervisor?: CrewMember[];

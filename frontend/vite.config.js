@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 /**
  * Vite 설정 파일
@@ -8,6 +9,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   // React 플러그인 활성화
   plugins: [react()],
+  
+  // 경로 매핑 설정
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@/sceneforge-nestjs': path.resolve(__dirname, '../sceneforge-nestjs/src'),
+      '@/backend': path.resolve(__dirname, '../sceneforge-nestjs/src'),
+    },
+  },
   
   // 개발 서버 설정
   server: {

@@ -37,7 +37,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { SceneDetailModal } from '../components/scene';
-import useStoryGenerationStore from '../stores/storyGenerationStore'; // 스토리 생성 스토어 추가
+import useStoryStore from '../stores/storyStore'; // 스토리 생성 스토어 추가
 import { getProject } from '../services/projectApi';
 import { CommonHeader } from '../components/common';
 import { LocationManagerModal } from '../components/schedule';
@@ -71,9 +71,8 @@ const SimpleSchedulePage = () => {
   // 프로젝트 ID 결정: URL 파라미터 > useParams > null
   const finalProjectId = urlProjectId || projectId;
 
-  // 스토리 생성 스토어에서 실제 콘티 데이터 가져오기 (기본값으로만 사용)
-  const { conteGeneration } = useStoryGenerationStore();
-  const actualConteData = conteGeneration.generatedConte;
+  // 스토리 생성 스토어에서 스토리 데이터 가져오기
+  const { generatedStory } = useStoryStore();
 
   // location.state에서 전달받은 콘티 데이터 확인
   const passedConteData = location.state?.conteData;
@@ -297,8 +296,8 @@ const SimpleSchedulePage = () => {
       
       // realLocations, groups 동시 fetch
       const [realLocRes, groupRes] = await Promise.all([
-        api.get(`/projects/${finalProjectId}/real-locations`),
-        api.get(`/projects/${finalProjectId}/groups`)
+        api.get(`/project/${finalProjectId}/real-locations`),
+        api.get(`/project/${finalProjectId}/groups`)
       ]);
       const realLocations = realLocRes.data.data || [];
       const groups = groupRes.data.data || [];
@@ -310,7 +309,7 @@ const SimpleSchedulePage = () => {
 
       // DB 저장
       try {
-        await api.post(`/projects/${finalProjectId}/schedules`, {
+        await api.post(`/project/${finalProjectId}/scheduler`, {
           days: scheduleResult.days,
           createdAt: new Date()
         });
@@ -540,7 +539,7 @@ const SimpleSchedulePage = () => {
   // 모든 realLocation 불러오기 및 id→이름 매핑
   useEffect(() => {
     if (finalProjectId) {
-      api.get(`/projects/${finalProjectId}/real-locations`).then(res => {
+              api.get(`/project/${finalProjectId}/real-locations`).then(res => {
         const list = res.data.data || [];
         setRealLocations(list);
         const map = {};

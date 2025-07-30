@@ -65,7 +65,7 @@ class TimelineService {
         return { success: true, data: cached }
       }
       
-      const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
+      const response = await timelineAPI.get(`/project/${projectId}?includeContes=true`)
       console.log('timelineService API response:', response.data)
       
       if (response.data && response.data.success && response.data.data?.contes) {
@@ -119,7 +119,7 @@ class TimelineService {
         return { success: true, data: cached }
       }
       
-      const response = await timelineAPI.get(`/projects/${projectId}?includeContes=true`)
+      const response = await timelineAPI.get(`/project/${projectId}?includeContes=true`)
       console.log('timelineService API response:', response.data)
       
       if (response.data && response.data.success && response.data.data?.contes) {
@@ -165,7 +165,7 @@ class TimelineService {
     try {
       console.log('timelineService getCutDetails started for projectId:', projectId, 'cutId:', cutId)
       
-      const response = await timelineAPI.get(`/projects/${projectId}/cuts/${cutId}`)
+      const response = await timelineAPI.get(`/project/${projectId}/cuts/${cutId}`)
       console.log('timelineService getCutDetails API response:', response.data)
       
       if (response.data && response.data.success && response.data.data) {
@@ -193,7 +193,7 @@ class TimelineService {
     try {
       console.log('timelineService updateCut started:', { projectId, cutId, cutData })
       
-      const response = await timelineAPI.put(`/projects/${projectId}/cuts/${cutId}`, cutData)
+      const response = await timelineAPI.put(`/project/${projectId}/cuts/${cutId}`, cutData)
       console.log('timelineService updateCut API response:', response.data)
       
       if (response.data && response.data.success) {
@@ -220,7 +220,7 @@ class TimelineService {
     try {
       console.log('timelineService deleteCut started:', { projectId, cutId })
       
-      const response = await timelineAPI.delete(`/projects/${projectId}/cuts/${cutId}`)
+      const response = await timelineAPI.delete(`/project/${projectId}/cuts/${cutId}`)
       console.log('timelineService deleteCut API response:', response.data)
       
       if (response.data && response.data.success) {
@@ -248,7 +248,7 @@ class TimelineService {
     try {
       console.log('timelineService createCut started:', { projectId, sceneId, cutData })
       
-      const response = await timelineAPI.post(`/projects/${projectId}/contes/${sceneId}/cuts`, cutData)
+      const response = await timelineAPI.post(`/project/${projectId}/scene/${sceneId}/cut`, cutData)
       console.log('timelineService createCut API response:', response.data)
       
       if (response.data && response.data.success) {
@@ -276,7 +276,7 @@ class TimelineService {
     try {
       console.log('timelineService reorderCuts started:', { projectId, sceneId, cutOrder })
       
-      const response = await timelineAPI.put(`/projects/${projectId}/contes/${sceneId}/cuts/reorder`, {
+      const response = await timelineAPI.put(`/project/${projectId}/scene/${sceneId}/cut/reorder`, {
         cutOrder
       })
       console.log('timelineService reorderCuts API response:', response.data)

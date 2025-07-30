@@ -183,20 +183,6 @@ export class CameraSetup {
 // 컷별 델타 - 추가 인력
 @Schema({ _id: false })
 export class AdditionalCinematographyCrew {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalCinematographer: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalCameraOperator: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalFirstAssistant: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSecondAssistant: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalDollyGrip: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   droneOperator: string[];
@@ -216,17 +202,6 @@ export class AdditionalCinematographyCrew {
 
 @Schema({ _id: false })
 export class AdditionalLightingCrew {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalGaffer: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalBestBoy: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalElectrician: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalGeneratorOperator: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   specialEffectsGaffer: string[];
@@ -243,17 +218,6 @@ export class AdditionalLightingCrew {
 
 @Schema({ _id: false })
 export class AdditionalSoundCrew {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSoundMixer: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalBoomOperator: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSoundAssistant: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalUtility: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   foleyArtist: string[];
@@ -267,26 +231,6 @@ export class AdditionalSoundCrew {
 
 @Schema({ _id: false })
 export class AdditionalArtCrew {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalProductionDesigner: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalArtDirector: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSetDecorator: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalPropMaster: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalMakeupArtist: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalCostumeDesigner: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalHairStylist: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   vfxSupervisor: string[];
@@ -324,17 +268,6 @@ export class AdditionalArtCrew {
 
 @Schema({ _id: false })
 export class AdditionalProductionCrew {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalProducer: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalLineProducer: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalProductionManager: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalProductionAssistant: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   safetySupervisor: string[];
@@ -374,21 +307,6 @@ export class AdditionalCrew {
 @Schema({ _id: false })
 export class AdditionalCinematographyEquipment {
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalCameras: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalLenses: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSupports: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalFilters: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalAccessories: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   drones: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
@@ -421,29 +339,6 @@ export class AdditionalGripModifiers {
 
 @Schema({ _id: false })
 export class AdditionalLightingEquipment {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalKeyLights: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalFillLights: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalBackLights: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalBackgroundLights: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSpecialEffectsLights: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSoftLights: string[];
-
-  @Prop({ type: AdditionalGripModifiers, default: () => ({}) })
-  additionalGripModifiers: AdditionalGripModifiers;
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalPower: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   specialKeyLights: string[];
@@ -472,17 +367,6 @@ export class AdditionalLightingEquipment {
 
 @Schema({ _id: false })
 export class AdditionalSoundEquipment {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalMicrophones: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalRecorders: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalWireless: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalMonitoring: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   foleyEquipment: string[];
@@ -508,20 +392,6 @@ export class AdditionalArtProps {
 
 @Schema({ _id: false })
 export class AdditionalArtEquipment {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSetConstruction: string[];
-
-  @Prop({ type: AdditionalArtProps, default: () => ({}) })
-  additionalProps: AdditionalArtProps;
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSetDressing: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalCostumes: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSpecialEffects: string[];
 
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   vfxEquipment: string[];
@@ -568,15 +438,6 @@ export class AdditionalArtEquipment {
 
 @Schema({ _id: false })
 export class AdditionalProductionEquipment {
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalScheduling: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalSafety: string[];
-
-  @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
-  additionalTransportation: string[];
-
   @Prop({ type: [String], default: [], trim: true, maxlength: 100 })
   safetyGear: string[];
 

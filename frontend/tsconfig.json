@@ -23,14 +23,16 @@
     /* Path mapping */
     "baseUrl": "..",
     "paths": {
-      "@/*": ["src/*"],
+      "@/node_modules/*": ["src/*"],
       "@/components/*": ["src/components/*"],
       "@/pages/*": ["src/pages/*"],
       "@/stores/*": ["src/stores/*"],
       "@/services/*": ["src/services/*"],
       "@/types/*": ["src/types/*"],
       "@/theme/*": ["src/theme/*"],
-      "@/utils/*": ["src/utils/*"]
+      "@/utils/*": ["src/utils/*"],
+      "@/sceneforge-nestjs/*": ["../sceneforge-nestjs/src/*"],
+      "@/backend/*": ["../sceneforge-nestjs/src/*"]
     }
   },
   "include": [

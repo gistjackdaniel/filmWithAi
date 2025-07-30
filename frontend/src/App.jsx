@@ -10,7 +10,7 @@ import DirectStoryPage from './pages/DirectStoryPage'
 import SchedulerPage from './pages/SchedulerPage'
 import SimpleSchedulePage from './pages/SimpleSchedulePage'
 import { ProtectedRoute } from './components/common'
-import ErrorBoundary from './components/ErrorBoundary'
+import ErrorBoundary from './components/error/ErrorBoundary'
 
 
 /**

@@ -53,15 +53,13 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import useProjectStore from '../stores/projectStore'
 import { CommonHeader } from '../components/common'
-import StoryResult from '../components/story/StoryResult'
+import StoryResult from '../components/project/StoryResult'
 import CutTimelineViewer from '../components/timeline/organisms/CutTimelineViewer'
 import VideoPlayer from '../components/timeline/atoms/VideoPlayer'
 import { toast } from 'react-hot-toast'
 import api from '../services/api'
 
-import ConteEditModal from '../components/story/ConteEditModal'
-import CutEditModal from '../components/story/CutEditModal'
-import ConteDetailModal from '../components/story/ConteDetailModal'
+// Conte 관련 컴포넌트들은 제거됨 - 시놉시스 → 스토리 생성 → 씬 생성 → 컷 생성 로직 사용
 import useTimelineStore from '../stores/timelineStore'
 
 /**
@@ -162,7 +160,7 @@ const ProjectPage = () => {
       console.log('🎬 씬 컷 생성 시작:', scene)
       
       // 실제 컷 생성 로직은 백엔드 API를 호출
-      const response = await api.post(`/cuts/generate`, {
+      const response = await api.post(`/ai/generate-cut`, {
         projectId: projectId,
         sceneId: scene.id,
         sceneData: scene
@@ -247,7 +245,7 @@ const ProjectPage = () => {
         return
       }
       
-      const response = await api.put(`/projects/${projectId}/status`, { status })
+      const response = await api.patch(`/project/${projectId}/status`, { status })
       
       if (response.data.success) {
         console.log('프로젝트 상태 업데이트 완료:', status)
@@ -719,7 +717,7 @@ const ProjectPage = () => {
       
       setLoading(true)
       
-      const response = await api.get(`/projects/${projectId}?includeContes=true`)
+      const response = await api.get(`/project/${projectId}?includeContes=true`)
       console.log('ProjectPage API response:', response.data)
       
       // 백엔드 응답 구조: { data: { project: {...}, conteList: [...] } }
@@ -867,7 +865,7 @@ const ProjectPage = () => {
         return
       } else {
         // 기존 프로젝트 업데이트 (상태는 기존 상태 유지)
-        const response = await api.put(`/projects/${projectId}`, {
+        const response = await api.patch(`/project/${projectId}`, {
           projectTitle: project.projectTitle,
           synopsis: project.synopsis,
           story: project.story

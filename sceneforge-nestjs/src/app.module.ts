@@ -5,17 +5,17 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { validationSchema } from './config/validation.schema';
-import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
-import { ResponseLoggingMiddleware } from './common/middleware/response-logging.middleware';
+import { validationSchema } from '@/config/validation.schema';
+import { RequestLoggingMiddleware } from '@/common/middleware/request-logging.middleware';
+import { ResponseLoggingMiddleware } from '@/common/middleware/response-logging.middleware';
 
 // 모듈들
-import { AuthModule } from './auth/auth.module';
-import { ProfileModule } from './profile/profile.module';
-import { ProjectModule } from './project/project.module';
-import { SceneModule } from './scene/scene.module';
-import { CutModule } from './cut/cut.module';
-import { SchedulerModule } from './scheduler/scheduler.module';
+import { AuthModule } from '@/auth/auth.module';
+import { ProfileModule } from '@/profile/profile.module';
+import { ProjectModule } from '@/project/project.module';
+import { SceneModule } from '@/scene/scene.module';
+import { CutModule } from '@/cut/cut.module';
+import { SchedulerModule } from '@/scheduler/scheduler.module';
 
 @Module({
   imports: [

@@ -479,9 +479,6 @@ const cutSchema = new mongoose.Schema({
       etc: [{ type: String, trim: true, maxlength: 100 }] // 기타 특수 장비
     }
   },
-  
-
-    
     // 컷 이미지 URL
     imageUrl: {
       type: String,

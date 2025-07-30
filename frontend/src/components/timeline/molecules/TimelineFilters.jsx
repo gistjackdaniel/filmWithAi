@@ -19,7 +19,7 @@ import {
   VideoLibrary,
   CameraAlt
 } from '@mui/icons-material'
-import { SceneType } from '../../../types/conte'
+import { SceneType } from '../../../types/scene'
 
 /**
  * 타임라인 필터링 컴포넌트

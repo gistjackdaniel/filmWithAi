@@ -2,10 +2,10 @@ import axios from 'axios'
 
 /**
  * Axios 인스턴스 생성
- * SceneForge 백엔드 API와의 통신을 위한 HTTP 클라이언트
+ * SceneForge NestJS 백엔드 API와의 통신을 위한 HTTP 클라이언트
  */
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api', // 백엔드 서버 URL
+  baseURL: 'http://localhost:5001/api', // NestJS 백엔드 서버 URL (기본 포트 5001)
   timeout: 300000, // 요청 타임아웃 (5분) - 이미지 생성 등 시간이 오래 걸리는 작업을 위해 증가
   headers: {
     'Content-Type': 'application/json', // JSON 데이터 전송

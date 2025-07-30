@@ -15,8 +15,8 @@ const RealLocationDetailModal = ({ open, onClose, realLocation, projectId }) => 
   // 모든 RealLocation 불러오기
   useEffect(() => {
     if (projectId) {
-      api.get(`/projects/${projectId}/groups`).then(res => setGroups(res.data.data || []));
-      api.get(`/projects/${projectId}/realLocations`).then(res => setAllLocations(res.data.data || []));
+          api.get(`/project/${projectId}/groups`).then(res => setGroups(res.data.data || []));
+    api.get(`/project/${projectId}/real-locations`).then(res => setAllLocations(res.data.data || []));
     }
     if (realLocation) {
       fetchContes();
@@ -31,24 +31,24 @@ const RealLocationDetailModal = ({ open, onClose, realLocation, projectId }) => 
   // 모든 Conte 불러오기
   useEffect(() => {
     if (projectId) {
-      api.get(`/projects/${projectId}/contes`).then(res => setAllContes(res.data.data?.contes || []));
+      api.get(`/project/${projectId}/scene`).then(res => setAllContes(res.data.data?.scenes || []));
     }
   }, [projectId]);
 
   const fetchContes = async () => {
     if (realLocation) {
-      const res = await api.get(`/projects/${projectId}/contes`, { params: { realLocationId: realLocation._id } });
+      const res = await api.get(`/project/${projectId}/scene`, { params: { realLocationId: realLocation._id } });
       setContes(res.data.data?.contes || []);
     }
   };
 
   const handleSave = async () => {
-    await api.put(`/projects/${projectId}/realLocations/${realLocation._id}`, { name, groupId });
+    await api.patch(`/project/${projectId}/real-locations/${realLocation._id}`, { name, groupId });
     onClose(true);
   };
 
   const handleRemoveConte = async (conte) => {
-    await api.put(`/projects/${projectId}/contes/${conte.id}`, {
+    await api.patch(`/project/${projectId}/scene/${conte.id}`, {
       ...conte,
       keywords: { ...conte.keywords, realLocationId: null }
     });
@@ -58,14 +58,14 @@ const RealLocationDetailModal = ({ open, onClose, realLocation, projectId }) => 
   const handleAddContes = async () => {
     await Promise.all(selectedConteIds.map(conteId => {
       const conte = allContes.find(c => c.id === conteId);
-      return api.put(`/projects/${projectId}/contes/${conteId}`, {
+      return api.patch(`/project/${projectId}/scene/${conteId}`, {
         keywords: { ...conte.keywords, realLocationId: realLocation._id }
       });
     }));
     setSelectedConteIds([]);
     fetchContes();
     // 추가: 전체 콘티 목록도 새로고침
-    api.get(`/projects/${projectId}/contes`).then(res => setAllContes(res.data.data?.contes || []));
+    api.get(`/project/${projectId}/scene`).then(res => setAllContes(res.data.data?.scenes || []));
   };
 
   return (

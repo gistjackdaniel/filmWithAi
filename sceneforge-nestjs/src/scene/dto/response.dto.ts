@@ -96,7 +96,7 @@ export class CrewMemberResponseDto {
   profileId?: Types.ObjectId;
 }
 
-export class CrewRoleResponseDto {
+export class DirectionResponseDto {
   @ApiProperty({ description: '감독', type: [CrewMemberResponseDto] })
   director: CrewMemberResponseDto[];
 
@@ -193,8 +193,8 @@ export class ArtResponseDto {
 }
 
 export class CrewResponseDto {
-  @ApiProperty({ description: '연출팀', type: CrewRoleResponseDto })
-  direction: CrewRoleResponseDto;
+  @ApiProperty({ description: '연출팀', type: DirectionResponseDto })
+  direction: DirectionResponseDto;
 
   @ApiProperty({ description: '제작팀', type: ProductionResponseDto })
   production: ProductionResponseDto;

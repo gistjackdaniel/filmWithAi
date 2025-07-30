@@ -24,7 +24,7 @@ import toast from 'react-hot-toast'
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { SceneType } from '../../../types/conte'
+import { SceneType } from '../../../types/scene'
 import { 
   formatTimeFromSeconds, 
   formatTimeShort, 

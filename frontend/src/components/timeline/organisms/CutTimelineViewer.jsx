@@ -24,7 +24,7 @@ import VideoUploader from '../atoms/VideoUploader'
 import { generateVideoWithVeo2, checkVeo2ApiAvailability } from '../../../services/veo2Api'
 
 import TimeRuler from '../atoms/TimeRuler'
-import { SceneType } from '../../../types/conte'
+import { SceneType } from '../../../types/scene'
 import { 
   calculateTimeScale,
   calculateTotalDuration,

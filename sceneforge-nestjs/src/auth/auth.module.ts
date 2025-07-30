@@ -3,7 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { ProfileModule } from '../profile/profile.module';
+import { ProfileModule } from '@/profile/profile.module';
 
 @Module({
   imports: [

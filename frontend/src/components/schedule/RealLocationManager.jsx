@@ -16,7 +16,7 @@ const RealLocationManager = ({ projectId }) => {
     setLoading(true);
     try {
       console.log('[RealLocationManager] Fetching locations for project:', projectId);
-      const res = await api.get(`/projects/${projectId}/realLocations`);
+      const res = await api.get(`/project/${projectId}/real-locations`);
       console.log('[RealLocationManager] Fetched locations:', res.data.data);
       setLocations(res.data.data || []);
     } catch (e) {
@@ -28,7 +28,7 @@ const RealLocationManager = ({ projectId }) => {
 
   const fetchGroups = async () => {
     if (projectId) {
-      const res = await api.get(`/projects/${projectId}/groups`);
+      const res = await api.get(`/project/${projectId}/groups`);
       setGroups(res.data.data || []);
     }
   };
@@ -43,13 +43,13 @@ const RealLocationManager = ({ projectId }) => {
 
   const handleAdd = async () => {
     if (!newName) return;
-    await api.post(`/projects/${projectId}/realLocations`, { name: newName });
+          await api.post(`/project/${projectId}/real-locations`, { name: newName });
     setNewName('');
     fetchLocations();
   };
 
   const handleDelete = async (id) => {
-    await api.delete(`/projects/${projectId}/realLocations/${id}`);
+          await api.delete(`/project/${projectId}/real-locations/${id}`);
     fetchLocations();
   };
 

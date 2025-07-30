@@ -11,7 +11,7 @@ import { LightOverall } from '../interface/light-overall.interface';
 import { LightingSetup } from '../interface/lighting-setup.interface';
 import { Lighting } from '../interface/lighting.interface';
 import { RealLocation } from '../interface/scene-location.interface';
-import { CrewRole } from '../interface/crew-role.interface';
+import { Direction } from '../interface/direction.interface';
 import { Production } from '../interface/production.interface';
 import { Cinematography } from '../interface/cinematography.interface';
 import { LightingCrew } from '../interface/lighting-crew.interface';
@@ -195,7 +195,7 @@ export class RealLocationDto implements RealLocation {
   group_name?: string;
 }
 
-export class CrewRoleDto implements CrewRole {
+export class DirectionDto implements Direction {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CrewMemberDto)
@@ -377,9 +377,9 @@ export class ArtDto implements Art {
 
 export class CrewDto implements Crew {
   @ValidateNested()
-  @Type(() => CrewRoleDto)
+  @Type(() => DirectionDto)
   @IsOptional()
-  direction?: CrewRoleDto;
+  direction?: DirectionDto;
 
   @ValidateNested()
   @Type(() => ProductionDto)

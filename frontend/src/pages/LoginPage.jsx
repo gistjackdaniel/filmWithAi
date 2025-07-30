@@ -11,7 +11,7 @@ import { Google } from '@mui/icons-material'
 import { useGoogleLogin } from '@react-oauth/google'
 import { useAuthStore } from '../stores/authStore'
 import toast from 'react-hot-toast'
-import ErrorMessage from '../components/ErrorMessage'
+import ErrorMessage from '../components/error/ErrorMessage'
 
 /**
  * 로그인 페이지 컴포넌트

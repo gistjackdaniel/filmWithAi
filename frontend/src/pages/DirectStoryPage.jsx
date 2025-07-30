@@ -41,10 +41,7 @@ import {
   Lightbulb,
   Warning
 } from '@mui/icons-material'
-import ConteGenerator from '../components/story/ConteGenerator'
-import ConteResult from '../components/story/ConteResult'
-import ConteEditModal from '../components/story/ConteEditModal'
-import { generateSceneImage } from '../services/storyGenerationApi'
+// Conte 관련 컴포넌트들은 제거됨 - 시놉시스 → 스토리 생성 → 씬 생성 → 컷 생성 로직 사용
 import useProjectStore from '../stores/projectStore'
 import useTimelineStore from '../stores/timelineStore' // 타임라인 스토어 추가
 import { shouldUseDevImages, shouldShowDevBadge, getAppName, getCurrentMode } from '../config/appConfig'

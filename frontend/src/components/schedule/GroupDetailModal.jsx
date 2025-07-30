@@ -9,7 +9,7 @@ const GroupDetailModal = ({ open, onClose, group, projectId }) => {
 
   const fetchLocations = async () => {
     if (group && projectId) {
-      const res = await api.get(`/projects/${projectId}/realLocations`, { params: { groupId: group._id } });
+      const res = await api.get(`/project/${projectId}/real-locations`, { params: { groupId: group._id } });
       setLocations(res.data.data || []);
     }
   };
@@ -21,12 +21,12 @@ const GroupDetailModal = ({ open, onClose, group, projectId }) => {
   }, [group, projectId]);
 
   const handleAddressSave = async () => {
-    await api.put(`/projects/${projectId}/groups/${group._id}`, { name: group.name, address });
+    await api.patch(`/project/${projectId}/groups/${group._id}`, { name: group.name, address });
     onClose(true); // true: 변경됨
   };
 
   const handleRemoveLocation = async (locId) => {
-    await api.put(`/projects/${projectId}/realLocations/${locId}`, { groupId: null });
+    await api.patch(`/project/${projectId}/real-locations/${locId}`, { groupId: null });
     fetchLocations();
   };
 

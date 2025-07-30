@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { SceneType } from '../types/conte'
+import { SceneType } from '../types/scene'
 import timelineService from '../services/timelineService'
 import api from '../services/api.js'
 import { useAuthStore } from './authStore.js'

@@ -15,6 +15,7 @@ const useAuthStore = create(
       isAuthenticated: false, // 인증 상태 플래그
       loading: true, // 로딩 상태 (초기 인증 확인 중)
       token: null, // JWT 토큰
+      refreshToken: null, // 리프레시 토큰
       autoLogoutTimer: null, // 자동 로그아웃 타이머
 
       // ===== 액션 (Actions) =====
@@ -61,6 +62,27 @@ const useAuthStore = create(
       },
 
       /**
+       * 리프레시 토큰 설정
+       * @param {string} refreshToken - 리프레시 토큰
+       */
+      setRefreshToken: (refreshToken) => {
+        set({ refreshToken })
+        if (refreshToken) {
+          try {
+            sessionStorage.setItem('refresh-token', refreshToken)
+          } catch (error) {
+            console.warn('Failed to store refresh token in sessionStorage:', error)
+          }
+        } else {
+          try {
+            sessionStorage.removeItem('refresh-token')
+          } catch (error) {
+            console.warn('Failed to remove refresh token from sessionStorage:', error)
+          }
+        }
+      },
+
+      /**
        * Google OAuth 로그인 처리
        * @param {string} accessToken - Google OAuth access token
        * @returns {Object} 로그인 결과 { success: boolean, error?: string }
@@ -69,12 +91,13 @@ const useAuthStore = create(
         try {
           set({ loading: true })
           
-          // 서버에 Google access token 전송하여 JWT 토큰 받기
-          const response = await api.post('/auth/google', { access_token: accessToken })
-          const { token, user } = response.data
+          // NestJS 백엔드에 Google access token 전송하여 JWT 토큰 받기
+          const response = await api.post('/auth/login', { access_token: accessToken })
+          const { access_token, refresh_token, user } = response.data
           
           // 토큰과 사용자 정보 설정
-          get().setToken(token)
+          get().setToken(access_token)
+          get().setRefreshToken(refresh_token)
           get().setUser(user)
           
           // 자동 로그아웃 타이머 설정
@@ -98,9 +121,11 @@ const useAuthStore = create(
           user: null, 
           isAuthenticated: false, 
           token: null,
+          refreshToken: null,
           loading: false 
         })
         get().setToken(null)
+        get().setRefreshToken(null)
       },
 
       /**
@@ -130,17 +155,17 @@ const useAuthStore = create(
        */
       refreshToken: async () => {
         try {
-          const currentToken = get().token
-          if (!currentToken) {
+          const currentRefreshToken = get().refreshToken
+          if (!currentRefreshToken) {
             return false
           }
 
-          // 서버에 토큰 갱신 요청
+          // NestJS 백엔드에 토큰 갱신 요청
           const response = await api.post('/auth/refresh', {
-            token: currentToken
+            refresh_token: currentRefreshToken
           })
           
-          const { token: newToken } = response.data
+          const { access_token: newToken, expires_in } = response.data
           
           // 새 토큰 설정
           get().setToken(newToken)
@@ -151,6 +176,20 @@ const useAuthStore = create(
           // 갱신 실패 시 로그아웃
           get().logout()
           return false
+        }
+      },
+
+      /**
+       * 강제 인증 갱신 (401 오류 시 사용)
+       * @returns {Promise<Object>} 갱신 결과
+       */
+      forceAuthRefresh: async () => {
+        try {
+          const result = await get().refreshToken()
+          return { success: result }
+        } catch (error) {
+          console.error('Force auth refresh failed:', error)
+          return { success: false, error: error.message }
         }
       },
 
@@ -179,9 +218,9 @@ const useAuthStore = create(
             }
           }
 
-          // 서버에 현재 사용자 정보 요청
-          const response = await api.get('/auth/me')
-          get().setUser(response.data.user)
+          // NestJS 백엔드에 현재 사용자 정보 요청
+          const response = await api.get('/profile')
+          get().setUser(response.data)
           set({ loading: false })
         } catch (error) {
           console.error('Auth check error:', error)
@@ -268,6 +307,7 @@ const useAuthStore = create(
             user: null, 
             isAuthenticated: false, 
             token: null,
+            refreshToken: null,
             loading: false 
           })
         }
@@ -279,6 +319,7 @@ const useAuthStore = create(
       partialize: (state) => ({ 
         // 영구 저장할 상태만 선택
         token: state.token,
+        refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated 
       })

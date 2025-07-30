@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const Project = require('../models/Project');
-const Conte = require('../models/Conte');
+// const Conte = require('../models/Conte'); // Conte 모델이 없으므로 주석 처리
 
 /**
  * 실시간 협업 서비스
