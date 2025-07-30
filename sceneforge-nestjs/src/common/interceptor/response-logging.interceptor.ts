@@ -61,7 +61,13 @@ export class ResponseLoggingInterceptor implements NestInterceptor {
             name: error.name,
             message: error.message,
             stack: error.stack,
+            code: error.code,
+            status: error.status,
+            response: error.response?.data,
           },
+          requestBody: req.body,
+          requestQuery: req.query,
+          requestParams: req.params,
           requestId: req.headers['x-request-id'] || 'unknown',
         });
 

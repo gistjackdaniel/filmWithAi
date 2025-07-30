@@ -297,22 +297,6 @@ export class CameraSetupDto {
 // Main DTOs
 export class CreateCutRequestDto {
   @ApiProperty({
-    description: '씬 ID',
-    example: '507f1f77bcf86cd799439011'
-  })
-  @IsMongoId()
-  @IsNotEmpty()
-  sceneId: Types.ObjectId;
-
-  @ApiProperty({
-    description: '프로젝트 ID',
-    example: '507f1f77bcf86cd799439011'
-  })
-  @IsMongoId()
-  @IsNotEmpty()
-  projectId: Types.ObjectId;
-
-  @ApiProperty({
     description: '순서',
     example: 1,
     minimum: 1
@@ -547,14 +531,6 @@ export class CreateCutDraftRequestDto {
   @Min(1)
   @Max(10)
   maxCuts: number;
-
-  @ApiProperty({
-    description: '장르',
-    example: '드라마',
-  })
-  @IsString()
-  @IsNotEmpty()
-  genre: string;
 }
 
 export class UploadImageDto {

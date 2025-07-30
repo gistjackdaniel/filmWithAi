@@ -39,8 +39,8 @@ export class SchedulerScene {
     name: string;
   };
 
-  @Prop({ type: Number, required: true })
-  estimatedDuration: number;
+  @Prop({ type: String, required: true })
+  estimatedDuration: string;
 
   @Prop({ type: [String], required: true })
   costumes: string[];

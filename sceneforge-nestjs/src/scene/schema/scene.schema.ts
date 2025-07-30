@@ -145,8 +145,8 @@ export class Scene {
 
   @Prop({ 
     type: String, 
-    enum: ['새벽', '아침', '오후', '저녁', '밤', '낮'], 
-    default: '오후' 
+    enum: ['새벽', '아침', '점심', '저녁', '밤'], 
+    default: '점심' 
   })
   timeOfDay: string;
 

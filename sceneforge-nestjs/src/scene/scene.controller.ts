@@ -23,6 +23,7 @@ import {
   CreateSceneDraftRequestDto
 } from './dto/request.dto';
 import { 
+  SceneDraftResponseDto,
   SceneResponseDto
 } from './dto/response.dto';
 import { JwtAuthGuard } from '../common/guard/jwt-auth.guard';
@@ -147,7 +148,7 @@ export class SceneController {
     status: HttpStatus.BAD_REQUEST, 
     description: '잘못된 요청 데이터입니다.' 
   })
-  async createDraft(@Param('projectId') projectId: string, @Body() createSceneDraftRequestDto: CreateSceneDraftRequestDto): Promise<SceneResponseDto[]> {
+  async createDraft(@Param('projectId') projectId: string, @Body() createSceneDraftRequestDto: CreateSceneDraftRequestDto): Promise<SceneDraftResponseDto[]> {
     return this.sceneService.createDraft(projectId, createSceneDraftRequestDto);
   }
 } 
