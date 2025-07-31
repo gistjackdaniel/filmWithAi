@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import './SceneGenerationModal.css';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Box,
+  Typography,
+  CircularProgress,
+  Alert
+} from '@mui/material';
+import { Close, Add, AutoAwesome } from '@mui/icons-material';
 
 interface SceneGenerationModalProps {
   isOpen: boolean;
@@ -14,80 +26,111 @@ const SceneGenerationModal: React.FC<SceneGenerationModalProps> = ({
   onGenerate,
   isGenerating
 }) => {
-  const [maxScenes, setMaxScenes] = useState<number | ''>(5);
+  const [maxScenes, setMaxScenes] = useState<number>(5);
+  const [error, setError] = useState<string>('');
 
   const handleGenerate = () => {
-    if (typeof maxScenes === 'number' && maxScenes >= 1 && maxScenes <= 20) {
-      onGenerate({
-        maxScenes
-      });
-      // 생성 버튼을 누르면 즉시 모달 닫기
+    if (maxScenes >= 1 && maxScenes <= 20) {
+      setError('');
+      onGenerate({ maxScenes });
       onClose();
     } else {
-      alert('1-20 사이의 숫자를 입력해주세요.');
+      setError('1-20 사이의 숫자를 입력해주세요.');
     }
   };
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    if (!isGenerating) {
+      setError('');
+      onClose();
+    }
+  };
 
   return (
-    <div className="modal-overlay">
-      <div className="scene-generation-modal">
-        <div className="modal-header">
-          <h2>AI 씬 생성</h2>
-          <button className="close-btn" onClick={onClose} disabled={isGenerating}>
-            ×
-          </button>
-        </div>
-        
-        <div className="modal-content">
-          <div className="form-group">
-            <label htmlFor="maxScenes">생성할 씬 개수</label>
-            <input
-              type="number"
-              id="maxScenes"
-              value={maxScenes}
-              onChange={(e) => {
-                const value = e.target.value;
-                setMaxScenes(value === '' ? '' : Number(value));
-              }}
-              min={1}
-              max={20}
-              disabled={isGenerating}
-              placeholder="1-20 사이의 숫자를 입력하세요"
-            />
-          </div>
-          
-          <div className="info-text">
-            <p>AI가 프로젝트의 시놉시스와 스토리를 기반으로 씬을 생성합니다.</p>
-          </div>
-        </div>
+    <Dialog 
+      open={isOpen} 
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          minHeight: '300px',
+          bgcolor: 'background.paper'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderBottom: 1,
+        borderColor: 'divider'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AutoAwesome color="primary" />
+          <Typography variant="h6">AI 씬 생성</Typography>
+        </Box>
+        <Button
+          onClick={handleClose}
+          disabled={isGenerating}
+          sx={{ minWidth: 'auto' }}
+        >
+          <Close />
+        </Button>
+      </DialogTitle>
 
-        <div className="modal-footer">
-          <button
-            className="cancel-btn"
-            onClick={onClose}
+      <DialogContent sx={{ p: 3 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            AI가 프로젝트의 시놉시스와 스토리를 기반으로 씬을 생성합니다.
+          </Typography>
+          
+          <TextField
+            fullWidth
+            type="number"
+            label="생성할 씬 개수"
+            value={maxScenes}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              setMaxScenes(value);
+              setError('');
+            }}
+            inputProps={{
+              min: 1,
+              max: 20,
+              step: 1
+            }}
             disabled={isGenerating}
-          >
-            취소
-          </button>
-          <button
-            className="generate-btn"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <>
-                <div className="loading-spinner"></div>
-                생성 중...
-              </>
-            ) : (
-              '씬 생성하기'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            helperText="1-20 사이의 숫자를 입력하세요"
+            error={!!error}
+          />
+          
+          {error && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {error}
+            </Alert>
+          )}
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 3, borderTop: 1, borderColor: 'divider' }}>
+        <Button 
+          onClick={handleClose}
+          disabled={isGenerating}
+          variant="outlined"
+        >
+          취소
+        </Button>
+        <Button
+          onClick={handleGenerate}
+          disabled={isGenerating || maxScenes < 1 || maxScenes > 20}
+          variant="contained"
+          startIcon={isGenerating ? <CircularProgress size={16} /> : <Add />}
+        >
+          {isGenerating ? '생성 중...' : '씬 생성하기'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

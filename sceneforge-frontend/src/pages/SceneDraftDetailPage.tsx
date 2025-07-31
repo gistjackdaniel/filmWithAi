@@ -109,15 +109,21 @@ const SceneDraftDetailPage: React.FC = () => {
         }
       }
       
-      // ProjectPage로 이동하면서 새로고침 플래그 전달
-      navigate(`/project/${projectId}`, { 
-        state: { 
-          refresh: true,
-          savedScene: savedScene
+      // ProjectPage에 씬 저장 이벤트 발생
+      window.dispatchEvent(new CustomEvent('sceneSaved', {
+        detail: { 
+          projectId, 
+          savedScene: savedScene,
+          draftOrder: draftOrder
         }
-      });
+      }));
       
       alert('씬이 성공적으로 저장되었습니다.');
+      
+      // ProjectPage로 이동 (약간의 지연 후)
+      setTimeout(() => {
+        navigate(`/project/${projectId}`);
+      }, 100);
     } catch (error) {
       console.error('씬 저장 실패:', error);
       alert('씬 저장에 실패했습니다.');

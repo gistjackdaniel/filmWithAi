@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
 import LoginForm from './components/auth/LoginForm';
 import GoogleCallback from './components/auth/GoogleCallback';
-import Dashboard from './components/dashboard/Dashboard';
+import Dashboard from './pages/Dashboard';
 import ProjectPage from './pages/ProjectPage';
 import SceneDetailPage from './pages/SceneDetailPage';
 import SceneDraftDetailPage from './pages/SceneDraftDetailPage';
@@ -12,6 +14,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useAuthStore } from './stores/authStore';
 import { ROUTES } from './constants/routes';
+import createAppTheme from './theme/theme';
 import './App.css';
 
 const App: React.FC = () => {
@@ -28,6 +31,9 @@ const App: React.FC = () => {
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
+
+  // 다크 테마 생성
+  const theme = createAppTheme('dark');
 
   // 로딩 중일 때 스피너 표시
   if (isLoading) {
@@ -48,6 +54,8 @@ const App: React.FC = () => {
   }
 
   return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
     <ErrorBoundary>
       <Router>
         <div className="App">
@@ -60,7 +68,7 @@ const App: React.FC = () => {
               path={ROUTES.DASHBOARD} 
               element={
                 isAuthenticated ? (
-                  <Dashboard user={user!} onLogout={logout} />
+                    <Dashboard />
                 ) : (
                   <Navigate to={ROUTES.LOGIN} replace />
                 )
@@ -107,11 +115,7 @@ const App: React.FC = () => {
             <Route 
               path={`${ROUTES.PROJECT}/:projectId/scene/:sceneId/cut/:cutId`} 
               element={
-                isAuthenticated ? (
                   <CutDetailPage />
-                ) : (
-                  <Navigate to={ROUTES.LOGIN} replace />
-                )
               } 
             />
             
@@ -119,11 +123,7 @@ const App: React.FC = () => {
             <Route 
               path={`${ROUTES.PROJECT}/:projectId/scene/:sceneId/cut-draft/:cutId`} 
               element={
-                isAuthenticated ? (
                   <CutDraftDetailPage />
-                ) : (
-                  <Navigate to={ROUTES.LOGIN} replace />
-                )
               } 
             />
             
@@ -145,6 +145,7 @@ const App: React.FC = () => {
         </div>
       </Router>
     </ErrorBoundary>
+    </ThemeProvider>
   );
 };
 

@@ -28,7 +28,7 @@ export class CreateProjectRequestDto {
   @IsString()
   story?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '프로젝트 태그',
     example: ['판타지', '모험', '가족'],
     required: false,
@@ -36,30 +36,33 @@ export class CreateProjectRequestDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  tags: string[];
+  tags?: string[];
 
   @ApiPropertyOptional({
     description: '공개 여부',
     example: false,
-    required: true,
+    required: false,
   })
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '장르',
     example: ['드라마', '모험', '가족'],
+    required: false,
   })
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  genre: string[];
+  genre?: string[];
 
   @ApiPropertyOptional({
     description: '예상 지속 시간',
     example: '90분',
     required: false,
   })
+  @IsOptional()
   @IsString()
   estimatedDuration?: string;
 } 

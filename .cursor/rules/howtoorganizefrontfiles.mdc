@@ -1,0 +1,5 @@
+---
+1. sceneforge-frontend ui를 만드는 코드를 생성할 때 비즈니스 구현 도중 로직을  직접 호출하는 것이 아니라, src/services 폴더 안 관련 파일 또는 src/stores 폴더 안 관련 파일을 이용한다.
+2. 생성한 코드는 언제나 주석을 단다. 
+alwaysApply: false
+---
