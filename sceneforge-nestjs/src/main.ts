@@ -25,7 +25,17 @@ async function bootstrap() {
 
   // /uploads 경로에만 CORS 헤더 추가
   app.use('/uploads', (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', configService.get('FRONTEND_URL') || 'http://localhost:3002');
+    const allowedOrigins = [
+      configService.get('FRONTEND_URL') || 'http://localhost:3002',
+      'https://filmaiforge.com',
+      'https://www.filmaiforge.com',
+    ];
+    
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+    
     res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.header('Access-Control-Allow-Credentials', 'true');
@@ -45,7 +55,11 @@ async function bootstrap() {
 
   // CORS 설정
   app.use(cors({
-    origin: configService.get('FRONTEND_URL') || 'http://localhost:3002',
+    origin: [
+      configService.get('FRONTEND_URL') || 'http://localhost:3002',
+      'https://filmaiforge.com',
+      'https://www.filmaiforge.com',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
