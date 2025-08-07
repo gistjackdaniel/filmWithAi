@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Delete, UseGuards, UnauthorizedException, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Get, Body, Delete, UseGuards, UnauthorizedException, UsePipes, ValidationPipe, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { LoginRequestDto, RefreshAccessTokenRequestDto, WithdrawRequestDto } from './dto/request.dto';
@@ -17,8 +17,32 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  @Get('google')
+  @ApiOperation({ summary: 'Google OAuth 시작' })
+  async googleAuth() {
+    const clientId = this.configService.get('GOOGLE_CLIENT_ID');
+    const redirectUri = this.configService.get('GOOGLE_REDIRECT_URI') || 'http://localhost:3002/auth/google/callback';
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `scope=email profile&` +
+      `access_type=offline&` +
+      `prompt=consent&` +
+      `state=${Math.random().toString(36).substring(7)}`;
+
+    return { authUrl };
+  }
+
+  @Get('google/callback')
+  @ApiOperation({ summary: 'Google OAuth 콜백' })
+  async googleCallback(@Query('code') code: string, @Query('state') state: string) {
+    return this.authService.handleGoogleCallback(code);
+  }
+
   @Post('login')
-  @ApiOperation({ summary: 'Google OAuth 로그인' })
+  @ApiOperation({ summary: 'Google OAuth 로그인 (기존 방식)' })
   @ApiBody({ type: LoginRequestDto })
   async login(@Body() body: LoginRequestDto): Promise<LoginResponseDto> {
     if (body.access_token.startsWith('test_') && this.configService.get('NODE_ENV') === 'development') {
@@ -32,6 +56,15 @@ export class AuthController {
   @ApiBody({ type: RefreshAccessTokenRequestDto })
   async refreshAccessToken(@Body() refreshAccessTokenRequestDto: RefreshAccessTokenRequestDto) : Promise<RefreshAccessTokenResponseDto> {
     return this.authService.refreshAccessToken(refreshAccessTokenRequestDto);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '로그아웃' })
+  @UseGuards(JwtAuthGuard)
+  async logout(@CurrentUser() user: JwtPayload) {
+    return this.authService.logout(user.profileId);
   }
 
   @Delete('withdraw')
