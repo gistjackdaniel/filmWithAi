@@ -10,8 +10,6 @@ export interface Project {
   status?: string;
   isFavorite?: boolean;
   isDeleted?: boolean;
-  storyGenerated?: boolean;
-  storyGeneratedAt?: string;
   isPublic?: boolean;
   participants?: string[];
   scenes?: string[];
@@ -27,8 +25,6 @@ export interface CreateProjectRequest {
   genre?: string[];
   tags?: string[];
   estimatedDuration?: string;
-  storyGenerated?: boolean;
-  storyGeneratedAt?: string;
   isPublic?: boolean;
 }
 
@@ -42,8 +38,6 @@ export interface UpdateProjectRequest {
   status?: string;
   isFavorite?: boolean;
   isDeleted?: boolean;
-  storyGenerated?: boolean;
-  storyGeneratedAt?: string;
   isPublic?: boolean;
 }
 

@@ -233,7 +233,13 @@ const sceneEndpoints = {
 export const sceneService = {
   // 씬 초안 생성 (AI)
   async createDraft(projectId: string, data: CreateSceneDraftRequest): Promise<SceneDraft[]> {
-    const response = await sceneApi.post<SceneDraft[]>(`${API_ENDPOINTS.PROJECTS.GET(projectId)}/scene/draft`, data);
+    const response = await sceneApi.post<SceneDraft[]>(`/project/${projectId}/scene/draft`, data);
+    return response.data;
+  },
+
+  // 씬 초안을 실제 씬으로 저장
+  async saveDraftAsScene(projectId: string, sceneDrafts: SceneDraft[]): Promise<Scene[]> {
+    const response = await sceneApi.post<Scene[]>(`/project/${projectId}/scene/draft/save`, sceneDrafts);
     return response.data;
   },
 

@@ -21,7 +21,8 @@ import {
   Movie,
   Drafts,
   CheckCircle,
-  Schedule
+  Schedule,
+  Save
 } from '@mui/icons-material';
 import type { Scene, SceneDraft } from '../../scene/services/sceneService';
 
@@ -32,6 +33,7 @@ interface SceneListSectionProps {
   onOpenSceneModal: () => void;
   projectId: string;
   onSceneClick?: (scene: Scene | SceneDraft) => void;
+  onSaveDraft?: (scene: SceneDraft) => void;
 }
 
 const SceneListSection: React.FC<SceneListSectionProps> = ({
@@ -40,7 +42,8 @@ const SceneListSection: React.FC<SceneListSectionProps> = ({
   isGeneratingScenes,
   onOpenSceneModal,
   projectId,
-  onSceneClick
+  onSceneClick,
+  onSaveDraft
 }) => {
   const navigate = useNavigate();
 
@@ -177,12 +180,26 @@ const SceneListSection: React.FC<SceneListSectionProps> = ({
                     </Box>
                     
                     {isDraft && (
-                      <Chip 
-                        label="저장 필요" 
-                        size="small" 
-                        color="warning" 
-                        variant="outlined"
-                      />
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="DB에 저장">
+                          <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSaveDraft?.(scene as SceneDraft);
+                            }}
+                          >
+                            <Save />
+                          </IconButton>
+                        </Tooltip>
+                        <Chip 
+                          label="저장 필요" 
+                          size="small" 
+                          color="warning" 
+                          variant="outlined"
+                        />
+                      </Box>
                     )}
                   </CardActions>
                 </Card>

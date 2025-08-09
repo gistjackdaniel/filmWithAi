@@ -92,6 +92,74 @@ export class AuthService {
     }
   }
 
+  // Authorization Code를 Access Token으로 교환하는 메서드
+  private async exchangeCodeForToken(code: string): Promise<{ access_token: string; refresh_token?: string }> {
+    try {
+      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+        client_id: this.configService.get('GOOGLE_CLIENT_ID'),
+        client_secret: this.configService.get('GOOGLE_CLIENT_SECRET'),
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: 'http://localhost:3002/auth/google/callback',
+      });
+
+      if (tokenResponse.status !== 200) {
+        throw new UnauthorizedException('Google OAuth 토큰 교환 실패');
+      }
+
+      return tokenResponse.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        throw new HttpException(
+          error.response.data?.error_description || error.response.data?.error || 'Google OAuth 토큰 교환 실패',
+          error.response.status
+        );
+      }
+      throw new InternalServerErrorException('Google OAuth 토큰 교환 중 서버 오류');
+    }
+  }
+
+  // 공통 인증 로직 (Google 토큰으로 사용자 인증 및 JWT 생성)
+  private async authenticateUserWithGoogleToken(googleAccessToken: string): Promise<LoginResponseDto> {
+    const userInfo = await this.getGoogleUserInfo(googleAccessToken);
+
+    const profile = await this.profileService.createOrUpdateLastLogin({
+      googleId: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture,
+      lastLoginAt: new Date(),
+    });
+
+    const accessToken = await this.generateAccessToken(profile._id.toString(), userInfo);
+    const refreshToken = await this.generateRefreshToken(profile._id.toString(), userInfo);
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user: {
+        _id: profile._id.toString(),
+        googleId: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
+      }
+    };
+  }
+
+  // Authorization Code Flow 콜백 처리
+  async handleGoogleCallback(code: string): Promise<LoginResponseDto> {
+    if (!code) {
+      throw new UnauthorizedException('Authorization code가 제공되지 않았습니다.');
+    }
+
+    // Authorization Code를 Access Token으로 교환
+    const tokenData = await this.exchangeCodeForToken(code);
+    
+    // 공통 인증 로직 사용
+    return this.authenticateUserWithGoogleToken(tokenData.access_token);
+  }
+
   async loginTest(loginRequestDto: LoginRequestDto): Promise<LoginResponseDto> {
     const { access_token } = loginRequestDto;
 
@@ -119,51 +187,6 @@ export class AuthService {
         picture: userInfo.picture,
       }
     };
-  }
-
-  private async authenticateUserWithGoogleToken(googleAccessToken: string): Promise<LoginResponseDto> {
-    // Google 사용자 정보 가져오기
-    const userInfo = await this.getGoogleUserInfo(googleAccessToken);
-
-    const profile = await this.profileService.createOrUpdateLastLogin({
-      googleId: userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name,
-      picture: userInfo.picture,
-      lastLoginAt: new Date(),
-    });
-
-    // JWT 토큰 생성
-    const jwtAccessToken = await this.generateAccessToken(profile._id.toString(), userInfo);
-    const jwtRefreshToken = await this.generateRefreshToken(profile._id.toString(), userInfo);
-
-    return {
-      access_token: jwtAccessToken,
-      refresh_token: jwtRefreshToken,
-      user: {
-        _id: profile._id.toString(),
-        googleId: userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-      }
-    };
-  }
-
-  async handleGoogleCallback(code: string): Promise<LoginResponseDto> {
-    // Authorization code를 access token으로 교환
-    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-      client_id: this.configService.get('GOOGLE_CLIENT_ID'),
-      client_secret: this.configService.get('GOOGLE_CLIENT_SECRET'),
-      code: code,
-      grant_type: 'authorization_code',
-      redirect_uri: this.configService.get('GOOGLE_REDIRECT_URI') || 'http://localhost:3002/auth/google/callback',
-    });
-
-    const { access_token } = tokenResponse.data;
-
-    // 공통 인증 로직 사용
-    return this.authenticateUserWithGoogleToken(access_token);
   }
 
   async login(loginRequestDto: LoginRequestDto): Promise<LoginResponseDto> {

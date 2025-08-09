@@ -23,7 +23,7 @@ interface AuthState {
   initializeAuth: () => void;
   
   // API 액션
-  loginWithGoogle: (accessToken: string) => Promise<void>;
+  loginWithGoogle: (jwtAccessToken: string, user?: any, refreshToken?: string) => Promise<void>;
   loginWithTest: () => Promise<void>;
   refreshTokens: () => Promise<void>;
   withdraw: () => Promise<void>;
@@ -89,15 +89,31 @@ export const useAuthStore = create<AuthState>()(
         },
 
         // API 액션
-        loginWithGoogle: async (accessToken: string) => {
+        loginWithGoogle: async (jwtAccessToken: string, user?: any, refreshToken?: string) => {
           set({ isLoading: true, error: null });
           
           try {
-            const response = await authService.login(accessToken);
-            get().login(response.user, {
-              access_token: response.access_token,
-              refresh_token: response.refresh_token,
-            });
+            // Authorization Code Flow에서 받은 JWT 토큰을 직접 사용
+            // 백엔드에서 이미 사용자 정보와 함께 JWT 토큰을 반환했으므로
+            // 추가 API 호출 없이 바로 로그인 처리
+            
+            // 스토리지에 JWT 토큰 저장
+            const tokens = {
+              access_token: jwtAccessToken,
+              refresh_token: refreshToken || '', // 백엔드에서 refresh token도 함께 반환
+            };
+            
+            // 사용자 정보는 백엔드에서 반환된 데이터를 사용
+            // 임시로 기본 사용자 정보 설정 (실제로는 백엔드에서 반환된 데이터 사용)
+            const userToLogin = user || {
+              _id: 'temp_user_id',
+              googleId: 'temp_google_id',
+              email: 'temp@example.com',
+              name: 'Temporary User',
+              picture: '',
+            };
+            
+            get().login(userToLogin, tokens);
           } catch (error: any) {
             set({ 
               error: error.response?.data?.message || '로그인에 실패했습니다.',

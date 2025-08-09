@@ -78,10 +78,8 @@ export const projectService = {
 
       // 스토리 생성
       generateStory: async (projectId: string): Promise<Project> => {
-        return await projectService.updateProject(projectId, { 
-          storyGenerated: true,
-          storyGeneratedAt: new Date().toISOString()
-        });
+        const response = await projectApi.post(`/project/${projectId}/generate-story`);
+        return response.data;
       },
 
       // 시놉시스로부터 스토리 생성
@@ -89,8 +87,7 @@ export const projectService = {
         const response = await projectService.createProject({ 
           title: 'Generated Story',
           synopsis,
-          storyGenerated: true,
-          storyGeneratedAt: new Date().toISOString()
+          // storyGenerated와 storyGeneratedAt 필드 제거
         });
         return { story: response.story || '' };
       },

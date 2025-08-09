@@ -9,15 +9,15 @@ export const SCENE_CONSTANTS = {
 // API 엔드포인트
 export const API_ENDPOINTS = {
   PROJECTS: {
-    GET: (projectId: string) => `/projects/${projectId}`,
-    CREATE: '/projects',
-    UPDATE: (projectId: string) => `/projects/${projectId}`,
-    DELETE: (projectId: string) => `/projects/${projectId}`,
+    GET: (projectId: string) => `/project/${projectId}`,
+    CREATE: '/project',
+    UPDATE: (projectId: string) => `/project/${projectId}`,
+    DELETE: (projectId: string) => `/project/${projectId}`,
   },
   SCENES: {
-    GET: (projectId: string) => `/projects/${projectId}/scenes`,
-    CREATE: (projectId: string) => `/projects/${projectId}/scenes`,
-    UPDATE: (projectId: string, sceneId: string) => `/projects/${projectId}/scenes/${sceneId}`,
-    DELETE: (projectId: string, sceneId: string) => `/projects/${projectId}/scenes/${sceneId}`,
+    GET: (projectId: string) => `/project/${projectId}/scene`,
+    CREATE: (projectId: string) => `/project/${projectId}/scene`,
+    UPDATE: (projectId: string, sceneId: string) => `/project/${projectId}/scene/${sceneId}`,
+    DELETE: (projectId: string, sceneId: string) => `/project/${projectId}/scene/${sceneId}`,
   },
 }; 

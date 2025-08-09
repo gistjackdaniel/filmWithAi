@@ -319,6 +319,7 @@ const ProjectPage: React.FC = () => {
     
     setIsGeneratingScenes(true);
     try {
+      // Draft 씬 생성
       const draftScenes = await sceneService.createDraft(projectId, options);
       setDraftScenes(draftScenes);
       
@@ -326,8 +327,9 @@ const ProjectPage: React.FC = () => {
       const draftKey = `scene_drafts_${projectId}`;
       localStorage.setItem(draftKey, JSON.stringify(draftScenes));
       
-      toast.success(`${draftScenes.length}개의 씬이 생성되었습니다.`);
+      toast.success(`${draftScenes.length}개의 씬 초안이 생성되었습니다. 저장 버튼을 눌러 DB에 저장하세요.`);
     } catch (error) {
+      console.error('씬 생성 실패:', error);
       toast.error('씬 생성에 실패했습니다.');
     } finally {
       setIsGeneratingScenes(false);
@@ -378,6 +380,40 @@ const ProjectPage: React.FC = () => {
   const handleEditScene = (scene: Scene) => {
     // 씬 편집 로직
     console.log('씬 편집:', scene);
+  };
+
+  // Draft 씬 저장 핸들러
+  const handleSaveDraft = async (draftScene: SceneDraft) => {
+    if (!projectId) return;
+    
+    try {
+      // Draft를 실제 씬으로 저장
+      const savedScene = await sceneService.create(projectId, draftScene);
+      
+      // 씬 목록 새로고침
+      await fetchScenes(projectId);
+      
+      // localStorage에서 해당 draft 제거
+      const draftKey = `scene_drafts_${projectId}`;
+      const draftData = localStorage.getItem(draftKey);
+      if (draftData) {
+        try {
+          const draftScenes = JSON.parse(draftData);
+          const updatedDrafts = draftScenes.filter((draft: any) => draft.order !== draftScene.order);
+          localStorage.setItem(draftKey, JSON.stringify(updatedDrafts));
+          
+          // 상태 업데이트
+          setDraftScenes(updatedDrafts);
+        } catch (error) {
+          console.error('localStorage 업데이트 실패:', error);
+        }
+      }
+      
+      toast.success('씬이 성공적으로 저장되었습니다.');
+    } catch (error) {
+      console.error('씬 저장 실패:', error);
+      toast.error('씬 저장에 실패했습니다.');
+    }
   };
 
   // 컷 생성 핸들러
@@ -567,14 +603,15 @@ const ProjectPage: React.FC = () => {
 
         {/* 씬 관리 탭 */}
         <TabPanel value={activeTab} index={1}>
-            <SceneListSection
-              scenes={scenes}
-              draftScenes={draftScenes}
-              isGeneratingScenes={isGeneratingScenes}
-              onOpenSceneModal={openSceneModal}
-              projectId={projectId!}
-            onSceneClick={handleSceneClick}
-          />
+                         <SceneListSection
+               scenes={scenes}
+               draftScenes={draftScenes}
+               isGeneratingScenes={isGeneratingScenes}
+               onOpenSceneModal={openSceneModal}
+               projectId={projectId!}
+               onSceneClick={handleSceneClick}
+               onSaveDraft={handleSaveDraft}
+             />
         </TabPanel>
 
         {/* 컷 타임라인 탭 */}

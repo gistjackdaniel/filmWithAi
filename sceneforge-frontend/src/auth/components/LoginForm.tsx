@@ -42,13 +42,14 @@ const LoginForm: React.FC = () => {
             });
             
             if (!loginResponse.ok) {
-              throw new Error('로그인에 실패했습니다.');
+              const errorData = await loginResponse.json();
+              throw new Error(errorData.message || '로그인에 실패했습니다.');
             }
             
             const loginData = await loginResponse.json();
             
-            // 로그인 성공 처리
-            await loginWithGoogle(loginData.access_token);
+            // 로그인 성공 처리 - 백엔드에서 받은 JWT 토큰과 사용자 정보 사용
+            await loginWithGoogle(loginData.access_token, loginData.user, loginData.refresh_token);
             popup.close();
             window.removeEventListener('message', handleMessage);
           } catch (loginError: any) {

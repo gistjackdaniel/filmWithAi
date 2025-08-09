@@ -8,15 +8,15 @@ export const CUT_CONSTANTS = {
 // API 엔드포인트
 export const API_ENDPOINTS = {
   PROJECTS: {
-    GET: (projectId: string) => `/projects/${projectId}`,
-    CREATE: '/projects',
-    UPDATE: (projectId: string) => `/projects/${projectId}`,
-    DELETE: (projectId: string) => `/projects/${projectId}`,
+    GET: (projectId: string) => `/project/${projectId}`,
+    CREATE: '/project',
+    UPDATE: (projectId: string) => `/project/${projectId}`,
+    DELETE: (projectId: string) => `/project/${projectId}`,
   },
   CUTS: {
-    GET: (projectId: string, sceneId: string) => `/projects/${projectId}/scenes/${sceneId}/cuts`,
-    CREATE: (projectId: string, sceneId: string) => `/projects/${projectId}/scenes/${sceneId}/cuts`,
-    UPDATE: (projectId: string, sceneId: string, cutId: string) => `/projects/${projectId}/scenes/${sceneId}/cuts/${cutId}`,
-    DELETE: (projectId: string, sceneId: string, cutId: string) => `/projects/${projectId}/scenes/${sceneId}/cuts/${cutId}`,
+    GET: (projectId: string, sceneId: string) => `/project/${projectId}/scene/${sceneId}/cut`,
+    CREATE: (projectId: string, sceneId: string) => `/project/${projectId}/scene/${sceneId}/cut`,
+    UPDATE: (projectId: string, sceneId: string, cutId: string) => `/project/${projectId}/scene/${sceneId}/cut/${cutId}`,
+    DELETE: (projectId: string, sceneId: string, cutId: string) => `/project/${projectId}/scene/${sceneId}/cut/${cutId}`,
   },
 }; 

@@ -21,7 +21,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Google OAuth 시작' })
   async googleAuth() {
     const clientId = this.configService.get('GOOGLE_CLIENT_ID');
-    const redirectUri = this.configService.get('GOOGLE_REDIRECT_URI') || 'http://localhost:3002/auth/google/callback';
+    // 강제로 올바른 redirect_uri 설정
+    const redirectUri = 'http://localhost:3002/auth/google/callback';
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}&` +
@@ -38,7 +39,12 @@ export class AuthController {
   @Get('google/callback')
   @ApiOperation({ summary: 'Google OAuth 콜백' })
   async googleCallback(@Query('code') code: string, @Query('state') state: string) {
-    return this.authService.handleGoogleCallback(code);
+    try {
+      const result = await this.authService.handleGoogleCallback(code);
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
 
   @Post('login')

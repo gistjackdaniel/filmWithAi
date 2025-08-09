@@ -151,4 +151,23 @@ export class SceneController {
   async createDraft(@Param('projectId') projectId: string, @Body() createSceneDraftRequestDto: CreateSceneDraftRequestDto): Promise<SceneDraftResponseDto[]> {
     return this.sceneService.createDraft(projectId, createSceneDraftRequestDto);
   }
+
+  @Post('draft/save')
+  @ApiOperation({ summary: '씬 초안을 실제 씬으로 저장', description: '생성된 씬 초안을 실제 씬으로 저장합니다.' })
+  @ApiParam({ name: 'projectId', description: '프로젝트 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: '씬이 성공적으로 저장되었습니다.',
+    type: [SceneResponseDto]
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: '잘못된 요청 데이터입니다.' 
+  })
+  async saveDraftAsScene(
+    @Param('projectId') projectId: string, 
+    @Body() sceneDrafts: SceneDraftResponseDto[]
+  ): Promise<SceneResponseDto[]> {
+    return this.sceneService.saveDraftAsScene(projectId, sceneDrafts);
+  }
 } 

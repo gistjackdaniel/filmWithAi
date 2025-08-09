@@ -36,4 +36,11 @@ export const API_ENDPOINTS = {
     REFRESH: '/auth/refresh',
     WITHDRAW: '/auth/withdraw',
   },
+  PROJECTS: {
+    GET: (projectId: string) => `/project/${projectId}`,
+    LIST: '/project',
+    CREATE: '/project',
+    UPDATE: (projectId: string) => `/project/${projectId}`,
+    DELETE: (projectId: string) => `/project/${projectId}`,
+  },
 } as const; 

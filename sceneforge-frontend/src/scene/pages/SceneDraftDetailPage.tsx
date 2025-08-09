@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { sceneService, type SceneDraft } from '../services/sceneService';
+import {
+  Container,
+  Box,
+  Paper,
+  Stack,
+  Typography,
+  Button,
+  TextField,
+  Checkbox,
+  FormControlLabel,
+  Divider,
+} from '@mui/material';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 
 const SceneDraftDetailPage: React.FC = () => {
@@ -245,750 +259,788 @@ const SceneDraftDetailPage: React.FC = () => {
     navigate(`/project/${projectId}`);
   };
 
-  // 단순화된 필드 렌더링 함수
-  const renderField = (label: string, value: any, field: string, type: string = 'text') => (
-    <div className="form-group">
-      <label>{label}</label>
+  // 단순화된 필드 렌더링 함수 (MUI 적용)
+  const renderField = (
+    label: string,
+    value: any,
+    field: string,
+    type: string = 'text'
+  ) => (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>
+        {label}
+      </Typography>
       {isEditing ? (
         type === 'textarea' ? (
-          <textarea
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
             value={value || ''}
-            onChange={(e) => handleInputChange(field as keyof SceneDraft, e.target.value)}
+            onChange={(e) =>
+              handleInputChange(field as keyof SceneDraft, e.target.value)
+            }
             placeholder={`${label}을 입력하세요`}
-            rows={3}
-            readOnly={!isEditing}
           />
         ) : type === 'checkbox' ? (
-          <input
-            type="checkbox"
-            checked={value || false}
-            onChange={(e) => handleInputChange(field as keyof SceneDraft, e.target.checked)}
-            disabled={!isEditing}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={Boolean(value)}
+                onChange={(e) =>
+                  handleInputChange(
+                    field as keyof SceneDraft,
+                    e.target.checked
+                  )
+                }
+              />
+            }
+            label={label}
           />
         ) : (
-          <input
+          <TextField
+            fullWidth
             type={type}
             value={value || ''}
-            onChange={(e) => handleInputChange(field as keyof SceneDraft, e.target.value)}
+            onChange={(e) =>
+              handleInputChange(field as keyof SceneDraft, e.target.value)
+            }
             placeholder={`${label}을 입력하세요`}
-            readOnly={!isEditing}
           />
         )
       ) : (
-        <p>{value || '미정'}</p>
+        <Typography variant="body1">{value || '미정'}</Typography>
       )}
-    </div>
+    </Box>
   );
 
-  // 단순화된 배열 필드 렌더링 함수
-  const renderArrayField = (label: string, array: any[], path: string, itemFields: string[]) => (
-    <div className="array-field">
-      <label>{label}</label>
+  // 단순화된 배열 필드 렌더링 함수 (MUI 적용)
+  const renderArrayField = (
+    label: string,
+    array: any[],
+    path: string,
+    itemFields: string[]
+  ) => (
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+        {label}
+      </Typography>
       {isEditing ? (
-        <div className="array-items">
+        <Stack spacing={1}>
           {array?.map((item, index) => (
-            <div key={`${path}_${index}_${JSON.stringify(item)}`} className="array-item">
-              {itemFields.map(field => (
-                <input
-                  key={field}
-                  type="text"
-                  value={item[field] || ''}
-                  onChange={(e) => {
-                    const newItem = { ...item, [field]: e.target.value };
-                    handleArrayChange(path, index, newItem);
-                  }}
-                  placeholder={field}
-                  readOnly={!isEditing}
-                />
-              ))}
-              {isEditing && (
-              <button
-                type="button"
-                onClick={() => removeArrayItem(path, index)}
-                className="remove-btn"
-              >
-                삭제
-              </button>
-              )}
-            </div>
+            <Paper
+              key={`${path}_${index}_${JSON.stringify(item)}`}
+              variant="outlined"
+              sx={{ p: 1.5, bgcolor: 'background.paper' }}
+            >
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                {itemFields.map((field) => (
+                  <TextField
+                    key={field}
+                    size="small"
+                    label={field}
+                    value={item[field] || ''}
+                    onChange={(e) => {
+                      const newItem = { ...item, [field]: e.target.value };
+                      handleArrayChange(path, index, newItem);
+                    }}
+                  />
+                ))}
+                <Box sx={{ flex: 1 }} />
+                <Button
+                  variant="text"
+                  color="error"
+                  onClick={() => removeArrayItem(path, index)}
+                >
+                  삭제
+                </Button>
+              </Stack>
+            </Paper>
           ))}
-          {isEditing && (
-          <button
-            type="button"
-            onClick={() => {
-              const defaultItem = itemFields.reduce((acc, field) => {
-                acc[field] = '';
-                return acc;
-              }, {} as any);
-              addArrayItem(path, defaultItem);
-            }}
-            className="add-btn"
-          >
+          <Box>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                const defaultItem = itemFields.reduce((acc, field) => {
+                  (acc as any)[field] = '';
+                  return acc;
+                }, {} as any);
+                addArrayItem(path, defaultItem);
+              }}
+            >
               + 추가
-          </button>
-          )}
-        </div>
+            </Button>
+          </Box>
+        </Stack>
       ) : (
-        <div className="array-display">
+        <Stack spacing={1}>
           {array?.map((item, index) => (
-            <div key={`${path}_${index}_${JSON.stringify(item)}`} className="array-item-display">
-              {itemFields.map(field => (
-                <span key={field}>{item[field] || '미정'}</span>
-              ))}
-            </div>
+            <Paper
+              key={`${path}_${index}_${JSON.stringify(item)}`}
+              variant="outlined"
+              sx={{ p: 1.5, bgcolor: 'background.paper' }}
+            >
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                {itemFields.map((field) => (
+                  <Typography key={field} variant="body2">
+                    {item[field] || '미정'}
+                  </Typography>
+                ))}
+              </Stack>
+            </Paper>
           ))}
-        </div>
+        </Stack>
       )}
-    </div>
+    </Box>
   );
 
-  // 단순화된 중첩 필드 렌더링 함수
-  const renderNestedField = (label: string, value: any, path: string, type: string = 'text') => (
-    <div className="form-group">
-      <label>{label}</label>
+  // 단순화된 중첩 필드 렌더링 함수 (MUI 적용)
+  const renderNestedField = (
+    label: string,
+    value: any,
+    path: string,
+    type: string = 'text'
+  ) => (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>
+        {label}
+      </Typography>
       {isEditing ? (
         type === 'textarea' ? (
-          <textarea
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
             value={value || ''}
             onChange={(e) => handleNestedChange(path, e.target.value)}
             placeholder={`${label}을 입력하세요`}
-            rows={3}
-            readOnly={!isEditing}
           />
         ) : (
-          <input
+          <TextField
+            fullWidth
             type={type}
             value={value || ''}
             onChange={(e) => handleNestedChange(path, e.target.value)}
             placeholder={`${label}을 입력하세요`}
-            readOnly={!isEditing}
           />
         )
       ) : (
-        <p>{value || '미정'}</p>
+        <Typography variant="body1">{value || '미정'}</Typography>
       )}
-    </div>
+    </Box>
   );
 
-  // 단순화된 크루 섹션 렌더링 함수
+  // 단순화된 크루 섹션 렌더링 함수 (MUI 적용)
   const renderCrewSection = (title: string, crewData: any, path: string) => (
-    <div className="crew-section">
+    <Box sx={{ mb: 2 }}>
       {Object.entries(crewData || {}).map(([role, members]: [string, any]) => (
-        <div key={role} className="crew-role">
-          <h4>{role}</h4>
+        <Paper key={role} variant="outlined" sx={{ p: 2, mb: 1 }}>
+          <Typography variant="h3" sx={{ mb: 1 }}>{role}</Typography>
           {isEditing ? (
-            <div className="crew-members">
+            <Stack spacing={1}>
               {members?.map((member: any, index: number) => (
-                <div key={`${path}_${role}_${index}_${JSON.stringify(member)}`} className="crew-member">
-                  <input
-                    type="text"
+                <Stack
+                  key={`${path}_${role}_${index}_${JSON.stringify(member)}`}
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1}
+                  alignItems={{ sm: 'center' }}
+                >
+                  <TextField
+                    size="small"
+                    label="역할"
                     value={member.role || ''}
                     onChange={(e) => {
                       const newMember = { ...member, role: e.target.value };
                       handleArrayChange(`${path}.${role}`, index, newMember);
                     }}
-                    placeholder="역할"
-                    readOnly={!isEditing}
                   />
-                  <input
-                    type="text"
+                  <TextField
+                    size="small"
+                    label="프로필 ID"
                     value={member.profileId || ''}
                     onChange={(e) => {
                       const newMember = { ...member, profileId: e.target.value };
                       handleArrayChange(`${path}.${role}`, index, newMember);
                     }}
-                    placeholder="프로필 ID"
-                    readOnly={!isEditing}
                   />
-                  {isEditing && (
-                  <button
-                    type="button"
+                  <Box sx={{ flex: 1 }} />
+                  <Button
+                    variant="text"
+                    color="error"
                     onClick={() => removeArrayItem(`${path}.${role}`, index)}
-                    className="remove-btn"
                   >
                     삭제
-                  </button>
-                  )}
-                </div>
+                  </Button>
+                </Stack>
               ))}
-              {isEditing && (
-              <button
-                type="button"
-                onClick={() => {
+              <Box>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
                     addArrayItem(`${path}.${role}`, { role: '', profileId: '' });
-                }}
-                className="add-btn"
-              >
+                  }}
+                >
                   + 추가
-              </button>
-              )}
-            </div>
+                </Button>
+              </Box>
+            </Stack>
           ) : (
-            <div className="crew-members-display">
+            <Stack spacing={1}>
               {members?.map((member: any, index: number) => (
-                <div key={`${path}_${role}_${index}_${JSON.stringify(member)}`} className="crew-member-display">
-                  <span>{member.role || '미정'}</span>
-                  <span>{member.profileId || '미정'}</span>
-                </div>
+                <Stack
+                  key={`${path}_${role}_${index}_${JSON.stringify(member)}`}
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                >
+                  <Typography variant="body2">{member.role || '미정'}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {member.profileId || '미정'}
+                  </Typography>
+                </Stack>
               ))}
-            </div>
+            </Stack>
           )}
-        </div>
+        </Paper>
       ))}
-    </div>
+    </Box>
   );
 
   const renderEquipmentSection = (title: string, equipmentData: any, path: string) => (
-    <div className="equipment-section">
+    <Box sx={{ mb: 2 }}>
       {Object.entries(equipmentData || {}).map(([category, items]: [string, any]) => (
-        <div key={category} className="equipment-category">
-          <h4>{category}</h4>
+        <Paper key={category} variant="outlined" sx={{ p: 2, mb: 1 }}>
+          <Typography variant="h3" sx={{ mb: 1 }}>{category}</Typography>
           {isEditing ? (
-            <div className="equipment-items">
+            <Box>
               {Array.isArray(items) ? (
-                // 배열 형태의 장비
-                <div className="array-items">
+                <Stack spacing={1}>
                   {items?.map((item: string, index: number) => (
-                    <div key={`${path}_${category}_${index}_${item}`} className="array-item">
-                    <input
-                      type="text"
-                      value={item || ''}
+                    <Stack key={`${path}_${category}_${index}_${item}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <TextField
+                        size="small"
+                        label="장비명"
+                        value={item || ''}
                         onChange={(e) => {
                           const newItems = [...items];
                           newItems[index] = e.target.value;
                           handleNestedChange(`${path}.${category}`, newItems);
                         }}
-                        placeholder="장비명"
-                        readOnly={!isEditing}
                       />
-                      {isEditing && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newItems = items.filter((_: any, i: number) => i !== index);
-                            handleNestedChange(`${path}.${category}`, newItems);
-                          }}
-                          className="remove-btn"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
+                      <Box sx={{ flex: 1 }} />
+                      <Button
+                        variant="text"
+                        color="error"
+                        onClick={() => {
+                          const newItems = items.filter((_: any, i: number) => i !== index);
+                          handleNestedChange(`${path}.${category}`, newItems);
+                        }}
+                      >
+                        삭제
+                      </Button>
+                    </Stack>
                   ))}
-                  {isEditing && (
-                    <button
-                      type="button"
+                  <Box>
+                    <Button
+                      variant="outlined"
                       onClick={() => {
                         const newItems = [...(items || []), ''];
                         handleNestedChange(`${path}.${category}`, newItems);
                       }}
-                      className="add-btn"
                     >
                       + 추가
-                    </button>
-                  )}
-                </div>
+                    </Button>
+                  </Box>
+                </Stack>
               ) : (
-                // 객체 형태의 장비 (props 등)
-                <div className="object-items">
+                <Box>
                   {Object.entries(items || {}).map(([subCategory, subItems]: [string, any]) => (
-                    <div key={subCategory} className="sub-category">
-                      <h5>{subCategory}</h5>
-                      <div className="array-items">
-                        {subItems?.map((item: string, index: number) => (
-                          <div key={`${path}_${category}_${subCategory}_${index}_${item}`} className="array-item">
-                  <input
-                    type="text"
-                              value={item || ''}
-                              onChange={(e) => {
-                                const newSubItems = [...subItems];
-                                newSubItems[index] = e.target.value;
-                                handleNestedChange(`${path}.${category}.${subCategory}`, newSubItems);
-                              }}
-                              placeholder="장비명"
-                              readOnly={!isEditing}
-                            />
-                            {isEditing && (
-                              <button
-                                type="button"
+                    <Paper key={subCategory} variant="outlined" sx={{ p: 2, mb: 1 }}>
+                      <Typography variant="h4" sx={{ mb: 1 }}>{subCategory}</Typography>
+                      {Array.isArray(subItems) ? (
+                        <Stack spacing={1}>
+                          {subItems?.map((item: string, index: number) => (
+                            <Stack key={`${path}_${category}_${subCategory}_${index}_${item}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                              <TextField
+                                size="small"
+                                label="장비명"
+                                value={item || ''}
+                                onChange={(e) => {
+                                  const newSubItems = [...subItems];
+                                  newSubItems[index] = e.target.value;
+                                  handleNestedChange(`${path}.${category}.${subCategory}`, newSubItems);
+                                }}
+                              />
+                              <Box sx={{ flex: 1 }} />
+                              <Button
+                                variant="text"
+                                color="error"
                                 onClick={() => {
                                   const newSubItems = subItems.filter((_: any, i: number) => i !== index);
                                   handleNestedChange(`${path}.${category}.${subCategory}`, newSubItems);
                                 }}
-                                className="remove-btn"
                               >
                                 삭제
-                              </button>
-                            )}
-                </div>
-                        ))}
-                        {isEditing && (
-              <button
-                type="button"
-                onClick={() => {
-                              const newSubItems = [...(subItems || []), ''];
-                              handleNestedChange(`${path}.${category}.${subCategory}`, newSubItems);
-                }}
-                className="add-btn"
-              >
-                            + 추가
-              </button>
-                        )}
-                      </div>
-                    </div>
+                              </Button>
+                            </Stack>
+                          ))}
+                          <Box>
+                            <Button
+                              variant="outlined"
+                              onClick={() => {
+                                const newSubItems = [...(subItems || []), ''];
+                                handleNestedChange(`${path}.${category}.${subCategory}`, newSubItems);
+                              }}
+                            >
+                              + 추가
+                            </Button>
+                          </Box>
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2">{typeof subItems === 'string' ? subItems : '미정'}</Typography>
+                      )}
+                    </Paper>
                   ))}
-                </div>
+                </Box>
               )}
-            </div>
+            </Box>
           ) : (
-            <div className="equipment-items-display">
+            <Box>
               {Array.isArray(items) ? (
-                items?.map((item: string, index: number) => (
-                  <div key={`${path}_${category}_${index}_${item}`} className="equipment-item-display">
-                    <span>{item || '미정'}</span>
-                  </div>
-                ))
+                <Stack spacing={1}>
+                  {items?.map((item: string, index: number) => (
+                    <Typography key={`${path}_${category}_${index}_${item}`} variant="body2">
+                      {item || '미정'}
+                    </Typography>
+                  ))}
+                </Stack>
               ) : (
-                Object.entries(items || {}).map(([subCategory, subItems]: [string, any]) => (
-                  <div key={subCategory} className="sub-category-display">
-                    <h5>{subCategory}</h5>
-                    {subItems?.map((item: string, index: number) => (
-                      <div key={`${path}_${category}_${subCategory}_${index}_${item}`} className="equipment-item-display">
-                        <span>{item || '미정'}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))
+                <Box>
+                  {Object.entries(items || {}).map(([subCategory, subItems]: [string, any]) => (
+                    <Box key={subCategory} sx={{ mb: 1 }}>
+                      <Typography variant="h4" sx={{ mb: 0.5 }}>{subCategory}</Typography>
+                      {Array.isArray(subItems) ? (
+                        <Stack spacing={0.5}>
+                          {subItems?.map((item: string, index: number) => (
+                            <Typography key={`${path}_${category}_${subCategory}_${index}_${item}`} variant="body2">
+                              {item || '미정'}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2">{typeof subItems === 'string' ? subItems : '미정'}</Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
               )}
-            </div>
+            </Box>
           )}
-        </div>
+        </Paper>
       ))}
-    </div>
+    </Box>
   );
 
   return (
-    <div className="scene-detail-page">
-      <div className="header">
-          <button onClick={handleBack} className="back-btn">
-          ← 뒤로가기
-          </button>
-        <h1>{isEditing ? '씬 초안 편집' : '씬 초안 상세'}</h1>
-        <div className="header-buttons">
-            {isEditing ? (
-              <>
-              <button onClick={handleCancel} className="header-btn cancel-btn">
-                  취소
-                </button>
-              <button onClick={handleSaveDraft} className="header-btn save-btn">
-                  저장
-                </button>
-              </>
-            ) : (
-            <>
-              <button onClick={handleEdit} className="header-btn edit-btn">
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Paper elevation={0} sx={{ p: 2.5, mb: 3, bgcolor: 'background.paper' }}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Button variant="outlined" onClick={handleBack}>
+            ← 뒤로가기
+          </Button>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h1">
+              {isEditing ? '씬 초안 편집' : '씬 초안 상세'}
+            </Typography>
+          </Box>
+          {isEditing ? (
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" color="inherit" onClick={handleCancel}>
+                취소
+              </Button>
+              <Button variant="contained" color="primary" onClick={handleSaveDraft}>
+                저장
+              </Button>
+            </Stack>
+          ) : (
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" onClick={handleEdit}>
                 편집
-              </button>
-              <button onClick={handleSaveToBackend} className="header-btn save-scene-btn">
+              </Button>
+              <Button variant="contained" color="secondary" onClick={handleSaveToBackend}>
                 씬 저장
-              </button>
-            </>
-            )}
-        </div>
-      </div>
+              </Button>
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
 
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '50px' }}>
-          <p>로딩 중...</p>
-        </div>
+        <Paper elevation={0} sx={{ p: 5, textAlign: 'center' }}>
+          <Typography>로딩 중...</Typography>
+        </Paper>
       ) : !editData ? (
-        <div style={{ textAlign: 'center', padding: '50px' }}>
-          <p>씬을 찾을 수 없습니다.</p>
-        </div>
+        <Paper elevation={0} sx={{ p: 5, textAlign: 'center' }}>
+          <Typography>씬을 찾을 수 없습니다.</Typography>
+        </Paper>
       ) : (
-      <div className="content">
+      <Box>
         {/* 기본 정보 */}
-          <div className={`section ${isSectionCollapsed('basic') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('basic')}>
-          <h2>기본 정보</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('basic') ? '▼' : '▲'}
-              </button>
-            </div>
-            {!isSectionCollapsed('basic') && editData && (
-              <>
-          {renderField('순서', editData.order, 'order', 'number')}
-          {renderField('제목', editData.title, 'title')}
-          {renderField('설명', editData.description, 'description', 'textarea')}
-          {renderField('예상 시간', editData.estimatedDuration, 'estimatedDuration')}
-          {renderField('시간대', editData.timeOfDay, 'timeOfDay')}
-          {renderField('씬 날짜/시간', editData.sceneDateTime, 'sceneDateTime')}
-              </>
-            )}
-        </div>
+        <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('basic')}>
+            <Typography variant="h2">기본 정보</Typography>
+            {isSectionCollapsed('basic') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          </Stack>
+          {!isSectionCollapsed('basic') && editData && (
+            <Box sx={{ mt: 2 }}>
+              {renderField('순서', editData.order, 'order', 'number')}
+              {renderField('제목', editData.title, 'title')}
+              {renderField('설명', editData.description, 'description', 'textarea')}
+              {renderField('예상 시간', editData.estimatedDuration, 'estimatedDuration')}
+              {renderField('시간대', editData.timeOfDay, 'timeOfDay')}
+              {renderField('씬 날짜/시간', editData.sceneDateTime, 'sceneDateTime')}
+            </Box>
+          )}
+        </Paper>
 
         {/* 대사 */}
-          <div className={`section ${isSectionCollapsed('dialogues') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('dialogues')}>
-          <h2>대사</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('dialogues') ? '▼' : '▲'}
-              </button>
-            </div>
-            {!isSectionCollapsed('dialogues') && editData && renderArrayField('대사', editData.dialogues, 'dialogues', ['character', 'text'])}
-        </div>
+        <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('dialogues')}>
+            <Typography variant="h2">대사</Typography>
+            {isSectionCollapsed('dialogues') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          </Stack>
+          {!isSectionCollapsed('dialogues') && editData && (
+            <Box sx={{ mt: 2 }}>
+              {renderArrayField('대사', editData.dialogues, 'dialogues', ['character', 'text'])}
+            </Box>
+          )}
+        </Paper>
 
         {/* 조명 */}
-          <div className={`section ${isSectionCollapsed('lighting') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('lighting')}>
-          <h2>조명</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('lighting') ? '▼' : '▲'}
-              </button>
-            </div>
-            {!isSectionCollapsed('lighting') && editData && (
+        <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('lighting')}>
+            <Typography variant="h2">조명</Typography>
+            {isSectionCollapsed('lighting') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          </Stack>
+          {!isSectionCollapsed('lighting') && editData && (
               <>
-                {renderNestedField('조명 설명', editData.lighting?.description, 'lighting.description', 'textarea')}
+                <Box sx={{ mt: 2 }}>
+                  {renderNestedField('조명 설명', editData.lighting?.description, 'lighting.description', 'textarea')}
+                </Box>
                 
-            <div className="lighting-setup">
-              <h3>조명 설정</h3>
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="h3" sx={{ mb: 1 }}>조명 설정</Typography>
               
               {/* 키 라이트 */}
-              <div className="lighting-item">
-                <h4>키 라이트</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>키 라이트</Typography>
                     {renderNestedField('타입', editData.lighting?.setup?.keyLight?.type, 'lighting.setup.keyLight.type')}
                     {renderNestedField('장비', editData.lighting?.setup?.keyLight?.equipment, 'lighting.setup.keyLight.equipment')}
                     {renderNestedField('강도', editData.lighting?.setup?.keyLight?.intensity, 'lighting.setup.keyLight.intensity')}
-              </div>
+              </Paper>
 
               {/* 필 라이트 */}
-              <div className="lighting-item">
-                <h4>필 라이트</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>필 라이트</Typography>
                     {renderNestedField('타입', editData.lighting?.setup?.fillLight?.type, 'lighting.setup.fillLight.type')}
                     {renderNestedField('장비', editData.lighting?.setup?.fillLight?.equipment, 'lighting.setup.fillLight.equipment')}
                     {renderNestedField('강도', editData.lighting?.setup?.fillLight?.intensity, 'lighting.setup.fillLight.intensity')}
-              </div>
+              </Paper>
 
               {/* 백 라이트 */}
-              <div className="lighting-item">
-                <h4>백 라이트</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>백 라이트</Typography>
                     {renderNestedField('타입', editData.lighting?.setup?.backLight?.type, 'lighting.setup.backLight.type')}
                     {renderNestedField('장비', editData.lighting?.setup?.backLight?.equipment, 'lighting.setup.backLight.equipment')}
                     {renderNestedField('강도', editData.lighting?.setup?.backLight?.intensity, 'lighting.setup.backLight.intensity')}
-              </div>
+              </Paper>
 
               {/* 배경 라이트 */}
-              <div className="lighting-item">
-                <h4>배경 라이트</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>배경 라이트</Typography>
                     {renderNestedField('타입', editData.lighting?.setup?.backgroundLight?.type, 'lighting.setup.backgroundLight.type')}
                     {renderNestedField('장비', editData.lighting?.setup?.backgroundLight?.equipment, 'lighting.setup.backgroundLight.equipment')}
                     {renderNestedField('강도', editData.lighting?.setup?.backgroundLight?.intensity, 'lighting.setup.backgroundLight.intensity')}
-              </div>
+              </Paper>
 
               {/* 특수 효과 */}
-              <div className="lighting-item">
-                <h4>특수 효과</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>특수 효과</Typography>
                     {renderNestedField('타입', editData.lighting?.setup?.specialEffects?.type, 'lighting.setup.specialEffects.type')}
                     {renderNestedField('장비', editData.lighting?.setup?.specialEffects?.equipment, 'lighting.setup.specialEffects.equipment')}
                     {renderNestedField('강도', editData.lighting?.setup?.specialEffects?.intensity, 'lighting.setup.specialEffects.intensity')}
-              </div>
+              </Paper>
 
               {/* 소프트 라이트 */}
-              <div className="lighting-item">
-                <h4>소프트 라이트</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>소프트 라이트</Typography>
                     {renderNestedField('타입', editData.lighting?.setup?.softLight?.type, 'lighting.setup.softLight.type')}
                     {renderNestedField('장비', editData.lighting?.setup?.softLight?.equipment, 'lighting.setup.softLight.equipment')}
                     {renderNestedField('강도', editData.lighting?.setup?.softLight?.intensity, 'lighting.setup.softLight.intensity')}
-              </div>
+              </Paper>
 
               {/* 전체 설정 */}
-              <div className="lighting-item">
-                <h4>전체 설정</h4>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>전체 설정</Typography>
                     {renderNestedField('색온도', editData.lighting?.setup?.overall?.colorTemperature, 'lighting.setup.overall.colorTemperature')}
                     {renderNestedField('분위기', editData.lighting?.setup?.overall?.mood, 'lighting.setup.overall.mood')}
-              </div>
+              </Paper>
 
               {/* Grip 수정자 */}
-              <div className="lighting-item">
-                <h4>Grip 수정자</h4>
-                    <div className="form-group">
-                      <label>Flags</label>
-                      {isEditing ? (
-                        <div className="array-items">
-                          {editData.lighting?.setup?.gripModifier?.flags?.map((flag: string, index: number) => (
-                            <div key={`flags_${index}_${flag}`} className="array-item">
-                              <input
-                                type="text"
-                                value={flag || ''}
-                                onChange={(e) => {
-                                  const newFlags = [...(editData.lighting?.setup?.gripModifier?.flags || [])];
-                                  newFlags[index] = e.target.value;
-                                  handleNestedChange('lighting.setup.gripModifier.flags', newFlags);
-                                }}
-                                placeholder="Flag를 입력하세요"
-                                readOnly={!isEditing}
-                              />
-                              {isEditing && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newFlags = editData.lighting?.setup?.gripModifier?.flags.filter((_: any, i: number) => i !== index);
-                                    handleNestedChange('lighting.setup.gripModifier.flags', newFlags);
-                                  }}
-                                  className="remove-btn"
-                                >
-                                  삭제
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newFlags = [...(editData.lighting?.setup?.gripModifier?.flags || []), ''];
-                                handleNestedChange('lighting.setup.gripModifier.flags', newFlags);
-                              }}
-                              className="add-btn"
-                            >
-                              + 추가
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="array-display">
-                          {editData.lighting?.setup?.gripModifier?.flags?.map((flag: string, index: number) => (
-                            <div key={`flags_${index}_${flag}`} className="array-item-display">
-                              <span>{flag || '미정'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+              <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>Grip 수정자</Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>Flags</Typography>
+                  {isEditing ? (
+                    <Stack spacing={1}>
+                      {editData.lighting?.setup?.gripModifier?.flags?.map((flag: string, index: number) => (
+                        <Stack key={`flags_${index}_${flag}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <TextField
+                            size="small"
+                            value={flag || ''}
+                            onChange={(e) => {
+                              const newFlags = [...(editData.lighting?.setup?.gripModifier?.flags || [])];
+                              newFlags[index] = e.target.value;
+                              handleNestedChange('lighting.setup.gripModifier.flags', newFlags);
+                            }}
+                            placeholder="Flag를 입력하세요"
+                          />
+                          <Box sx={{ flex: 1 }} />
+                          <Button
+                            variant="text"
+                            color="error"
+                            onClick={() => {
+                              const newFlags = editData.lighting?.setup?.gripModifier?.flags.filter((_: any, i: number) => i !== index);
+                              handleNestedChange('lighting.setup.gripModifier.flags', newFlags);
+                            }}
+                          >
+                            삭제
+                          </Button>
+                        </Stack>
+                      ))}
+                      <Box>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            const newFlags = [...(editData.lighting?.setup?.gripModifier?.flags || []), ''];
+                            handleNestedChange('lighting.setup.gripModifier.flags', newFlags);
+                          }}
+                        >
+                          + 추가
+                        </Button>
+                      </Box>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={0.5}>
+                      {editData.lighting?.setup?.gripModifier?.flags?.map((flag: string, index: number) => (
+                        <Typography key={`flags_${index}_${flag}`} variant="body2">{flag || '미정'}</Typography>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
 
-                    <div className="form-group">
-                      <label>Diffusion</label>
-                      {isEditing ? (
-                        <div className="array-items">
-                          {editData.lighting?.setup?.gripModifier?.diffusion?.map((diff: string, index: number) => (
-                            <div key={`diffusion_${index}_${diff}`} className="array-item">
-                              <input
-                                type="text"
-                                value={diff || ''}
-                                onChange={(e) => {
-                                  const newDiffusion = [...(editData.lighting?.setup?.gripModifier?.diffusion || [])];
-                                  newDiffusion[index] = e.target.value;
-                                  handleNestedChange('lighting.setup.gripModifier.diffusion', newDiffusion);
-                                }}
-                                placeholder="Diffusion을 입력하세요"
-                                readOnly={!isEditing}
-                              />
-                              {isEditing && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newDiffusion = editData.lighting?.setup?.gripModifier?.diffusion.filter((_: any, i: number) => i !== index);
-                                    handleNestedChange('lighting.setup.gripModifier.diffusion', newDiffusion);
-                                  }}
-                                  className="remove-btn"
-                                >
-                                  삭제
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newDiffusion = [...(editData.lighting?.setup?.gripModifier?.diffusion || []), ''];
-                                handleNestedChange('lighting.setup.gripModifier.diffusion', newDiffusion);
-                              }}
-                              className="add-btn"
-                            >
-                              + 추가
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="array-display">
-                          {editData.lighting?.setup?.gripModifier?.diffusion?.map((diff: string, index: number) => (
-                            <div key={`diffusion_${index}_${diff}`} className="array-item-display">
-                              <span>{diff || '미정'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>Diffusion</Typography>
+                  {isEditing ? (
+                    <Stack spacing={1}>
+                      {editData.lighting?.setup?.gripModifier?.diffusion?.map((diff: string, index: number) => (
+                        <Stack key={`diffusion_${index}_${diff}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <TextField
+                            size="small"
+                            value={diff || ''}
+                            onChange={(e) => {
+                              const newDiffusion = [...(editData.lighting?.setup?.gripModifier?.diffusion || [])];
+                              newDiffusion[index] = e.target.value;
+                              handleNestedChange('lighting.setup.gripModifier.diffusion', newDiffusion);
+                            }}
+                            placeholder="Diffusion을 입력하세요"
+                          />
+                          <Box sx={{ flex: 1 }} />
+                          <Button
+                            variant="text"
+                            color="error"
+                            onClick={() => {
+                              const newDiffusion = editData.lighting?.setup?.gripModifier?.diffusion.filter((_: any, i: number) => i !== index);
+                              handleNestedChange('lighting.setup.gripModifier.diffusion', newDiffusion);
+                            }}
+                          >
+                            삭제
+                          </Button>
+                        </Stack>
+                      ))}
+                      <Box>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            const newDiffusion = [...(editData.lighting?.setup?.gripModifier?.diffusion || []), ''];
+                            handleNestedChange('lighting.setup.gripModifier.diffusion', newDiffusion);
+                          }}
+                        >
+                          + 추가
+                        </Button>
+                      </Box>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={0.5}>
+                      {editData.lighting?.setup?.gripModifier?.diffusion?.map((diff: string, index: number) => (
+                        <Typography key={`diffusion_${index}_${diff}`} variant="body2">{diff || '미정'}</Typography>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
 
-                    <div className="form-group">
-                      <label>Reflectors</label>
-                      {isEditing ? (
-                        <div className="array-items">
-                          {editData.lighting?.setup?.gripModifier?.reflectors?.map((reflector: string, index: number) => (
-                            <div key={`reflectors_${index}_${reflector}`} className="array-item">
-                              <input
-                                type="text"
-                                value={reflector || ''}
-                                onChange={(e) => {
-                                  const newReflectors = [...(editData.lighting?.setup?.gripModifier?.reflectors || [])];
-                                  newReflectors[index] = e.target.value;
-                                  handleNestedChange('lighting.setup.gripModifier.reflectors', newReflectors);
-                                }}
-                                placeholder="Reflector를 입력하세요"
-                                readOnly={!isEditing}
-                              />
-                              {isEditing && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newReflectors = editData.lighting?.setup?.gripModifier?.reflectors.filter((_: any, i: number) => i !== index);
-                                    handleNestedChange('lighting.setup.gripModifier.reflectors', newReflectors);
-                                  }}
-                                  className="remove-btn"
-                                >
-                                  삭제
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newReflectors = [...(editData.lighting?.setup?.gripModifier?.reflectors || []), ''];
-                                handleNestedChange('lighting.setup.gripModifier.reflectors', newReflectors);
-                              }}
-                              className="add-btn"
-                            >
-                              + 추가
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="array-display">
-                          {editData.lighting?.setup?.gripModifier?.reflectors?.map((reflector: string, index: number) => (
-                            <div key={`reflectors_${index}_${reflector}`} className="array-item-display">
-                              <span>{reflector || '미정'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>Reflectors</Typography>
+                  {isEditing ? (
+                    <Stack spacing={1}>
+                      {editData.lighting?.setup?.gripModifier?.reflectors?.map((reflector: string, index: number) => (
+                        <Stack key={`reflectors_${index}_${reflector}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <TextField
+                            size="small"
+                            value={reflector || ''}
+                            onChange={(e) => {
+                              const newReflectors = [...(editData.lighting?.setup?.gripModifier?.reflectors || [])];
+                              newReflectors[index] = e.target.value;
+                              handleNestedChange('lighting.setup.gripModifier.reflectors', newReflectors);
+                            }}
+                            placeholder="Reflector를 입력하세요"
+                          />
+                          <Box sx={{ flex: 1 }} />
+                          <Button
+                            variant="text"
+                            color="error"
+                            onClick={() => {
+                              const newReflectors = editData.lighting?.setup?.gripModifier?.reflectors.filter((_: any, i: number) => i !== index);
+                              handleNestedChange('lighting.setup.gripModifier.reflectors', newReflectors);
+                            }}
+                          >
+                            삭제
+                          </Button>
+                        </Stack>
+                      ))}
+                      <Box>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            const newReflectors = [...(editData.lighting?.setup?.gripModifier?.reflectors || []), ''];
+                            handleNestedChange('lighting.setup.gripModifier.reflectors', newReflectors);
+                          }}
+                        >
+                          + 추가
+                        </Button>
+                      </Box>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={0.5}>
+                      {editData.lighting?.setup?.gripModifier?.reflectors?.map((reflector: string, index: number) => (
+                        <Typography key={`reflectors_${index}_${reflector}`} variant="body2">{reflector || '미정'}</Typography>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
 
-                    <div className="form-group">
-                      <label>Color Gels</label>
-                      {isEditing ? (
-                        <div className="array-items">
-                          {editData.lighting?.setup?.gripModifier?.colorGels?.map((gel: string, index: number) => (
-                            <div key={`colorGels_${index}_${gel}`} className="array-item">
-                              <input
-                                type="text"
-                                value={gel || ''}
-                                onChange={(e) => {
-                                  const newColorGels = [...(editData.lighting?.setup?.gripModifier?.colorGels || [])];
-                                  newColorGels[index] = e.target.value;
-                                  handleNestedChange('lighting.setup.gripModifier.colorGels', newColorGels);
-                                }}
-                                placeholder="Color Gel을 입력하세요"
-                                readOnly={!isEditing}
-                              />
-                              {isEditing && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newColorGels = editData.lighting?.setup?.gripModifier?.colorGels.filter((_: any, i: number) => i !== index);
-                                    handleNestedChange('lighting.setup.gripModifier.colorGels', newColorGels);
-                                  }}
-                                  className="remove-btn"
-                                >
-                                  삭제
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newColorGels = [...(editData.lighting?.setup?.gripModifier?.colorGels || []), ''];
-                                handleNestedChange('lighting.setup.gripModifier.colorGels', newColorGels);
-                              }}
-                              className="add-btn"
-                            >
-                              + 추가
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="array-display">
-                          {editData.lighting?.setup?.gripModifier?.colorGels?.map((gel: string, index: number) => (
-                            <div key={`colorGels_${index}_${gel}`} className="array-item-display">
-                              <span>{gel || '미정'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>Color Gels</Typography>
+                  {isEditing ? (
+                    <Stack spacing={1}>
+                      {editData.lighting?.setup?.gripModifier?.colorGels?.map((gel: string, index: number) => (
+                        <Stack key={`colorGels_${index}_${gel}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <TextField
+                            size="small"
+                            value={gel || ''}
+                            onChange={(e) => {
+                              const newColorGels = [...(editData.lighting?.setup?.gripModifier?.colorGels || [])];
+                              newColorGels[index] = e.target.value;
+                              handleNestedChange('lighting.setup.gripModifier.colorGels', newColorGels);
+                            }}
+                            placeholder="Color Gel을 입력하세요"
+                          />
+                          <Box sx={{ flex: 1 }} />
+                          <Button
+                            variant="text"
+                            color="error"
+                            onClick={() => {
+                              const newColorGels = editData.lighting?.setup?.gripModifier?.colorGels.filter((_: any, i: number) => i !== index);
+                              handleNestedChange('lighting.setup.gripModifier.colorGels', newColorGels);
+                            }}
+                          >
+                            삭제
+                          </Button>
+                        </Stack>
+                      ))}
+                      <Box>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            const newColorGels = [...(editData.lighting?.setup?.gripModifier?.colorGels || []), ''];
+                            handleNestedChange('lighting.setup.gripModifier.colorGels', newColorGels);
+                          }}
+                        >
+                          + 추가
+                        </Button>
+                      </Box>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={0.5}>
+                      {editData.lighting?.setup?.gripModifier?.colorGels?.map((gel: string, index: number) => (
+                        <Typography key={`colorGels_${index}_${gel}`} variant="body2">{gel || '미정'}</Typography>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Paper>
+            </Box>
               </>
             )}
-          </div>
+        </Paper>
 
           {/* 위치 */}
-          <div className={`section ${isSectionCollapsed('location') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('location')}>
-              <h2>위치</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('location') ? '▼' : '▲'}
-              </button>
-            </div>
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('location')}>
+              <Typography variant="h2">위치</Typography>
+              {isSectionCollapsed('location') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </Stack>
             {!isSectionCollapsed('location') && editData && (
-              <>
+              <Box sx={{ mt: 2 }}>
                 {renderField('씬 장소', editData.scenePlace, 'scenePlace')}
                 {renderNestedField('위치 이름', editData.location?.name, 'location.name')}
                 {renderNestedField('주소', editData.location?.address, 'location.address')}
                 {renderNestedField('그룹명', editData.location?.group_name, 'location.group_name')}
-              </>
+              </Box>
             )}
-          </div>
+          </Paper>
 
           {/* 환경 */}
-          <div className={`section ${isSectionCollapsed('environment') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('environment')}>
-              <h2>환경</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('environment') ? '▼' : '▲'}
-              </button>
-            </div>
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('environment')}>
+              <Typography variant="h2">환경</Typography>
+              {isSectionCollapsed('environment') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </Stack>
             {!isSectionCollapsed('environment') && editData && (
-              <>
+              <Box sx={{ mt: 2 }}>
                 {renderField('날씨', editData.weather, 'weather')}
                 {renderField('시각적 설명', editData.visualDescription, 'visualDescription', 'textarea')}
                 {renderField('VFX 필요', editData.vfxRequired, 'vfxRequired', 'checkbox')}
                 {renderField('SFX 필요', editData.sfxRequired, 'sfxRequired', 'checkbox')}
-              </>
+              </Box>
             )}
-          </div>
+          </Paper>
 
           {/* 특별 요구사항 */}
-          <div className={`section ${isSectionCollapsed('specialRequirements') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('specialRequirements')}>
-              <h2>특별 요구사항</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('specialRequirements') ? '▼' : '▲'}
-              </button>
-            </div>
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('specialRequirements')}>
+              <Typography variant="h2">특별 요구사항</Typography>
+              {isSectionCollapsed('specialRequirements') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </Stack>
             {!isSectionCollapsed('specialRequirements') && editData && (
-              <div className="form-group">
-                <label>특별 요구사항</label>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>특별 요구사항</Typography>
                 {isEditing ? (
-                  <div className="array-items">
+                  <Stack spacing={1}>
                     {editData.specialRequirements?.map((requirement: string, index: number) => (
-                      <div key={`specialRequirements_${index}_${requirement}`} className="array-item">
-                        <input
-                          type="text"
+                      <Stack key={`specialRequirements_${index}_${requirement}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                        <TextField
+                          fullWidth
+                          size="small"
                           value={requirement || ''}
                           onChange={(e) => {
                             const newRequirements = [...(editData.specialRequirements || [])];
@@ -996,106 +1048,97 @@ const SceneDraftDetailPage: React.FC = () => {
                             handleInputChange('specialRequirements', newRequirements);
                           }}
                           placeholder="특별 요구사항을 입력하세요"
-                          readOnly={!isEditing}
                         />
-                        {isEditing && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newRequirements = editData.specialRequirements.filter((_: any, i: number) => i !== index);
-                              handleInputChange('specialRequirements', newRequirements);
-                            }}
-                            className="remove-btn"
-                          >
-                            삭제
-                          </button>
-                        )}
-                      </div>
+                        <Box sx={{ flex: 1 }} />
+                        <Button
+                          variant="text"
+                          color="error"
+                          onClick={() => {
+                            const newRequirements = editData.specialRequirements.filter((_: any, i: number) => i !== index);
+                            handleInputChange('specialRequirements', newRequirements);
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </Stack>
                     ))}
-                    {isEditing && (
-                      <button
-                        type="button"
+                    <Box>
+                      <Button
+                        variant="outlined"
                         onClick={() => {
                           const newRequirements = [...(editData.specialRequirements || []), ''];
                           handleInputChange('specialRequirements', newRequirements);
                         }}
-                        className="add-btn"
                       >
                         + 추가
-                      </button>
-                    )}
-                  </div>
+                      </Button>
+                    </Box>
+                  </Stack>
                 ) : (
-                  <div className="array-display">
+                  <Stack spacing={0.5}>
                     {editData.specialRequirements?.map((requirement: string, index: number) => (
-                      <div key={`specialRequirements_${index}_${requirement}`} className="array-item-display">
-                        <span>{requirement || '미정'}</span>
-                      </div>
+                      <Typography key={`specialRequirements_${index}_${requirement}`} variant="body2">
+                        {requirement || '미정'}
+                      </Typography>
                     ))}
-                  </div>
+                  </Stack>
                 )}
-              </div>
+              </Box>
             )}
-          </div>
+          </Paper>
 
           {/* 출연진 */}
-          <div className={`section ${isSectionCollapsed('cast') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('cast')}>
-              <h2>출연진</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('cast') ? '▼' : '▲'}
-              </button>
-            </div>
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('cast')}>
+              <Typography variant="h2">출연진</Typography>
+              {isSectionCollapsed('cast') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </Stack>
             {!isSectionCollapsed('cast') && editData && (
-              <>
+              <Box sx={{ mt: 2 }}>
                 {renderArrayField('주연', editData.cast, 'cast', ['role', 'name'])}
                 {renderArrayField('엑스트라', editData.extra, 'extra', ['role', 'number'])}
-              </>
-          )}
-        </div>
+              </Box>
+            )}
+          </Paper>
 
           {/* 스태프 */}
-          <div className={`section ${isSectionCollapsed('staff') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('staff')}>
-              <h2>스태프</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('staff') ? '▼' : '▲'}
-              </button>
-            </div>
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('staff')}>
+              <Typography variant="h2">스태프</Typography>
+              {isSectionCollapsed('staff') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </Stack>
             {!isSectionCollapsed('staff') && editData && (
-              <>
-          {renderCrewSection('연출팀', editData.crew?.direction, 'crew.direction')}
-          {renderCrewSection('제작팀', editData.crew?.production, 'crew.production')}
-          {renderCrewSection('촬영팀', editData.crew?.cinematography, 'crew.cinematography')}
-          {renderCrewSection('조명팀', editData.crew?.lighting, 'crew.lighting')}
-          {renderCrewSection('음향팀', editData.crew?.sound, 'crew.sound')}
-          {renderCrewSection('미술팀', editData.crew?.art, 'crew.art')}
-              </>
+              <Box sx={{ mt: 2 }}>
+                {renderCrewSection('연출팀', editData.crew?.direction, 'crew.direction')}
+                {renderCrewSection('제작팀', editData.crew?.production, 'crew.production')}
+                {renderCrewSection('촬영팀', editData.crew?.cinematography, 'crew.cinematography')}
+                {renderCrewSection('조명팀', editData.crew?.lighting, 'crew.lighting')}
+                {renderCrewSection('음향팀', editData.crew?.sound, 'crew.sound')}
+                {renderCrewSection('미술팀', editData.crew?.art, 'crew.art')}
+              </Box>
             )}
-        </div>
+          </Paper>
 
           {/* 장비 */}
-          <div className={`section ${isSectionCollapsed('equipment') ? 'collapsed' : ''}`}>
-            <div className="section-header" onClick={() => toggleSection('equipment')}>
-              <h2>장비</h2>
-              <button className="toggle-btn">
-                {isSectionCollapsed('equipment') ? '▼' : '▲'}
-              </button>
-            </div>
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ cursor: 'pointer' }} onClick={() => toggleSection('equipment')}>
+              <Typography variant="h2">장비</Typography>
+              {isSectionCollapsed('equipment') ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </Stack>
             {!isSectionCollapsed('equipment') && editData && (
-              <>
-          {renderEquipmentSection('연출 장비', editData.equipment?.direction, 'equipment.direction')}
-          {renderEquipmentSection('제작 장비', editData.equipment?.production, 'equipment.production')}
-          {renderEquipmentSection('촬영 장비', editData.equipment?.cinematography, 'equipment.cinematography')}
-          {renderEquipmentSection('조명 장비', editData.equipment?.lighting, 'equipment.lighting')}
-          {renderEquipmentSection('음향 장비', editData.equipment?.sound, 'equipment.sound')}
-          {renderEquipmentSection('미술 장비', editData.equipment?.art, 'equipment.art')}
-              </>
+              <Box sx={{ mt: 2 }}>
+                {renderEquipmentSection('연출 장비', editData.equipment?.direction, 'equipment.direction')}
+                {renderEquipmentSection('제작 장비', editData.equipment?.production, 'equipment.production')}
+                {renderEquipmentSection('촬영 장비', editData.equipment?.cinematography, 'equipment.cinematography')}
+                {renderEquipmentSection('조명 장비', editData.equipment?.lighting, 'equipment.lighting')}
+                {renderEquipmentSection('음향 장비', editData.equipment?.sound, 'equipment.sound')}
+                {renderEquipmentSection('미술 장비', editData.equipment?.art, 'equipment.art')}
+              </Box>
             )}
-        </div>
-        </div>
+          </Paper>
+        </Box>
       )}
-    </div>
+    </Container>
   );
 };
 
