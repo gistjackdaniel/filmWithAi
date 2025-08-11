@@ -21,8 +21,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Google OAuth 시작' })
   async googleAuth() {
     const clientId = this.configService.get('GOOGLE_CLIENT_ID');
-    // 강제로 올바른 redirect_uri 설정
-    const redirectUri = 'http://localhost:3002/auth/google/callback';
+    // 환경변수 기반 프론트엔드 URL 사용
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:3002';
+    const redirectUri = `${frontendUrl.replace(/\/$/, '')}/auth/google/callback`;
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}&` +

@@ -65,7 +65,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   }));
 
-  // Rate Limiting
+  // Rate Limiting (인증 엔드포인트는 제외)
   app.use(
     rateLimit({
       windowMs: configService.get('RATE_LIMIT_WINDOW_MS') || 15 * 60 * 1000, // 15분
@@ -73,6 +73,11 @@ async function bootstrap() {
       message: {
         error: 'Too Many Requests',
         message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+      },
+      skip: (req) => {
+        const path = req.path || '';
+        // 전역 프리픽스가 포함된 실제 경로 기준으로 체크
+        return path.startsWith('/api/auth');
       },
     }),
   );

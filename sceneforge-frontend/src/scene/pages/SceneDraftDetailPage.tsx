@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { sceneService, type SceneDraft } from '../services/sceneService';
 import {
@@ -12,6 +12,9 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
+  Tabs,
+  Tab,
+  MenuItem,
 } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -26,6 +29,26 @@ const SceneDraftDetailPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [activeCrewDept, setActiveCrewDept] = useState<string>('direction');
+  const [activeEquipDept, setActiveEquipDept] = useState<string>('direction');
+
+  const crewDepartments: Array<{ key: keyof NonNullable<SceneDraft['crew']>; label: string }> = [
+    { key: 'direction', label: '연출팀' },
+    { key: 'production', label: '제작팀' },
+    { key: 'cinematography', label: '촬영팀' },
+    { key: 'lighting', label: '조명팀' },
+    { key: 'sound', label: '음향팀' },
+    { key: 'art', label: '미술팀' },
+  ];
+
+  const equipmentDepartments: Array<{ key: keyof NonNullable<SceneDraft['equipment']>; label: string }> = [
+    { key: 'direction', label: '연출 장비' },
+    { key: 'production', label: '제작 장비' },
+    { key: 'cinematography', label: '촬영 장비' },
+    { key: 'lighting', label: '조명 장비' },
+    { key: 'sound', label: '음향 장비' },
+    { key: 'art', label: '미술 장비' },
+  ];
 
   // location.state에서 prop 받기
   const { draftScene, draftOrder } = location.state || {};
@@ -71,10 +94,12 @@ const SceneDraftDetailPage: React.FC = () => {
   };
 
   const handleEdit = () => {
+    // 편집 모드 시작
     setIsEditing(true);
   };
 
   const handleCancel = () => {
+    // 원본 씬 데이터로 복원
     setEditData(scene);
     setIsEditing(false);
   };
@@ -83,7 +108,7 @@ const SceneDraftDetailPage: React.FC = () => {
     if (!projectId || !editData || !sceneId) return;
     
     try {
-      // state에서만 수정하고 편집 모드 종료
+      // 로컬 상태에서만 수정하고 편집 모드 종료
       setScene(editData);
       setIsEditing(false);
       
@@ -105,8 +130,46 @@ const SceneDraftDetailPage: React.FC = () => {
     if (!projectId || !editData || !sceneId) return;
     
     try {
-      // 백엔드에 씬 저장
-      const savedScene = await sceneService.create(projectId, editData);
+      // MongoDB 내부 필드들을 제외하고 저장할 데이터만 추출
+      const createData = { ...editData };
+      
+      // 내부 필드들 제거 (타입 안전성을 위해 개별적으로 처리)
+      delete (createData as any)._id;
+      delete (createData as any).projectId;
+      delete (createData as any).isDeleted;
+      delete (createData as any).createdAt;
+      delete (createData as any).updatedAt;
+      delete (createData as any).__v;
+      delete (createData as any).id;
+
+      // 중첩된 객체에서도 내부 필드들 제거 및 number 필드 숫자 변환
+      const cleanCreateData = JSON.parse(JSON.stringify(createData));
+      
+      // 중첩된 객체들의 _id, id 필드 제거 및 number 필드 숫자 변환
+      const processData = (obj: any) => {
+        if (obj && typeof obj === 'object') {
+          delete obj._id;
+          delete obj.id;
+          
+          // number 필드를 숫자로 변환
+          if (obj.number && typeof obj.number === 'string') {
+            obj.number = parseInt(obj.number) || 1;
+          }
+          
+          Object.values(obj).forEach(value => {
+            if (value && typeof value === 'object') {
+              processData(value);
+            }
+          });
+        }
+      };
+      
+      processData(cleanCreateData);
+      
+      
+      
+      // sceneService.create를 사용하여 백엔드에 씬 저장
+      const savedScene = await sceneService.create(projectId, cleanCreateData);
       
       // 성공했을 때만 localStorage에서 해당 draft 제거
       if (draftOrder !== undefined) {
@@ -134,10 +197,8 @@ const SceneDraftDetailPage: React.FC = () => {
       
       alert('씬이 성공적으로 저장되었습니다.');
       
-      // ProjectPage로 이동 (약간의 지연 후)
-      setTimeout(() => {
-        navigate(`/project/${projectId}`);
-      }, 100);
+      // ProjectPage로 이동
+      navigate(`/project/${projectId}`);
     } catch (error) {
       console.error('씬 저장 실패:', error);
       alert('씬 저장에 실패했습니다.');
@@ -188,7 +249,7 @@ const SceneDraftDetailPage: React.FC = () => {
     });
   };
 
-  const handleArrayChange = (path: string, index: number, value: any) => {
+  const handleArrayChange = useCallback((path: string, index: number, value: any) => {
     setEditData((prev) => {
       if (!prev) return prev;
       const keys = path.split('.');
@@ -203,9 +264,9 @@ const SceneDraftDetailPage: React.FC = () => {
       current[index] = value;
       return newData;
     });
-  };
+  }, []);
 
-  const addArrayItem = (path: string, defaultItem: any) => {
+  const addArrayItem = useCallback((path: string, defaultItem: any) => {
     setEditData((prev) => {
       if (!prev) return prev;
       const keys = path.split('.');
@@ -228,9 +289,9 @@ const SceneDraftDetailPage: React.FC = () => {
       current[lastKey].push(defaultItem);
       return newData;
     });
-  };
+  }, []);
 
-  const removeArrayItem = (path: string, index: number) => {
+  const removeArrayItem = useCallback((path: string, index: number) => {
     setEditData((prev) => {
       if (!prev) return prev;
       const keys = path.split('.');
@@ -253,9 +314,10 @@ const SceneDraftDetailPage: React.FC = () => {
       current[lastKey].splice(index, 1);
       return newData;
     });
-  };
+  }, []);
 
   const handleBack = () => {
+    // 프로젝트 페이지로 돌아가기
     navigate(`/project/${projectId}`);
   };
 
@@ -264,7 +326,8 @@ const SceneDraftDetailPage: React.FC = () => {
     label: string,
     value: any,
     field: string,
-    type: string = 'text'
+    type: string = 'text',
+    options?: string[]
   ) => (
     <Box sx={{ mb: 2 }}>
       <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary' }}>
@@ -297,6 +360,22 @@ const SceneDraftDetailPage: React.FC = () => {
             }
             label={label}
           />
+        ) : type === 'select' && options ? (
+          <TextField
+            fullWidth
+            select
+            value={value || ''}
+            onChange={(e) =>
+              handleInputChange(field as keyof SceneDraft, e.target.value)
+            }
+            placeholder={`${label}을 선택하세요`}
+          >
+            {options.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </TextField>
         ) : (
           <TextField
             fullWidth
@@ -320,79 +399,89 @@ const SceneDraftDetailPage: React.FC = () => {
     array: any[],
     path: string,
     itemFields: string[]
-  ) => (
-    <Box sx={{ mb: 3 }}>
-      <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-        {label}
-      </Typography>
-      {isEditing ? (
-        <Stack spacing={1}>
-          {array?.map((item, index) => (
-            <Paper
-              key={`${path}_${index}_${JSON.stringify(item)}`}
-              variant="outlined"
-              sx={{ p: 1.5, bgcolor: 'background.paper' }}
-            >
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                {itemFields.map((field) => (
-                  <TextField
-                    key={field}
-                    size="small"
-                    label={field}
-                    value={item[field] || ''}
-                    onChange={(e) => {
-                      const newItem = { ...item, [field]: e.target.value };
-                      handleArrayChange(path, index, newItem);
-                    }}
-                  />
-                ))}
-                <Box sx={{ flex: 1 }} />
-                <Button
-                  variant="text"
-                  color="error"
-                  onClick={() => removeArrayItem(path, index)}
-                >
-                  삭제
-                </Button>
-              </Stack>
-            </Paper>
-          ))}
-          <Box>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                const defaultItem = itemFields.reduce((acc, field) => {
-                  (acc as any)[field] = '';
-                  return acc;
-                }, {} as any);
-                addArrayItem(path, defaultItem);
-              }}
-            >
-              + 추가
-            </Button>
-          </Box>
-        </Stack>
-      ) : (
-        <Stack spacing={1}>
-          {array?.map((item, index) => (
-            <Paper
-              key={`${path}_${index}_${JSON.stringify(item)}`}
-              variant="outlined"
-              sx={{ p: 1.5, bgcolor: 'background.paper' }}
-            >
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                {itemFields.map((field) => (
-                  <Typography key={field} variant="body2">
-                    {item[field] || '미정'}
-                  </Typography>
-                ))}
-              </Stack>
-            </Paper>
-          ))}
-        </Stack>
-      )}
-    </Box>
-  );
+  ) => {
+    // 안정적인 key를 사용하여 재렌더링 방지
+    const getStableKey = (index: number) => `${path}_${index}`;
+    
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+          {label}
+        </Typography>
+        {isEditing ? (
+          <Stack spacing={1}>
+            {array?.map((item, index) => (
+              <Paper
+                key={getStableKey(index)}
+                variant="outlined"
+                sx={{ p: 1.5, bgcolor: 'background.paper' }}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  {itemFields.map((field) => (
+                    <TextField
+                      key={`${getStableKey(index)}_${field}`}
+                      size="small"
+                      label={field}
+                      value={item[field] || ''}
+                      onChange={(e) => {
+                        const newItem = { ...item, [field]: e.target.value };
+                        handleArrayChange(path, index, newItem);
+                      }}
+                    />
+                  ))}
+                  <Box sx={{ flex: 1 }} />
+                  <Button
+                    variant="text"
+                    color="error"
+                    onClick={() => removeArrayItem(path, index)}
+                  >
+                    삭제
+                  </Button>
+                </Stack>
+              </Paper>
+            ))}
+            <Box>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  const defaultItem = itemFields.reduce((acc, field) => {
+                    // number 필드는 숫자로 초기화
+                    if (field === 'number') {
+                      (acc as any)[field] = 1;
+                    } else {
+                      (acc as any)[field] = '';
+                    }
+                    return acc;
+                  }, {} as any);
+                  addArrayItem(path, defaultItem);
+                }}
+              >
+                + 추가
+              </Button>
+            </Box>
+          </Stack>
+        ) : (
+          <Stack spacing={1}>
+            {array?.map((item, index) => (
+              <Paper
+                key={getStableKey(index)}
+                variant="outlined"
+                sx={{ p: 1.5, bgcolor: 'background.paper' }}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  {itemFields.map((field) => (
+                    <Typography key={field} variant="body2">
+                      {item[field] || '미정'}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Box>
+    );
+  };
 
   // 단순화된 중첩 필드 렌더링 함수 (MUI 적용)
   const renderNestedField = (
@@ -433,25 +522,25 @@ const SceneDraftDetailPage: React.FC = () => {
   // 단순화된 크루 섹션 렌더링 함수 (MUI 적용)
   const renderCrewSection = (title: string, crewData: any, path: string) => (
     <Box sx={{ mb: 2 }}>
-      {Object.entries(crewData || {}).map(([role, members]: [string, any]) => (
-        <Paper key={role} variant="outlined" sx={{ p: 2, mb: 1 }}>
-          <Typography variant="h3" sx={{ mb: 1 }}>{role}</Typography>
+      {Object.entries(crewData || {}).map(([department, members]: [string, any]) => (
+        <Paper key={department} variant="outlined" sx={{ p: 2, mb: 1 }}>
+          <Typography variant="h3" sx={{ mb: 1 }}>{getDepartmentName(department)}</Typography>
           {isEditing ? (
             <Stack spacing={1}>
               {members?.map((member: any, index: number) => (
                 <Stack
-                  key={`${path}_${role}_${index}_${JSON.stringify(member)}`}
+                  key={`${path}_${department}_${index}`}
                   direction={{ xs: 'column', sm: 'row' }}
                   spacing={1}
                   alignItems={{ sm: 'center' }}
                 >
                   <TextField
                     size="small"
-                    label="역할"
-                    value={member.role || ''}
+                    label="연락처"
+                    value={member.contact || ''}
                     onChange={(e) => {
-                      const newMember = { ...member, role: e.target.value };
-                      handleArrayChange(`${path}.${role}`, index, newMember);
+                      const newMember = { ...member, contact: e.target.value };
+                      handleArrayChange(`${path}.${department}`, index, newMember);
                     }}
                   />
                   <TextField
@@ -460,14 +549,14 @@ const SceneDraftDetailPage: React.FC = () => {
                     value={member.profileId || ''}
                     onChange={(e) => {
                       const newMember = { ...member, profileId: e.target.value };
-                      handleArrayChange(`${path}.${role}`, index, newMember);
+                      handleArrayChange(`${path}.${department}`, index, newMember);
                     }}
                   />
                   <Box sx={{ flex: 1 }} />
                   <Button
                     variant="text"
                     color="error"
-                    onClick={() => removeArrayItem(`${path}.${role}`, index)}
+                    onClick={() => removeArrayItem(`${path}.${department}`, index)}
                   >
                     삭제
                   </Button>
@@ -477,7 +566,7 @@ const SceneDraftDetailPage: React.FC = () => {
                 <Button
                   variant="outlined"
                   onClick={() => {
-                    addArrayItem(`${path}.${role}`, { role: '', profileId: '' });
+                    addArrayItem(`${path}.${department}`, { contact: '', profileId: '' });
                   }}
                 >
                   + 추가
@@ -488,13 +577,13 @@ const SceneDraftDetailPage: React.FC = () => {
             <Stack spacing={1}>
               {members?.map((member: any, index: number) => (
                 <Stack
-                  key={`${path}_${role}_${index}_${JSON.stringify(member)}`}
+                  key={`${path}_${department}_${index}`}
                   direction={{ xs: 'column', sm: 'row' }}
                   spacing={2}
                 >
-                  <Typography variant="body2">{member.role || '미정'}</Typography>
+                  <Typography variant="body2">{getRoleName(department)}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {member.profileId || '미정'}
+                    {member.contact || '연락처 미정'} | {member.profileId || '프로필 미정'}
                   </Typography>
                 </Stack>
               ))}
@@ -504,6 +593,54 @@ const SceneDraftDetailPage: React.FC = () => {
       ))}
     </Box>
   );
+
+  // 부서명을 한글로 변환하는 함수
+  const getDepartmentName = (department: string) => {
+    const departmentNames: { [key: string]: string } = {
+      direction: '연출',
+      production: '제작',
+      cinematography: '촬영',
+      lighting: '조명',
+      sound: '사운드',
+      art: '아트'
+    };
+    return departmentNames[department] || department;
+  };
+
+  // 역할명을 한글로 변환하는 함수
+  const getRoleName = (department: string) => {
+    const roleNames: { [key: string]: string } = {
+      director: '감독',
+      assistantDirector: '부감독',
+      scriptSupervisor: '스크립트 감독',
+      continuity: '연속성 감독',
+      producer: '제작자',
+      lineProducer: '라인 제작자',
+      productionManager: '제작 관리자',
+      productionAssistant: '제작 어시스턴트',
+      cinematographer: '촬영감독',
+      cameraOperator: '카메라 오퍼레이터',
+      firstAssistant: '퍼스트 어시스턴트',
+      secondAssistant: '세컨드 어시스턴트',
+      dollyGrip: '돌리 그립',
+      gaffer: '개퍼',
+      bestBoy: '베스트 보이',
+      electrician: '일렉트리션',
+      generatorOperator: '제너레이터 오퍼레이터',
+      soundMixer: '사운드 믹서',
+      boomOperator: '붐 오퍼레이터',
+      soundAssistant: '사운드 어시스턴트',
+      utility: '유틸리티',
+      productionDesigner: '프로덕션 디자이너',
+      artDirector: '아트 디렉터',
+      setDecorator: '세트 데코레이터',
+      propMaster: '소품 마스터',
+      makeupArtist: '메이크업 아티스트',
+      costumeDesigner: '코스튬 디자이너',
+      hairStylist: '헤어 스타일리스트'
+    };
+    return roleNames[department] || department;
+  };
 
   const renderEquipmentSection = (title: string, equipmentData: any, path: string) => (
     <Box sx={{ mb: 2 }}>
@@ -515,7 +652,7 @@ const SceneDraftDetailPage: React.FC = () => {
               {Array.isArray(items) ? (
                 <Stack spacing={1}>
                   {items?.map((item: string, index: number) => (
-                    <Stack key={`${path}_${category}_${index}_${item}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <Stack key={`${path}_${category}_${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                       <TextField
                         size="small"
                         label="장비명"
@@ -559,7 +696,7 @@ const SceneDraftDetailPage: React.FC = () => {
                       {Array.isArray(subItems) ? (
                         <Stack spacing={1}>
                           {subItems?.map((item: string, index: number) => (
-                            <Stack key={`${path}_${category}_${subCategory}_${index}_${item}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                            <Stack key={`${path}_${category}_${subCategory}_${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                               <TextField
                                 size="small"
                                 label="장비명"
@@ -608,7 +745,7 @@ const SceneDraftDetailPage: React.FC = () => {
               {Array.isArray(items) ? (
                 <Stack spacing={1}>
                   {items?.map((item: string, index: number) => (
-                    <Typography key={`${path}_${category}_${index}_${item}`} variant="body2">
+                                            <Typography key={`${path}_${category}_${index}`} variant="body2">
                       {item || '미정'}
                     </Typography>
                   ))}
@@ -621,7 +758,7 @@ const SceneDraftDetailPage: React.FC = () => {
                       {Array.isArray(subItems) ? (
                         <Stack spacing={0.5}>
                           {subItems?.map((item: string, index: number) => (
-                            <Typography key={`${path}_${category}_${subCategory}_${index}_${item}`} variant="body2">
+                            <Typography key={`${path}_${category}_${subCategory}_${index}`} variant="body2">
                               {item || '미정'}
                             </Typography>
                           ))}
@@ -696,7 +833,7 @@ const SceneDraftDetailPage: React.FC = () => {
               {renderField('제목', editData.title, 'title')}
               {renderField('설명', editData.description, 'description', 'textarea')}
               {renderField('예상 시간', editData.estimatedDuration, 'estimatedDuration')}
-              {renderField('시간대', editData.timeOfDay, 'timeOfDay')}
+              {renderField('시간대', editData.timeOfDay, 'timeOfDay', 'select', ['새벽', '아침', '점심', '저녁', '밤'])}
               {renderField('씬 날짜/시간', editData.sceneDateTime, 'sceneDateTime')}
             </Box>
           )}
@@ -1037,7 +1174,7 @@ const SceneDraftDetailPage: React.FC = () => {
                 {isEditing ? (
                   <Stack spacing={1}>
                     {editData.specialRequirements?.map((requirement: string, index: number) => (
-                      <Stack key={`specialRequirements_${index}_${requirement}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <Stack key={`specialRequirements_${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                         <TextField
                           fullWidth
                           size="small"
@@ -1077,7 +1214,7 @@ const SceneDraftDetailPage: React.FC = () => {
                 ) : (
                   <Stack spacing={0.5}>
                     {editData.specialRequirements?.map((requirement: string, index: number) => (
-                      <Typography key={`specialRequirements_${index}_${requirement}`} variant="body2">
+                      <Typography key={`specialRequirements_${index}`} variant="body2">
                         {requirement || '미정'}
                       </Typography>
                     ))}
@@ -1109,12 +1246,29 @@ const SceneDraftDetailPage: React.FC = () => {
             </Stack>
             {!isSectionCollapsed('staff') && editData && (
               <Box sx={{ mt: 2 }}>
-                {renderCrewSection('연출팀', editData.crew?.direction, 'crew.direction')}
-                {renderCrewSection('제작팀', editData.crew?.production, 'crew.production')}
-                {renderCrewSection('촬영팀', editData.crew?.cinematography, 'crew.cinematography')}
-                {renderCrewSection('조명팀', editData.crew?.lighting, 'crew.lighting')}
-                {renderCrewSection('음향팀', editData.crew?.sound, 'crew.sound')}
-                {renderCrewSection('미술팀', editData.crew?.art, 'crew.art')}
+                <Tabs
+                  value={activeCrewDept}
+                  onChange={(_, v) => setActiveCrewDept(v)}
+                  variant="scrollable"
+                  scrollButtons
+                  allowScrollButtonsMobile
+                  sx={{ mb: 2 }}
+                >
+                  {crewDepartments.map((d) => (
+                    <Tab key={d.key as string} value={d.key} label={d.label} />
+                  ))}
+                </Tabs>
+
+                {(() => {
+                  const selected = crewDepartments.find((d) => d.key === (activeCrewDept as any));
+                  return selected
+                    ? renderCrewSection(
+                        selected.label,
+                        editData.crew?.[selected.key] as any,
+                        `crew.${String(selected.key)}`,
+                      )
+                    : null;
+                })()}
               </Box>
             )}
           </Paper>
@@ -1127,12 +1281,29 @@ const SceneDraftDetailPage: React.FC = () => {
             </Stack>
             {!isSectionCollapsed('equipment') && editData && (
               <Box sx={{ mt: 2 }}>
-                {renderEquipmentSection('연출 장비', editData.equipment?.direction, 'equipment.direction')}
-                {renderEquipmentSection('제작 장비', editData.equipment?.production, 'equipment.production')}
-                {renderEquipmentSection('촬영 장비', editData.equipment?.cinematography, 'equipment.cinematography')}
-                {renderEquipmentSection('조명 장비', editData.equipment?.lighting, 'equipment.lighting')}
-                {renderEquipmentSection('음향 장비', editData.equipment?.sound, 'equipment.sound')}
-                {renderEquipmentSection('미술 장비', editData.equipment?.art, 'equipment.art')}
+                <Tabs
+                  value={activeEquipDept}
+                  onChange={(_, v) => setActiveEquipDept(v)}
+                  variant="scrollable"
+                  scrollButtons
+                  allowScrollButtonsMobile
+                  sx={{ mb: 2 }}
+                >
+                  {equipmentDepartments.map((d) => (
+                    <Tab key={d.key as string} value={d.key} label={d.label} />
+                  ))}
+                </Tabs>
+
+                {(() => {
+                  const selected = equipmentDepartments.find((d) => d.key === (activeEquipDept as any));
+                  return selected
+                    ? renderEquipmentSection(
+                        selected.label,
+                        editData.equipment?.[selected.key] as any,
+                        `equipment.${String(selected.key)}`,
+                      )
+                    : null;
+                })()}
               </Box>
             )}
           </Paper>

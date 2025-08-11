@@ -221,15 +221,6 @@ export interface UpdateSceneRequest extends Partial<SceneDraft> {}
 // 씬 도메인 전용 API 클라이언트
 const sceneApi = createApiClient();
 
-// 씬 관련 API 엔드포인트
-const sceneEndpoints = {
-  scenes: '/scenes',
-  scene: (id: string) => `/scenes/${id}`,
-  sceneDraft: (id: string) => `/scenes/${id}/draft`,
-  generateScene: '/scenes/generate',
-  generateSceneDraft: '/scenes/generate-draft',
-};
-
 export const sceneService = {
   // 씬 초안 생성 (AI)
   async createDraft(projectId: string, data: CreateSceneDraftRequest): Promise<SceneDraft[]> {
@@ -245,42 +236,36 @@ export const sceneService = {
 
   // 씬 생성
   async create(projectId: string, data: CreateSceneRequest): Promise<Scene> {
-    const response = await sceneApi.post<Scene>(`${API_ENDPOINTS.PROJECTS.GET(projectId)}/scene`, data);
+    const response = await sceneApi.post<Scene>(`/project/${projectId}/scene`, data);
     return response.data;
   },
 
   // 씬 업데이트
   async update(projectId: string, sceneId: string, data: UpdateSceneRequest): Promise<Scene> {
-    const response = await sceneApi.patch<Scene>(`${API_ENDPOINTS.PROJECTS.GET(projectId)}/scene/${sceneId}`, data);
+    const response = await sceneApi.put<Scene>(`/project/${projectId}/scene/${sceneId}`, data);
     return response.data;
   },
 
   // 프로젝트의 씬 목록 조회
   async getScenes(projectId: string): Promise<Scene[]> {
-    const response = await sceneApi.get<Scene[]>(`${API_ENDPOINTS.PROJECTS.GET(projectId)}/scene`);
+    const response = await sceneApi.get<Scene[]>(`/project/${projectId}/scene`);
     return response.data;
   },
 
   // 씬 상세 조회
   async getScene(projectId: string, sceneId: string): Promise<Scene> {
-    const response = await sceneApi.get<Scene>(`${API_ENDPOINTS.PROJECTS.GET(projectId)}/scene/${sceneId}`);
+    const response = await sceneApi.get<Scene>(`/project/${projectId}/scene/${sceneId}`);
     return response.data;
   },
 
   // 씬 삭제
   async deleteScene(projectId: string, sceneId: string): Promise<void> {
-    await sceneApi.delete(`${API_ENDPOINTS.PROJECTS.GET(projectId)}/scene/${sceneId}`);
+    await sceneApi.delete(`/project/${projectId}/scene/${sceneId}`);
   },
 
-  // AI 씬 생성
-  async generateScene(generationData: any): Promise<Scene> {
-    const response = await sceneApi.post(sceneEndpoints.generateScene, generationData);
-    return response.data;
-  },
-
-  // 씬 드래프트 조회
-  async getSceneDraft(sceneId: string): Promise<SceneDraft> {
-    const response = await sceneApi.get(sceneEndpoints.sceneDraft(sceneId));
+  // 삭제된 씬 복구
+  async restoreScene(projectId: string, sceneId: string): Promise<Scene> {
+    const response = await sceneApi.put<Scene>(`/project/${projectId}/scene/${sceneId}/restore`);
     return response.data;
   },
 }; 

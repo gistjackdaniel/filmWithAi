@@ -63,8 +63,12 @@ const App: React.FC = () => {
             {/* Google OAuth 콜백 라우트 */}
             <Route path={ROUTES.AUTH_CALLBACK} element={<GoogleCallback />} />
             
-            {/* 루트 경로에서도 Google OAuth 콜백 처리 */}
-            <Route path="/" element={<GoogleCallback />} />
+            {/* 루트 경로: 인증 상태에 따라 대시보드 또는 로그인으로 이동 */}
+            <Route path="/" element={isAuthenticated ? (
+              <Navigate to={ROUTES.DASHBOARD} replace />
+            ) : (
+              <Navigate to={ROUTES.LOGIN} replace />
+            )} />
             
             {/* 대시보드 라우트 */}
             <Route 

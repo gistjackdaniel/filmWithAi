@@ -69,18 +69,20 @@ export class SceneService {
   }
 
   async update(projectId: string, sceneId: string, updateSceneDto: UpdateSceneRequestDto): Promise<SceneResponseDto> {
-    if (!Types.ObjectId.isValid(sceneId) || !Types.ObjectId.isValid(projectId)) {
-      throw new BadRequestException('Invalid scene ID or project ID');
+    if (!Types.ObjectId.isValid(sceneId)) {
+      throw new BadRequestException('Invalid scene ID');
     }
+
+    // projectId와 isDeleted는 업데이트에서 제외
+    const { projectId: _, isDeleted: __, _id: ___, ...updateData } = updateSceneDto as any;
 
     const scene = await this.sceneModel.findOneAndUpdate(
       {
         _id: new Types.ObjectId(sceneId),
-        projectId: new Types.ObjectId(projectId),
         isDeleted: false
       },
       {
-        ...updateSceneDto,
+        ...updateData,
       },
       { new: true }
     ).exec();

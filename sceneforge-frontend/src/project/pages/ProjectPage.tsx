@@ -90,7 +90,7 @@ function TabPanel(props: TabPanelProps) {
       id={`project-tabpanel-${index}`}
       aria-labelledby={`project-tab-${index}`}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && children}
     </div>
   );
 }
@@ -591,6 +591,7 @@ const ProjectPage: React.FC = () => {
 
         {/* 프로젝트 정보 탭 */}
         <TabPanel value={activeTab} index={0}>
+          <Box sx={{ p: 3 }}>
             <ProjectInfoCard 
               project={editData || currentProject}
               isEditing={isEditing}
@@ -599,19 +600,22 @@ const ProjectPage: React.FC = () => {
               onCancel={handleCancel}
               onEdit={handleEdit}
             />
+          </Box>
         </TabPanel>
 
         {/* 씬 관리 탭 */}
         <TabPanel value={activeTab} index={1}>
-                         <SceneListSection
-               scenes={scenes}
-               draftScenes={draftScenes}
-               isGeneratingScenes={isGeneratingScenes}
-               onOpenSceneModal={openSceneModal}
-               projectId={projectId!}
-               onSceneClick={handleSceneClick}
-               onSaveDraft={handleSaveDraft}
-             />
+          <Box sx={{ p: 3 }}>
+            <SceneListSection
+              scenes={scenes}
+              draftScenes={draftScenes}
+              isGeneratingScenes={isGeneratingScenes}
+              onOpenSceneModal={openSceneModal}
+              projectId={projectId!}
+              onSceneClick={handleSceneClick}
+              onSaveDraft={handleSaveDraft}
+            />
+          </Box>
         </TabPanel>
 
         {/* 컷 타임라인 탭 */}
