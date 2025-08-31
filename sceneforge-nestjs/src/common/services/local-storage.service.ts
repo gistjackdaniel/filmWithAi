@@ -58,6 +58,53 @@ export class LocalStorageService {
     }
   }
 
+  async uploadFromUrl(fileUrl: string, fileName: string, contentType?: string, targetFolder = 'videos'): Promise<string> {
+    try {
+      // 비디오 폴더 생성
+      const videoDir = path.join(process.cwd(), 'uploads', targetFolder);
+      if (!fs.existsSync(videoDir)) {
+        fs.mkdirSync(videoDir, { recursive: true });
+      }
+
+      // URL에서 파일 다운로드
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`원본 파일 다운로드 실패: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // 파일 저장
+      const filePath = path.join(videoDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+
+      // URL 반환
+      const videoUrl = `/uploads/${targetFolder}/${fileName}`;
+      this.logger.log(`로컬 비디오 업로드 성공: ${videoUrl}`);
+      
+      return videoUrl;
+    } catch (error) {
+      this.logger.error('로컬 비디오 업로드 실패:', error);
+      throw new Error('로컬 비디오 업로드에 실패했습니다.');
+    }
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    try {
+      const fileName = path.basename(fileUrl);
+      const filePath = path.join(process.cwd(), 'uploads', fileName.replace(/^\//, ''));
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        this.logger.log(`로컬 파일 삭제 성공: ${fileName}`);
+      }
+    } catch (error) {
+      this.logger.error('로컬 파일 삭제 실패:', error);
+      throw new Error('로컬 파일 삭제에 실패했습니다.');
+    }
+  }
+
   getStorageInfo(): { type: string; localPath: string } {
     return {
       type: 'Local',

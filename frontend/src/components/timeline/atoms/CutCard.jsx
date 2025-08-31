@@ -84,7 +84,7 @@ const CutCard = React.memo(({
     )
   }
 
-  // 드래그 앤 드롭 설정
+  // 드래그 앤 드롭 설정 (V1 내부 정렬용)
   const {
     attributes,
     listeners,
@@ -94,7 +94,7 @@ const CutCard = React.memo(({
     isDragging,
   } = useSortable({
     id: cut.id,
-    disabled: !isDraggable
+    disabled: true // V2 드래그를 위해 V1 정렬 비활성화
   })
 
   const style = {
@@ -108,11 +108,8 @@ const CutCard = React.memo(({
    * V2로 드래그 시작 핸들러
    */
   const handleDragStart = (event) => {
-    // 기본 드래그 앤 드롭이 활성화된 경우
-    if (isDraggable) {
-      return
-    }
-
+    console.log('🎬 V1 컷 드래그 시작:', cut.title || cut.id)
+    
     // V2로 드래그할 수 있도록 데이터 설정
     event.dataTransfer.setData('application/json', JSON.stringify({
       type: 'cut-from-v1',
@@ -342,8 +339,7 @@ const CutCard = React.memo(({
         ref={setNodeRef}
         style={style}
         {...attributes}
-        {...listeners}
-        draggable={!isDraggable} // 기본 드래그 앤 드롭이 비활성화된 경우에만 V2 드래그 활성화
+        draggable={true} // V2로 드래그하기 위해 항상 활성화
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={(event) => {

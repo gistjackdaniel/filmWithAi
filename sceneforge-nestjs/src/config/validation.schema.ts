@@ -8,6 +8,10 @@ export const validationSchema = Joi.object({
   GOOGLE_CLIENT_SECRET: Joi.string().allow('').optional(),
   GOOGLE_CALLBACK_URL: Joi.string().uri().allow('').optional(),
   OPENAI_API_KEY: Joi.string().required(),
+  FAL_KEY: Joi.string().required(),
+  FAL_POLL_INTERVAL_MS: Joi.number().default(2500),
+  FAL_MAX_WAIT_MS: Joi.number().default(300000),
+  FAL_MAX_CONCURRENT_PER_PROJECT: Joi.number().default(2),
   PORT: Joi.number().default(5001),
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   FRONTEND_URL: Joi.string().uri().required(),
@@ -18,4 +22,6 @@ export const validationSchema = Joi.object({
   REDIS_PASSWORD: Joi.string().allow('').optional(),
   MAX_FILE_SIZE: Joi.number().default(10 * 1024 * 1024),
   UPLOAD_PATH: Joi.string().default('./uploads'),
+  USE_S3: Joi.boolean().default(false),
+  USE_MIRROR: Joi.boolean().default(false),
 }); 

@@ -5,7 +5,7 @@ import { STORAGE_KEYS } from '../constants';
 export const createApiClient = (baseURL?: string) => {
   const api = axios.create({
     baseURL: baseURL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api',
-    timeout: 60000, // 60초로 증가 (AI 생성 시간 고려)
+    timeout: 180000, // 180초로 증가 (AI 생성/저장 여유 확보)
     headers: {
       'Content-Type': 'application/json',
     },

@@ -51,6 +51,28 @@ export class S3Service {
     }
   }
 
+  async uploadFromUrl(fileUrl: string, fileName: string, contentType?: string, targetFolder = 'videos'): Promise<string> {
+    const res = await fetch(fileUrl);
+    if (!res.ok) throw new Error(`원본 파일 다운로드 실패: ${res.status}`);
+    const arrayBuf = await res.arrayBuffer();
+    const key = `${targetFolder}/${Date.now()}_${fileName}`;
+    const uploadParams = {
+      Bucket: this.bucketName,
+      Key: key,
+      Body: Buffer.from(arrayBuf),
+      ContentType: contentType || 'video/mp4',
+      ACL: 'public-read',
+    } as AWS.S3.PutObjectRequest;
+    const result = await this.s3.upload(uploadParams).promise();
+    this.logger.log(`S3 파일 업로드 성공: ${result.Location}`);
+    return result.Location;
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    const key = this.extractKeyFromUrl(fileUrl);
+    await this.s3.deleteObject({ Bucket: this.bucketName, Key: key }).promise();
+  }
+
   async deleteImage(imageUrl: string): Promise<void> {
     try {
       const key = this.extractKeyFromUrl(imageUrl);

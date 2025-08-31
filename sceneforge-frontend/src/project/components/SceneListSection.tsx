@@ -98,16 +98,20 @@ const SceneListSection: React.FC<SceneListSectionProps> = ({
 
       {/* 씬 목록 */}
       {allScenes.length > 0 ? (
-        <Grid container spacing={2}>
-          {allScenes.map((scene) => {
-            // draft 씬인지 확인 (draftScenes 배열에 있는지 체크)
-            const isDraft = draftScenes.some(draft => draft.order === scene.order);
-            const sceneKey = isDraft ? `draft_${scene.order}` : `scene_${('_id' in scene ? scene._id : scene.order)}`;
+        <Box sx={{ overflowX: 'auto', pb: 1 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {allScenes.map((scene) => {
+              // draft 씬인지 확인 (draftScenes 배열에 있는지 체크)
+              const isDraft = draftScenes.some(draft => draft.order === scene.order);
+              const sceneKey = isDraft ? `draft_${scene.order}` : `scene_${('_id' in scene ? scene._id : scene.order)}`;
 
-            return (
-              <Grid item xs={12} md={6} lg={4} key={sceneKey} {...({} as any)}>
+              return (
                 <Card 
+                  key={sceneKey}
                   sx={{ 
+                    minWidth: 320,
+                    maxWidth: 360,
+                    flex: '0 0 auto',
                     height: '100%', 
                     display: 'flex', 
                     flexDirection: 'column',
@@ -203,10 +207,10 @@ const SceneListSection: React.FC<SceneListSectionProps> = ({
                     )}
                   </CardActions>
                 </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
+              );
+            })}
+          </Box>
+        </Box>
       ) : (
         /* 씬이 없는 경우 */
         <Box sx={{ textAlign: 'center', py: 4 }}>

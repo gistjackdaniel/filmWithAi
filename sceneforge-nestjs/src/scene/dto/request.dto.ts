@@ -686,8 +686,8 @@ export class CreateSceneRequestDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => DialogueDto)
-  @IsNotEmpty()
-  dialogues: DialogueDto[];
+  @IsOptional()
+  dialogues?: DialogueDto[];
 
   @ApiProperty({
     description: '씬 날씨',
@@ -723,8 +723,8 @@ export class CreateSceneRequestDto {
   })
   @ValidateNested()
   @Type(() => LightingDto)
-  @IsNotEmpty()
-  lighting: LightingDto;
+  @IsOptional()
+  lighting?: LightingDto;
 
   @ApiProperty({
     description: '씬 시각 설명',
@@ -788,8 +788,8 @@ export class CreateSceneRequestDto {
   })
   @ValidateNested()
   @Type(() => RealLocationDto)
-  @IsNotEmpty()
-  location: RealLocationDto;
+  @IsOptional()
+  location?: RealLocationDto;
 
   @ApiProperty({
     description: '씬 시간대',
@@ -902,8 +902,8 @@ export class CreateSceneRequestDto {
   })
   @ValidateNested()
   @Type(() => CrewDto)
-  @IsNotEmpty()
-  crew: CrewDto;
+  @IsOptional()
+  crew?: CrewDto;
 
   @ApiProperty({
     description: '장비 구성',
@@ -981,8 +981,8 @@ export class CreateSceneRequestDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CastMemberDto)
-  @IsNotEmpty()
-  cast: CastMemberDto[];
+  @IsOptional()
+  cast?: CastMemberDto[];
 
   @ApiProperty({
     description: '추가 인원',
@@ -1000,8 +1000,8 @@ export class CreateSceneRequestDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ExtraMemberDto)
-  @IsNotEmpty()
-  extra: ExtraMemberDto[];
+  @IsOptional()
+  extra?: ExtraMemberDto[];
 
   @ApiProperty({
     description: '특별 요구사항',

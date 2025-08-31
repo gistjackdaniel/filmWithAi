@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { APP_PIPE } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -10,6 +10,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AiModule } from 'src/ai/ai.module';
 import { SceneModule } from 'src/scene/scene.module';
 import { ProjectModule } from 'src/project/project.module';
+import { VideoModule } from 'src/video/video.module';
 import { S3Service } from '../common/services/s3.service';
 import { LocalStorageService } from '../common/services/local-storage.service';
 import { StorageFactoryService } from '../common/services/storage-factory.service';
@@ -32,6 +33,7 @@ import { StorageFactoryService } from '../common/services/storage-factory.servic
     AiModule,
     SceneModule,
     ProjectModule,
+    forwardRef(() => VideoModule),
   ],
   controllers: [CutController],
   providers: [

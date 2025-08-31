@@ -100,8 +100,12 @@ const CutList: React.FC<CutListProps> = ({ cuts, draftCuts, projectId, sceneId, 
               </div>
               <div className="cut-content">
                 {!isDraft && isCut(cut) && cut.imageUrl && (
-                  <div className="cut-image-preview">
-                    <img src={`http://localhost:5001${cut.imageUrl}`} alt={`컷 ${cut.order} 이미지`} />
+                  <div className="cut-image-preview" style={{ width: '100%', maxWidth: 240, margin: '0 auto' }}>
+                    <img
+                      src={`http://localhost:5001${cut.imageUrl}`}
+                      alt={`컷 ${cut.order} 이미지`}
+                      style={{ maxWidth: '100%', height: 'auto', maxHeight: 180, objectFit: 'contain', display: 'block' }}
+                    />
                   </div>
                 )}
                 <h3>{cut.title}</h3>

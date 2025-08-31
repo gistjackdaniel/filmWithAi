@@ -75,7 +75,8 @@ export const isCutDraft = (cut: Cut | CutDraft): cut is CutDraft => {
 };
 
 export const isCut = (cut: Cut | CutDraft): cut is Cut => {
-  return '_id' in cut;
+  const anyCut = cut as any;
+  return typeof anyCut?._id === 'string' && typeof anyCut?.createdAt === 'string' && typeof anyCut?.updatedAt === 'string';
 };
 
 // Cut (saved to DB)
@@ -169,5 +170,29 @@ export const cutService = {
       },
     });
     return response.data;
+  },
+
+  // ===== Navigation helpers (UI 라우팅 보조) =====
+  getCutViewRoute(projectId: string, sceneId: string, cut: Cut | CutDraft) {
+    if (isCut(cut)) {
+      return {
+        pathname: `/project/${projectId}/scene/${sceneId}/cut/${cut._id}`,
+      } as const;
+    }
+    // Draft
+    return {
+      pathname: `/project/${projectId}/scene/${sceneId}/cut-draft/temp_${cut.order}`,
+      state: { draftCut: cut, draftOrder: cut.order },
+    } as const;
+  },
+
+  navigateToCut(
+    navigate: (to: string, options?: { replace?: boolean; state?: any }) => void,
+    projectId: string,
+    sceneId: string,
+    cut: Cut | CutDraft,
+  ) {
+    const route = this.getCutViewRoute(projectId, sceneId, cut);
+    navigate(route.pathname, route.state ? { state: route.state } : undefined);
   },
 }; 

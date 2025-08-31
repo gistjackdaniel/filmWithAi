@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAuthStore } from '../stores/authStore';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+
 
 const LoginForm: React.FC = () => {
   const { 
@@ -14,7 +16,7 @@ const LoginForm: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       // 백엔드에서 Google OAuth URL 가져오기
-      const response = await fetch('http://localhost:5001/api/auth/google');
+      const response = await fetch(`${API_BASE}/auth/google`);
       const { authUrl } = await response.json();
       
       // Google OAuth 팝업 열기
@@ -34,7 +36,7 @@ const LoginForm: React.FC = () => {
           
           try {
             // 백엔드로 authorization code 전송
-            const loginResponse = await fetch(`http://localhost:5001/api/auth/google/callback?code=${encodeURIComponent(code)}`, {
+            const loginResponse = await fetch(`${API_BASE}/auth/google/callback?code=${encodeURIComponent(code)}`, {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',

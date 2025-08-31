@@ -25,6 +25,47 @@ export class SceneService {
     private configService: ConfigService,
   ) {}
 
+  // crew 객체를 순회하여 각 역할별 인원 수를 계산합니다
+  private computeCrewCounts(crew: any): any {
+    const result: any = {};
+
+    if (!crew || typeof crew !== 'object') return result;
+
+    const flattenMembers = (value: any): any[] => {
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === 'object') {
+        const arr: any[] = [];
+        Object.values(value).forEach((v: any) => {
+          if (Array.isArray(v)) {
+            arr.push(...v);
+          } else if (v && typeof v === 'object') {
+            arr.push(...flattenMembers(v));
+          }
+        });
+        return arr;
+      }
+      return [];
+    };
+
+    Object.entries(crew).forEach(([dept, roles]: [string, any]) => {
+      if (!roles || typeof roles !== 'object') return;
+      result[dept] = result[dept] || {};
+      Object.entries(roles).forEach(([role, members]: [string, any]) => {
+        const arr = flattenMembers(members);
+        result[dept][role] = Array.isArray(arr) ? arr.length : 0;
+      });
+    });
+
+    return result;
+  }
+
+  // Mongoose 문서를 plain object로 변환하고 crewCounts를 첨부합니다
+  private attachCrewCounts(sceneDoc: any): any {
+    const obj = typeof sceneDoc?.toObject === 'function' ? sceneDoc.toObject() : sceneDoc;
+    const crewCounts = this.computeCrewCounts(obj?.crew);
+    return { ...obj, crewCounts };
+  }
+
   async create(projectId: string, createSceneDto: CreateSceneRequestDto): Promise<SceneResponseDto> {
     const scene = new this.sceneModel({
       ...createSceneDto,
@@ -32,7 +73,7 @@ export class SceneService {
       isDeleted: false
     });
     const savedScene = await scene.save();
-    return savedScene;
+    return this.attachCrewCounts(savedScene) as any;
   }
 
   async findByProjectId(projectId: string): Promise<SceneResponseDto[]> {
@@ -47,7 +88,7 @@ export class SceneService {
     .sort({ order: 1 })
     .exec();
 
-    return scenes;
+    return scenes.map((s) => this.attachCrewCounts(s)) as any;
   }
 
   async findById(projectId: string, sceneId: string): Promise<SceneResponseDto> {
@@ -64,8 +105,7 @@ export class SceneService {
     if (!scene) {
       throw new NotFoundException('Scene not found');
     }
-
-    return scene;
+    return this.attachCrewCounts(scene) as any;
   }
 
   async update(projectId: string, sceneId: string, updateSceneDto: UpdateSceneRequestDto): Promise<SceneResponseDto> {
@@ -91,7 +131,7 @@ export class SceneService {
       throw new NotFoundException('Scene not found');
     }
 
-    return scene;
+    return this.attachCrewCounts(scene) as any;
   }
 
   async delete(projectId: string, sceneId: string): Promise<SceneResponseDto> {
@@ -317,13 +357,11 @@ Scene 스키마에 따라 다음 필드들을 포함해야 합니다:
 10. **estimatedDuration**: 예상 지속시간 (문자열, 예: "5분")
 
 **인력 구성:**
-11. **crew**: 필요 인력 수 (부서별, 숫자로 명시)
-    - direction: 연출부 필요 인원 수 (director, assistantDirector, scriptSupervisor, continuity)
-    - production: 제작부 필요 인원 수 (producer, lineProducer, productionManager, productionAssistant)
-    - cinematography: 촬영부 필요 인원 수 (cinematographer, cameraOperator, firstAssistant, secondAssistant, dollyGrip)
-    - lighting: 조명부 필요 인원 수 (gaffer, bestBoy, electrician, generatorOperator)
-    - sound: 음향부 필요 인원 수 (soundMixer, boomOperator, soundAssistant, utility)
-    - art: 미술부 필요 인원 수 (productionDesigner, artDirector, setDecorator, propMaster, makeupArtist, costumeDesigner, hairStylist)
+11. **crew**: 씬에 필요한 인력만 포함하세요. 필요하지 않은 역할은 "키 자체를 생략"합니다.
+    - 동일 역할에 여러 명이 필요한 경우 하나의 역할 키 아래 배열로 제공하세요. 예) director: [{...}, {...}]
+    - 동일 역할 키를 중복으로 생성하지 마세요(나중 키로 덮어쓰기 금지). 반드시 하나의 키 아래 배열 합산만 허용.
+    - 역할 키 표기는 카멜케이스(director, assistantDirector, scriptSupervisor, continuity 등)로 통일합니다.
+    - direction, production, cinematography, lighting, sound, art 부서 중 해당 씬에 필요한 부서의 역할 키만 포함합니다.
 
 **장비 구성:**
 12. **equipment**: 필요 장비 (부서별, 씬 특성에 맞는 장비 선택)

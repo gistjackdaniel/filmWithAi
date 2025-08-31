@@ -55,7 +55,7 @@ SceneForge는 시놉시스를 입력하면 AI가 자동으로 스토리와 콘�
 - 시간 기반 타임라인 (줌 레벨 지원)
 - 실시간 스크롤 네비게이션
 - AI 생성 영상과 실사 촬영 콘티 분류 표시
-- **AI 생성 영상**: 타임라인에 영상 형태로 표시 (ver.2 예정)
+- **AI 생성 영상**: Veo3 I2V 기반 비디오 생성 및 타임라인 표시
 - **실사 촬영 콘티**: 캡션카드 형태로 표시
 
 ### 6. 프로젝트 관리
@@ -99,6 +99,7 @@ SceneForge는 시놉시스를 입력하면 AI가 자동으로 스토리와 콘�
 - **OpenAI GPT-4o** - 스토리 및 콘티 생성
 - **Google OAuth 2.0** - 사용자 인증
 - **MongoDB Atlas** - 클라우드 데이터베이스
+- **Veo3 Fast I2V** - AI 비디오 생성 (fal.ai)
 
 ### 개발 도구
 - **ESLint** - 코드 품질 관리
@@ -232,6 +233,9 @@ OPENAI_API_KEY=your_openai_api_key
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 JWT_SECRET=your_jwt_secret
+FAL_KEY=your_fal_ai_key
+USE_S3=false
+USE_MIRROR=false
 ```
 
 ### 개발 서버 실행
@@ -381,6 +385,7 @@ npm run dev
 - `POST /api/story/generate` - AI 스토리 생성
 - `POST /api/conte/generate` - AI 콘티 생성
 - `POST /api/image/generate` - AI 이미지 생성
+- `POST /api/project/:projectId/video/generate` - Veo3 I2V 비디오 생성
 
 ### 캡션 카드 관리
 - `GET /api/projects/:id/contes/:conteId/keywords` - 키워드 노드 조회

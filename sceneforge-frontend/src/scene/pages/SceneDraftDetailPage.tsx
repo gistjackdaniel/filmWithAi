@@ -165,8 +165,93 @@ const SceneDraftDetailPage: React.FC = () => {
       };
       
       processData(cleanCreateData);
-      
-      
+
+      // 필수 필드 정규화: timeOfDay enum 매핑 및 기본값, 불리언/리스트 기본값
+      const allowedTimeOfDay = ['새벽', '아침', '점심', '저녁', '밤'];
+      const normalizeTimeOfDay = (v: any) => (v === '오후' ? '점심' : v);
+      if (!cleanCreateData.timeOfDay) {
+        cleanCreateData.timeOfDay = '아침';
+      } else {
+        cleanCreateData.timeOfDay = normalizeTimeOfDay(cleanCreateData.timeOfDay);
+        if (!allowedTimeOfDay.includes(cleanCreateData.timeOfDay)) {
+          cleanCreateData.timeOfDay = '아침';
+        }
+      }
+      if (typeof cleanCreateData.vfxRequired !== 'boolean') cleanCreateData.vfxRequired = false;
+      if (typeof cleanCreateData.sfxRequired !== 'boolean') cleanCreateData.sfxRequired = false;
+      if (!Array.isArray(cleanCreateData.specialRequirements)) cleanCreateData.specialRequirements = [];
+      if (typeof cleanCreateData.order !== 'number') cleanCreateData.order = (typeof draftOrder === 'number' ? draftOrder : 1);
+
+      // crew 데이터 변환 로직 개선 - 백엔드 DTO 구조에 맞게 처리
+      if (cleanCreateData.crew) {
+        console.log('Frontend - Before crew transformation:', JSON.stringify(cleanCreateData.crew, null, 2));
+        
+        Object.keys(cleanCreateData.crew).forEach(department => {
+          const departmentData = cleanCreateData.crew[department];
+          if (departmentData && typeof departmentData === 'object') {
+            Object.keys(departmentData).forEach(role => {
+              const roleData = departmentData[role];
+              console.log(`Processing ${department}.${role}:`, roleData);
+              
+              // roleData가 배열이 아닌 경우 배열로 변환
+              if (!Array.isArray(roleData)) {
+                if (roleData && typeof roleData === 'object') {
+                  // 중첩된 객체 구조인 경우 (예: { "0": [{ ... }] })
+                  const members: any[] = [];
+                  Object.values(roleData).forEach(value => {
+                    if (Array.isArray(value)) {
+                      members.push(...value);
+                    } else if (value && typeof value === 'object' && (value as any).role !== undefined) {
+                      members.push(value);
+                    }
+                  });
+                  departmentData[role] = members;
+                  console.log(`Converted ${department}.${role} to array:`, members);
+                } else {
+                  departmentData[role] = [];
+                  console.log(`Set ${department}.${role} to empty array`);
+                }
+              }
+              
+              // 각 멤버의 유효성 검사 및 필드 정리
+              if (Array.isArray(departmentData[role])) {
+                const beforeFilter = [...departmentData[role]];
+                departmentData[role] = departmentData[role].filter((member: any) => {
+                  if (!member || typeof member !== 'object') {
+                    console.log(`Filtered out invalid member:`, member);
+                    return false;
+                  }
+                  
+                  // role이 완전히 비어있는 경우만 제거 (공백은 허용)
+                  if (member.role === undefined || member.role === null || member.role === '') {
+                    console.log(`Filtered out member with empty role:`, member);
+                    return false;
+                  }
+                  
+                  // 빈 필드들 정리
+                  if (member.profileId === '') {
+                    delete member.profileId;
+                    console.log(`Removed empty profileId from member:`, member);
+                  }
+                  if (member.contact === '') {
+                    delete member.contact;
+                    console.log(`Removed empty contact from member:`, member);
+                  }
+                  
+                  console.log(`Kept member:`, member);
+                  return true;
+                });
+                
+                if (beforeFilter.length !== departmentData[role].length) {
+                  console.log(`Filtered ${department}.${role}: ${beforeFilter.length} -> ${departmentData[role].length}`);
+                }
+              }
+            });
+          }
+        });
+        
+        console.log('Frontend - After crew transformation:', JSON.stringify(cleanCreateData.crew, null, 2));
+      }
       
       // sceneService.create를 사용하여 백엔드에 씬 저장
       const savedScene = await sceneService.create(projectId, cleanCreateData);
@@ -249,19 +334,31 @@ const SceneDraftDetailPage: React.FC = () => {
     });
   };
 
-  const handleArrayChange = useCallback((path: string, index: number, value: any) => {
+  const handleArrayChange = useCallback((path: string, index: number, field: string, value: any) => {
     setEditData((prev) => {
       if (!prev) return prev;
       const keys = path.split('.');
-      const newData = { ...prev };
+      const newData = { ...prev } as any;
       let current = newData as any;
-      
+
+      // 중간 경로는 객체로 안전하게 생성/복사
       for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = [...current[keys[i]]];
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
+        current[keys[i]] = { ...current[keys[i]] };
         current = current[keys[i]];
       }
-      
-      current[index] = value;
+
+      // 마지막 키는 배열로 보장하고 요소 업데이트
+      const lastKey = keys[keys.length - 1];
+      if (!current[lastKey] || !Array.isArray(current[lastKey])) {
+        current[lastKey] = [];
+      }
+      const arr = [...current[lastKey]];
+      arr[index] = { ...(arr[index] || {}), [field]: value };
+      current[lastKey] = arr;
+
       return newData;
     });
   }, []);
@@ -425,7 +522,7 @@ const SceneDraftDetailPage: React.FC = () => {
                       value={item[field] || ''}
                       onChange={(e) => {
                         const newItem = { ...item, [field]: e.target.value };
-                        handleArrayChange(path, index, newItem);
+                        handleArrayChange(path, index, field, newItem[field]);
                       }}
                     />
                   ))}
@@ -522,75 +619,138 @@ const SceneDraftDetailPage: React.FC = () => {
   // 단순화된 크루 섹션 렌더링 함수 (MUI 적용)
   const renderCrewSection = (title: string, crewData: any, path: string) => (
     <Box sx={{ mb: 2 }}>
-      {Object.entries(crewData || {}).map(([department, members]: [string, any]) => (
-        <Paper key={department} variant="outlined" sx={{ p: 2, mb: 1 }}>
-          <Typography variant="h3" sx={{ mb: 1 }}>{getDepartmentName(department)}</Typography>
-          {isEditing ? (
-            <Stack spacing={1}>
-              {members?.map((member: any, index: number) => (
-                <Stack
-                  key={`${path}_${department}_${index}`}
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1}
-                  alignItems={{ sm: 'center' }}
-                >
-                  <TextField
-                    size="small"
-                    label="연락처"
-                    value={member.contact || ''}
-                    onChange={(e) => {
-                      const newMember = { ...member, contact: e.target.value };
-                      handleArrayChange(`${path}.${department}`, index, newMember);
-                    }}
-                  />
-                  <TextField
-                    size="small"
-                    label="프로필 ID"
-                    value={member.profileId || ''}
-                    onChange={(e) => {
-                      const newMember = { ...member, profileId: e.target.value };
-                      handleArrayChange(`${path}.${department}`, index, newMember);
-                    }}
-                  />
-                  <Box sx={{ flex: 1 }} />
+      <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+        <Typography variant="h3" sx={{ mb: 1 }}>{title}</Typography>
+        {Object.entries(crewData || {}).map(([role, members]: [string, any]) => {
+          const isCrewMemberObject = (obj: any) =>
+            obj && typeof obj === 'object' && (
+              Object.prototype.hasOwnProperty.call(obj, 'role') ||
+              Object.prototype.hasOwnProperty.call(obj, 'contact') ||
+              Object.prototype.hasOwnProperty.call(obj, 'profileId')
+            );
+
+          const toArray = (input: any): any[] => {
+            if (Array.isArray(input)) return input;
+            if (isCrewMemberObject(input)) return [input];
+            if (input && typeof input === 'object') {
+              const result: any[] = [];
+              Object.values(input).forEach((value) => {
+                const normalized = toArray(value);
+                normalized.forEach((item) => {
+                  if (isCrewMemberObject(item)) {
+                    result.push(item);
+                  }
+                });
+              });
+              return result;
+            }
+            return [];
+          };
+
+          let memberArray: any[] = toArray(members);
+          // 읽기 모드에서는 빈 배열일 때 placeholder를 생성하지 않습니다.
+ 
+          return (
+            <Box key={role} sx={{ mb: 2 }}>
+              <Typography variant="h4" sx={{ mb: 1, color: 'text.secondary' }}>
+                ({memberArray.length}명)
+              </Typography>
+              {isEditing ? (
+                <Stack spacing={1}>
+                  {memberArray.map((member: any, index: number) => (
+                    <Paper
+                      key={`${path}_${role}_${index}`}
+                      variant="outlined"
+                      sx={{ p: 1.5, bgcolor: 'background.default' }}
+                    >
+                      <Stack spacing={2}>
+                        <TextField
+                          label="역할"
+                          value={member.role || ''}
+                          onChange={(e) => handleArrayChange(`${path}.${role}`, index, 'role', e.target.value)}
+                          placeholder={getRoleName(role)}
+                          size="small"
+                          fullWidth
+                        />
+                        <TextField
+                          label="연락처"
+                          value={member.contact || ''}
+                          onChange={(e) => handleArrayChange(`${path}.${role}`, index, 'contact', e.target.value)}
+                          placeholder="010-1234-5678"
+                          size="small"
+                          fullWidth
+                        />
+                        <TextField
+                          label="프로필 ID"
+                          value={member.profileId || ''}
+                          onChange={(e) => handleArrayChange(`${path}.${role}`, index, 'profileId', e.target.value)}
+                          placeholder="프로필 ID (선택사항)"
+                          size="small"
+                          fullWidth
+                        />
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => removeArrayItem(`${path}.${role}`, index)}
+                          sx={{ alignSelf: 'flex-start' }}
+                        >
+                          제거
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  ))}
                   <Button
-                    variant="text"
-                    color="error"
-                    onClick={() => removeArrayItem(`${path}.${department}`, index)}
+                    variant="outlined"
+                    onClick={() => addArrayItem(`${path}.${role}`, { role: '', contact: '', profileId: '' })}
+                    sx={{ alignSelf: 'flex-start' }}
                   >
-                    삭제
+                    + 추가
                   </Button>
                 </Stack>
-              ))}
-              <Box>
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    addArrayItem(`${path}.${department}`, { contact: '', profileId: '' });
-                  }}
-                >
-                  + 추가
-                </Button>
-              </Box>
-            </Stack>
-          ) : (
-            <Stack spacing={1}>
-              {members?.map((member: any, index: number) => (
-                <Stack
-                  key={`${path}_${department}_${index}`}
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={2}
-                >
-                  <Typography variant="body2">{getRoleName(department)}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {member.contact || '연락처 미정'} | {member.profileId || '프로필 미정'}
-                  </Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {memberArray.length > 0 ? (
+                    memberArray.map((member: any, index: number) => {
+                      if (!member || typeof member !== 'object') {
+                        return null;
+                      }
+
+                      return (
+                        <Paper
+                          key={`${path}_${role}_${index}`}
+                          variant="outlined"
+                          sx={{ p: 1.5, bgcolor: 'background.default' }}
+                        >
+                          <Stack
+                            direction={{ xs: 'column', sm: 'row' }}
+                            spacing={2}
+                            alignItems={{ sm: 'center' }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 'medium', minWidth: '80px' }}>
+                              {member.role || getRoleName(role)}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: '120px' }}>
+                              {member.contact || '연락처 미정'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: '100px' }}>
+                              {member.profileId || '프로필 미정'}
+                            </Typography>
+                          </Stack>
+                        </Paper>
+                      );
+                    }).filter(Boolean)
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      정보가 없습니다
+                    </Typography>
+                  )}
                 </Stack>
-              ))}
-            </Stack>
-          )}
-        </Paper>
-      ))}
+              )}
+            </Box>
+          );
+        })}
+      </Paper>
     </Box>
   );
 
@@ -608,7 +768,7 @@ const SceneDraftDetailPage: React.FC = () => {
   };
 
   // 역할명을 한글로 변환하는 함수
-  const getRoleName = (department: string) => {
+  const getRoleName = (role: string) => {
     const roleNames: { [key: string]: string } = {
       director: '감독',
       assistantDirector: '부감독',
@@ -639,7 +799,7 @@ const SceneDraftDetailPage: React.FC = () => {
       costumeDesigner: '코스튬 디자이너',
       hairStylist: '헤어 스타일리스트'
     };
-    return roleNames[department] || department;
+    return roleNames[role] || role;
   };
 
   const renderEquipmentSection = (title: string, equipmentData: any, path: string) => (

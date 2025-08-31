@@ -7,6 +7,8 @@ export interface StorageService {
   uploadImage(imageData: string, fileName: string): Promise<string>;
   deleteImage(imageUrl: string): Promise<void>;
   getStorageInfo(): { type: string; bucket?: string; localPath?: string };
+  uploadFromUrl?(fileUrl: string, fileName: string, contentType?: string, targetFolder?: string): Promise<string>;
+  deleteFile?(fileUrl: string): Promise<void>;
 }
 
 @Injectable()
@@ -23,8 +25,7 @@ export class StorageFactoryService {
   }
 
   private initializeStorageService() {
-    // const useS3 = this.configService.get<boolean>('USE_S3') || false;
-    const useS3 = false;
+    const useS3 = this.configService.get<boolean>('USE_S3') || false;
     
     if (useS3) {
       this.storageService = this.s3Service;
@@ -45,6 +46,17 @@ export class StorageFactoryService {
 
   async deleteImage(imageUrl: string): Promise<void> {
     return this.storageService.deleteImage(imageUrl);
+  }
+
+  async uploadFromUrl(fileUrl: string, fileName: string, contentType?: string, targetFolder?: string): Promise<string> {
+    if (!this.storageService.uploadFromUrl) throw new Error('uploadFromUrl not implemented for current storage');
+    return this.storageService.uploadFromUrl(fileUrl, fileName, contentType, targetFolder);
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    if (this.storageService.deleteFile) return this.storageService.deleteFile(fileUrl);
+    // fallback for legacy method names
+    return this.storageService.deleteImage(fileUrl);
   }
 
   getStorageInfo(): { type: string; bucket?: string; localPath?: string } {

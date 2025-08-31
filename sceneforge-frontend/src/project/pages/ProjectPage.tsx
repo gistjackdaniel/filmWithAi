@@ -72,6 +72,8 @@ import ProjectInfoCard from '../components/ProjectInfoCard';
 import SceneListSection from '../components/SceneListSection';
 import StoryEditModal from '../components/StoryEditModal';
 import SceneGenerationModal from '../../scene/components/SceneGenerationModal';
+import { SchedulePage } from '../../scheduler';
+import PlayerWithTimeline from '../../timeline/components/PlayerWithTimeline';
 
 
 interface TabPanelProps {
@@ -155,6 +157,7 @@ const ProjectPage: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [draftScenes, setDraftScenes] = useState<SceneDraft[]>([]);
   const [isGeneratingScenes, setIsGeneratingScenes] = useState(false);
+  // 스케줄 페이지는 내부 상태로 관리하므로 이 페이지에서는 상태 필요 없음
 
   // 프로젝트 ID가 변경될 때마다 데이터 로드
   useEffect(() => {
@@ -624,35 +627,15 @@ const ProjectPage: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               컷 타임라인
             </Typography>
-            {cuts.length > 0 ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body2" color="text.secondary">
-                  컷 타임라인 컴포넌트는 준비 중입니다.
-                </Typography>
-              </Box>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  컷이 없습니다
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  씬에서 컷을 생성해보세요.
-                </Typography>
-              </Box>
-            )}
+            <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, border: 1, borderColor: 'divider' }}>
+              <PlayerWithTimeline projectId={projectId!} />
+            </Box>
           </Box>
         </TabPanel>
 
         {/* 스케줄링 탭 */}
         <TabPanel value={activeTab} index={3}>
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              스케줄링
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              스케줄링 기능은 준비 중입니다.
-            </Typography>
-          </Box>
+          <SchedulePage scenes={scenes} />
         </TabPanel>
 
         {/* 브레이크다운 탭 */}

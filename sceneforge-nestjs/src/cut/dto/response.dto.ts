@@ -234,6 +234,12 @@ export class CutResponseDto {
 
   @ApiProperty({ description: '삭제 여부', example: false })
   isDeleted: boolean;
+
+  @ApiProperty({ description: '생성 시각', example: '2025-01-01T12:00:00.000Z' })
+  createdAt: string;
+
+  @ApiProperty({ description: '수정 시각', example: '2025-01-01T12:30:00.000Z' })
+  updatedAt: string;
 }
 
 export class CutDraftResponseDto {

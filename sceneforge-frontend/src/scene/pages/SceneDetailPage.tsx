@@ -17,9 +17,16 @@ import {
   Tabs,
   Tab,
   MenuItem,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
 } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const SceneDetailPage: React.FC = () => {
   const { projectId, sceneId } = useParams<{ projectId: string; sceneId: string }>();
@@ -35,6 +42,7 @@ const SceneDetailPage: React.FC = () => {
   const [isCutModalOpen, setIsCutModalOpen] = useState(false);
   const [isGeneratingCuts, setIsGeneratingCuts] = useState(false);
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
+  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [activeCrewDept, setActiveCrewDept] = useState<string>('direction');
   const [activeEquipDept, setActiveEquipDept] = useState<string>('direction');
 
@@ -115,19 +123,21 @@ const SceneDetailPage: React.FC = () => {
     const handleCutDraftUpdated = (event: CustomEvent) => {
       if (event.detail.projectId === projectId && event.detail.sceneId === sceneId) {
         const { draftOrder, updatedCut } = event.detail;
+        const draftKey = `cut_drafts_${projectId}_${sceneId}`;
+
         if (updatedCut === null) {
-          setCuts(prev => {
-            const newCuts = prev.filter(cut => cut.order !== draftOrder);
-            const draftKey = `cut_drafts_${projectId}_${sceneId}`;
-            localStorage.setItem(draftKey, JSON.stringify(newCuts.filter(cut => isCutDraft(cut))));
-            return newCuts;
+          // 드래프트 삭제: draftCuts에서 제거하고 localStorage 반영
+          setDraftCuts(prev => {
+            const next = prev.filter(d => d.order !== draftOrder);
+            localStorage.setItem(draftKey, JSON.stringify(next));
+            return next;
           });
         } else {
-          setCuts(prev => {
-            const newCuts = prev.map(cut => (cut.order === draftOrder ? updatedCut : cut));
-            const draftKey = `cut_drafts_${projectId}_${sceneId}`;
-            localStorage.setItem(draftKey, JSON.stringify(newCuts.filter(cut => isCutDraft(cut))));
-            return newCuts;
+          // 드래프트 업데이트: draftCuts 내 해당 order 교체
+          setDraftCuts(prev => {
+            const next = prev.map(d => (d.order === draftOrder ? updatedCut : d));
+            localStorage.setItem(draftKey, JSON.stringify(next));
+            return next;
           });
         }
       }
@@ -189,6 +199,89 @@ const SceneDetailPage: React.FC = () => {
       };
       
       processData(cleanUpdateData);
+
+      // crew 데이터 변환 로직 개선 - 백엔드 DTO 구조에 맞게 처리
+      if (cleanUpdateData.crew) {
+        console.log('Frontend - Before crew transformation:', JSON.stringify(cleanUpdateData.crew, null, 2));
+        
+        Object.keys(cleanUpdateData.crew).forEach(department => {
+          const departmentData = cleanUpdateData.crew[department];
+          if (departmentData && typeof departmentData === 'object') {
+            Object.keys(departmentData).forEach(role => {
+              const roleData = departmentData[role];
+              console.log(`Processing ${department}.${role}:`, roleData);
+
+              const isCrewMemberObject = (obj: any) =>
+                obj && typeof obj === 'object' && (
+                  Object.prototype.hasOwnProperty.call(obj, 'role') ||
+                  Object.prototype.hasOwnProperty.call(obj, 'contact') ||
+                  Object.prototype.hasOwnProperty.call(obj, 'profileId')
+                );
+
+              const toArray = (input: any): any[] => {
+                if (Array.isArray(input)) return input;
+                if (isCrewMemberObject(input)) return [input];
+                if (input && typeof input === 'object') {
+                  const result: any[] = [];
+                  Object.values(input).forEach((value) => {
+                    const normalized = toArray(value);
+                    normalized.forEach((item) => {
+                      if (isCrewMemberObject(item)) {
+                        result.push(item);
+                      }
+                    });
+                  });
+                  return result;
+                }
+                return [];
+              };
+
+              // 어떤 형태든 배열로 정규화
+              departmentData[role] = toArray(roleData);
+              console.log(`Normalized ${department}.${role} to array:`, departmentData[role]);
+              
+              // 각 멤버의 유효성 검사 및 필드 정리
+              if (Array.isArray(departmentData[role])) {
+                const beforeFilter = [...departmentData[role]];
+                departmentData[role] = departmentData[role].filter((member: any) => {
+                  if (!member || typeof member !== 'object') {
+                    console.log(`Filtered out invalid member:`, member);
+                    return false;
+                  }
+
+                  const roleVal = (member.role ?? '').toString().trim();
+                  const contactVal = (member.contact ?? '').toString().trim();
+                  const profileIdVal = (member.profileId ?? '').toString().trim();
+
+                  // 빈/무효 profileId는 필드만 제거하고 멤버는 유지
+                  if (!profileIdVal) {
+                    delete member.profileId;
+                  }
+                  // 빈 연락처는 필드만 제거
+                  if (!contactVal) {
+                    delete member.contact;
+                  }
+
+                  const isAllEmpty = !roleVal && !contactVal && !profileIdVal;
+                  if (isAllEmpty) {
+                    console.log(`Filtered out member with all fields empty:`, member);
+                    return false;
+                  }
+
+                  console.log(`Kept member:`, member);
+                  return true;
+                });
+                
+                if (beforeFilter.length !== departmentData[role].length) {
+                  console.log(`Filtered ${department}.${role}: ${beforeFilter.length} -> ${departmentData[role].length}`);
+                }
+              }
+            });
+          }
+        });
+        
+        console.log('Frontend - After crew transformation:', JSON.stringify(cleanUpdateData.crew, null, 2));
+      }
       
 
       
@@ -267,6 +360,47 @@ const SceneDetailPage: React.FC = () => {
     }
   };
 
+  const handleCutRowClick = (cut: Cut | CutDraft) => {
+    if (!projectId || !sceneId) return;
+    cutService.navigateToCut(navigate, projectId, sceneId, cut);
+  };
+
+  const handleDeleteCut = async (cut: Cut | CutDraft, e?: React.MouseEvent) => {
+    e?.stopPropagation?.();
+    if (!projectId || !sceneId) return;
+
+    const saved = isCut(cut);
+    const key = saved ? `saved:${(cut as Cut)._id}` : `draft:${(cut as CutDraft).order}`;
+    const confirmMsg = saved ? '이 컷을 삭제하시겠습니까? (되돌릴 수 없습니다)' : '이 드래프트 컷을 삭제하시겠습니까?';
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingKeys(prev => new Set(prev).add(key));
+    try {
+      if (saved) {
+        await cutService.delete(projectId, sceneId, (cut as Cut)._id);
+        // 낙관적 업데이트: 재조회 없이 즉시 목록에서 제거
+        setCuts(prev => prev.filter(c => c._id !== (cut as Cut)._id));
+      } else {
+        setDraftCuts(prev => {
+          const next = prev.filter(d => d.order !== (cut as CutDraft).order);
+          const draftKey = `cut_drafts_${projectId}_${sceneId}`;
+          localStorage.setItem(draftKey, JSON.stringify(next));
+          return next;
+        });
+      }
+      alert('삭제되었습니다.');
+    } catch (error) {
+      console.error('컷 삭제 실패:', error);
+      alert('컷 삭제에 실패했습니다.');
+    } finally {
+      setDeletingKeys(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
   const toggleSection = (sectionId: string) => {
     setCollapsedSections(prev => {
       const newSet = new Set(prev);
@@ -300,7 +434,7 @@ const SceneDetailPage: React.FC = () => {
     });
   };
 
-  const handleArrayChange = useCallback((path: string, index: number, value: any) => {
+  const handleArrayChange = useCallback((path: string, index: number, field: string, value: any) => {
     setEditData(prev => {
       if (!prev) return prev as any;
       const keys = path.split('.');
@@ -312,7 +446,7 @@ const SceneDetailPage: React.FC = () => {
       }
       const lastKey = keys[keys.length - 1];
       const arr = Array.isArray(current[lastKey]) ? [...current[lastKey]] : [];
-      arr[index] = value;
+      arr[index] = { ...arr[index], [field]: value };
       current[lastKey] = arr;
       return newData as Scene;
     });
@@ -420,9 +554,9 @@ const SceneDetailPage: React.FC = () => {
         <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
           {label}
         </Typography>
-        {isEditing ? (
+      {isEditing ? (
           <Stack spacing={1}>
-            {array?.map((item, index) => (
+          {array?.map((item, index) => (
               <Paper
                 key={getStableKey(index)}
                 variant="outlined"
@@ -434,13 +568,13 @@ const SceneDetailPage: React.FC = () => {
                       key={`${getStableKey(index)}_${field}`}
                       size="small"
                       label={field}
-                      value={item[field] || ''}
-                      onChange={(e) => {
-                        const newItem = { ...item, [field]: e.target.value };
-                        handleArrayChange(path, index, newItem);
-                      }}
-                    />
-                  ))}
+                  value={item[field] || ''}
+                  onChange={(e) => {
+                    const newItem = { ...item, [field]: e.target.value };
+                        handleArrayChange(path, index, field, newItem[field]);
+                  }}
+                />
+              ))}
                   <Box sx={{ flex: 1 }} />
                   <Button variant="text" color="error" onClick={() => removeArrayItem(path, index)}>
                     삭제
@@ -451,18 +585,18 @@ const SceneDetailPage: React.FC = () => {
             <Box>
               <Button
                 variant="outlined"
-                onClick={() => {
-                  const defaultItem = itemFields.reduce((acc, field) => {
+            onClick={() => {
+              const defaultItem = itemFields.reduce((acc, field) => {
                     // number 필드는 숫자로 초기화
                     if (field === 'number') {
                       (acc as any)[field] = 1;
                     } else {
                       (acc as any)[field] = '';
                     }
-                    return acc;
-                  }, {} as any);
-                  addArrayItem(path, defaultItem);
-                }}
+                return acc;
+              }, {} as any);
+              addArrayItem(path, defaultItem);
+            }}
               >
                 + 추가
               </Button>
@@ -470,7 +604,7 @@ const SceneDetailPage: React.FC = () => {
           </Stack>
         ) : (
           <Stack spacing={1}>
-            {array?.map((item, index) => (
+          {array?.map((item, index) => (
               <Paper
                 key={getStableKey(index)}
                 variant="outlined"
@@ -523,73 +657,167 @@ const SceneDetailPage: React.FC = () => {
     </Box>
   );
 
+  // AI가 추천하는 기본 크루 멤버 수를 정의
+  // 제거됨: getDefaultCrewCount, createDefaultCrewMembers (LLM이 백엔드에서 보완)
+  
+  // LLM이 제공한 권장 인원수를 기반으로 placeholder 개수를 계산
+  const getSuggestedCrewCount = (path: string, role: string): number => {
+    try {
+      const deptKey = path.split('.').pop() || '';
+      // editData에 crewCounts가 있다고 가정하고 사용 (없으면 0)
+      const counts: any = (editData as any)?.crewCounts;
+      if (!counts) return 0;
+      const deptCounts = counts[deptKey];
+      if (!deptCounts) return 0;
+      const roleCount = deptCounts[role];
+      const n = typeof roleCount === 'number' ? roleCount : parseInt(String(roleCount));
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    } catch {
+      return 0;
+    }
+  };
+
   const renderCrewSection = (title: string, crewData: any, path: string) => (
     <Box sx={{ mb: 2 }}>
-      {Object.entries(crewData || {}).map(([department, members]: [string, any]) => (
-        <Paper key={department} variant="outlined" sx={{ p: 2, mb: 1 }}>
-          <Typography variant="h3" sx={{ mb: 1 }}>{getDepartmentName(department)}</Typography>
+      <Paper variant="outlined" sx={{ p: 2, mb: 1 }}>
+        <Typography variant="h3" sx={{ mb: 1 }}>{title}</Typography>
+        {Object.entries(crewData || {}).map(([role, members]: [string, any]) => {
+          const isCrewMemberObject = (obj: any) =>
+            obj && typeof obj === 'object' && (
+              Object.prototype.hasOwnProperty.call(obj, 'role') ||
+              Object.prototype.hasOwnProperty.call(obj, 'contact') ||
+              Object.prototype.hasOwnProperty.call(obj, 'profileId')
+            );
+
+          const toArray = (input: any): any[] => {
+            if (Array.isArray(input)) return input;
+            if (isCrewMemberObject(input)) return [input];
+            if (input && typeof input === 'object') {
+              const result: any[] = [];
+              Object.values(input).forEach((value) => {
+                const normalized = toArray(value);
+                normalized.forEach((item) => {
+                  if (isCrewMemberObject(item)) {
+                    result.push(item);
+                  }
+                });
+              });
+              return result;
+            }
+            return [];
+          };
+
+          let memberArray: any[] = toArray(members);
+
+          // 편집 모드에서만 LLM 권장 인원수 기반 placeholder 생성
+          if (isEditing && memberArray.length === 0) {
+            const count = getSuggestedCrewCount(path, role);
+            if (count > 0) {
+              memberArray = Array.from({ length: count }, () => ({ role: '', contact: '', profileId: '' }));
+            }
+          }
+
+          return (
+            <Box key={role} sx={{ mb: 2 }}>
+              <Typography variant="h4" sx={{ mb: 1, color: 'text.secondary' }}>
+                ({memberArray.length}명)
+              </Typography>
           {isEditing ? (
-            <Stack spacing={1}>
-              {members?.map((member: any, index: number) => (
-                <Stack
-                  key={`${path}_${department}_${index}`}
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1}
-                  alignItems={{ sm: 'center' }}
-                >
-                  <TextField
-                    size="small"
-                    label="연락처"
-                    value={member.contact || ''}
-                    onChange={(e) => {
-                      const newMember = { ...member, contact: e.target.value };
-                      handleArrayChange(`${path}.${department}`, index, newMember);
-                    }}
-                  />
-                  <TextField
-                    size="small"
-                    label="프로필 ID"
+                <Stack spacing={1}>
+                  {memberArray.map((member: any, index: number) => (
+                    <Paper
+                      key={`${path}_${role}_${index}`}
+                      variant="outlined"
+                      sx={{ p: 1.5, bgcolor: 'background.default' }}
+                    >
+                      <Stack spacing={2}>
+                        <TextField
+                          label="역할"
+                    value={member.role || ''}
+                          onChange={(e) => handleArrayChange(`${path}.${role}`, index, 'role', e.target.value)}
+                          placeholder={getRoleName(role)}
+                          size="small"
+                          fullWidth
+                        />
+                        <TextField
+                          label="연락처"
+                          value={member.contact || ''}
+                          onChange={(e) => handleArrayChange(`${path}.${role}`, index, 'contact', e.target.value)}
+                          placeholder="010-1234-5678"
+                          size="small"
+                          fullWidth
+                        />
+                        <TextField
+                          label="프로필 ID"
                     value={member.profileId || ''}
-                    onChange={(e) => {
-                      const newMember = { ...member, profileId: e.target.value };
-                      handleArrayChange(`${path}.${department}`, index, newMember);
-                    }}
-                  />
-                  <Box sx={{ flex: 1 }} />
-                  <Button variant="text" color="error" onClick={() => removeArrayItem(`${path}.${department}`, index)}>
-                    삭제
+                          onChange={(e) => handleArrayChange(`${path}.${role}`, index, 'profileId', e.target.value)}
+                          placeholder="프로필 ID (선택사항)"
+                          size="small"
+                          fullWidth
+                        />
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                    onClick={() => removeArrayItem(`${path}.${role}`, index)}
+                          sx={{ alignSelf: 'flex-start' }}
+                        >
+                          제거
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  ))}
+                  <Button
+                    variant="outlined"
+                    onClick={() => addArrayItem(`${path}.${role}`, { role: '', contact: '', profileId: '' })}
+                    sx={{ alignSelf: 'flex-start' }}
+                  >
+                    + 추가
                   </Button>
                 </Stack>
-              ))}
-              <Box>
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    addArrayItem(`${path}.${department}`, { contact: '', profileId: '' });
-                  }}
-                >
-                  + 추가
-                </Button>
-              </Box>
-            </Stack>
-          ) : (
-            <Stack spacing={1}>
-              {members?.map((member: any, index: number) => (
-                <Stack
-                  key={`${path}_${department}_${index}`}
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={2}
-                >
-                  <Typography variant="body2">{getRoleName(department)}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {member.contact || '연락처 미정'} | {member.profileId || '프로필 미정'}
-                  </Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {memberArray.length > 0 ? (
+                    memberArray.map((member: any, index: number) => {
+                      if (!member || typeof member !== 'object') {
+                        return null;
+                      }
+
+                      return (
+                        <Paper
+                          key={`${path}_${role}_${index}`}
+                          variant="outlined"
+                          sx={{ p: 1.5, bgcolor: 'background.default' }}
+                        >
+                          <Stack
+                            direction={{ xs: 'column', sm: 'row' }}
+                            spacing={2}
+                            alignItems={{ sm: 'center' }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 'medium', minWidth: '80px' }}>
+                              {member.role || getRoleName(role)}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: '120px' }}>
+                              {member.contact || '연락처 미정'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: '100px' }}>
+                              {member.profileId || '프로필 미정'}
+                            </Typography>
+                          </Stack>
+                        </Paper>
+                      );
+                    }).filter(Boolean)
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      정보가 없습니다
+                    </Typography>
+                  )}
                 </Stack>
-              ))}
-            </Stack>
-          )}
-        </Paper>
-      ))}
+              )}
+            </Box>
+          );
+        })}
+      </Paper>
     </Box>
   );
 
@@ -607,7 +835,7 @@ const SceneDetailPage: React.FC = () => {
   };
 
   // 역할명을 한글로 변환하는 함수
-  const getRoleName = (department: string) => {
+  const getRoleName = (role: string) => {
     const roleNames: { [key: string]: string } = {
       director: '감독',
       assistantDirector: '부감독',
@@ -638,7 +866,7 @@ const SceneDetailPage: React.FC = () => {
       costumeDesigner: '코스튬 디자이너',
       hairStylist: '헤어 스타일리스트'
     };
-    return roleNames[department] || department;
+    return roleNames[role] || role;
   };
 
   const renderEquipmentSection = (title: string, equipmentData: any, path: string) => (
@@ -852,15 +1080,69 @@ const SceneDetailPage: React.FC = () => {
       </Paper>
 
       <Paper elevation={0} sx={{ p: 2, mb: 3 }}>
-      <CutList 
-        cuts={[...cuts, ...draftCuts]} 
-        draftCuts={draftCuts}
-        projectId={projectId!} 
-        sceneId={sceneId!} 
-        onGenerateImage={handleGenerateImage}
-        generatingImages={generatingImages}
-        isGeneratingCuts={isGeneratingCuts}
-      />
+        <TableContainer>
+          <Table size="small" sx={{ tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'black' }}>
+                <TableCell sx={{ color: 'white', width: 64 }}>Cut</TableCell>
+                <TableCell sx={{ color: 'white', width: '45%' }}>Video</TableCell>
+                <TableCell sx={{ color: 'white', width: '35%' }}>Context</TableCell>
+                <TableCell sx={{ color: 'white', width: 100 }}>Audio</TableCell>
+                <TableCell sx={{ color: 'white', width: 80 }}>Time</TableCell>
+                <TableCell sx={{ color: 'white', width: 80, textAlign: 'right' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {[...cuts, ...draftCuts].map((cut, idx) => (
+                <TableRow key={`cut_row_${idx}`} hover sx={{ cursor: 'pointer' }} onClick={() => handleCutRowClick(cut as any)}>
+                  <TableCell>{cut.order}</TableCell>
+                  <TableCell>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2">{cut.title || '-'}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {cut.cameraSetup?.shotSize ? `샷: ${cut.cameraSetup.shotSize}` : '-'}
+                      </Typography>
+                      {('imageUrl' in cut) && (cut as any).imageUrl && (
+                        <Box sx={{ mt: 1, maxWidth: 160 }}>
+                          <img
+                            src={`http://localhost:5001${(cut as any).imageUrl}`}
+                            alt={`컷 ${cut.order}`}
+                            style={{ width: '100%', height: 100, objectFit: 'contain', borderRadius: 4 }}
+                          />
+                        </Box>
+                      )}
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {cut.description || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {cut.soundEffects || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{cut.estimatedDuration || 5}s</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="text"
+                      startIcon={<DeleteIcon />}
+                      onClick={(e) => handleDeleteCut(cut as any, e)}
+                      disabled={deletingKeys.has(isCut(cut as any) ? `saved:${(cut as any)._id}` : `draft:${(cut as any).order}`) || isGeneratingCuts || generatingImages.size > 0}
+                    >
+                      삭제
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
 
       <Box>

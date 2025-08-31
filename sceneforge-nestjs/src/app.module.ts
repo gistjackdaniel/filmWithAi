@@ -16,6 +16,7 @@ import { ProjectModule } from './project/project.module';
 import { SceneModule } from './scene/scene.module';
 import { CutModule } from './cut/cut.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { VideoModule } from './video/video.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     SceneModule,
     CutModule,
     SchedulerModule,
+    VideoModule,
   ],
 })
 export class AppModule implements NestModule {

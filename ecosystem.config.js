@@ -25,7 +25,10 @@ module.exports = {
       args: 'run start:dev',
       env: {
         NODE_ENV: 'development',
-        PORT: 5001
+        PORT: 5001,
+        FAL_KEY: process.env.FAL_KEY,
+        USE_S3: process.env.USE_S3 || 'false',
+        USE_MIRROR: process.env.USE_MIRROR || 'false'
       },
       instances: 1,
       autorestart: true,

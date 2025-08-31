@@ -54,6 +54,7 @@ export interface RealLocation {
 
 export interface CrewMember {
   role: string;
+  contact?: string;
   profileId?: string;
 }
 
@@ -236,13 +237,13 @@ export const sceneService = {
 
   // 씬 생성
   async create(projectId: string, data: CreateSceneRequest): Promise<Scene> {
-    const response = await sceneApi.post<Scene>(`/project/${projectId}/scene`, data);
+    const response = await sceneApi.post<Scene>(`/project/${projectId}/scene`, data, { timeout: 180000 });
     return response.data;
   },
 
   // 씬 업데이트
   async update(projectId: string, sceneId: string, data: UpdateSceneRequest): Promise<Scene> {
-    const response = await sceneApi.put<Scene>(`/project/${projectId}/scene/${sceneId}`, data);
+    const response = await sceneApi.put<Scene>(`/project/${projectId}/scene/${sceneId}`, data, { timeout: 180000 });
     return response.data;
   },
 

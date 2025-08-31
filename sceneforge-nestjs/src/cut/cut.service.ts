@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Cut } from './schema/cut.schema';
@@ -16,6 +16,7 @@ import { SceneService } from 'src/scene/scene.service';
 import { SceneResponseDto } from 'src/scene/dto/response.dto';
 import { ProjectService } from 'src/project/project.service';
 import { StorageFactoryService } from '../common/services/storage-factory.service';
+import { VideoService } from '../video/video.service';
 import * as fs from 'fs';
 import { ProjectResponseDto } from 'src/project/dto/response.dto';
 
@@ -26,7 +27,8 @@ export class CutService {
     private aiService: AiService,
     private sceneService: SceneService,
     private projectService: ProjectService,
-    private storageFactoryService: StorageFactoryService
+    private storageFactoryService: StorageFactoryService,
+    @Inject(forwardRef(() => VideoService)) private videoService: VideoService
   ) {}
 
   async create(projectId: string, sceneId: string, createCutDto: CreateCutRequestDto): Promise<CutResponseDto> {
@@ -61,22 +63,18 @@ export class CutService {
       }
     ], { max_tokens: 4000, temperature: 0.3 });
 
-    // AI 응답을 파싱해서 draft 컷 데이터 생성
+    // AI 응답을 파싱해서 draft 컷 데이터 생성 (식별자 없음)
     const parsedCuts = this.parseCutDraftResponse(result);
     
-    // draft 데이터에 projectId와 sceneId 추가
-    const draftCuts: CutResponseDto[] = parsedCuts.map((cutData, index) => ({
+    const draftCuts: CutDraftResponseDto[] = parsedCuts.map((cutData, index) => ({
       ...cutData,
-      _id: new Types.ObjectId(), // 임시 ID
-      sceneId: new Types.ObjectId(sceneId),
-      projectId: new Types.ObjectId(projectId),
       order: cutData.order || (index + 1)
     }));
 
     return draftCuts;
   }
 
-  private parseCutDraftResponse(content: string): CutResponseDto[] {
+  private parseCutDraftResponse(content: string): CutDraftResponseDto[] {
     console.log('🔍 LLM 원본 응답:', content.substring(0, 300) + '...');
     
     // 마크다운 코드 블록 제거
@@ -156,8 +154,8 @@ export class CutService {
       if (parsed && parsed.cutList && Array.isArray(parsed.cutList) && parsed.cutList.length > 0) {
         console.log('✅ LLM 응답 구조 검증 성공:', parsed.cutList.length, '개 컷');
         
-        // 각 컷 데이터 검증 및 정리
-        const cutData: Array<CutResponseDto> = parsed.cutList.map((cut: any, index: number) => {
+        // 각 컷 데이터 검증 및 정리 (드래프트: 식별자 제거)
+        const cutData: Array<CutDraftResponseDto> = parsed.cutList.map((cut: any, index: number) => {
           // NaN 값들을 적절한 기본값으로 변환하는 함수
           const cleanDuration = (duration: any) => {
             if (typeof duration === 'string') {
@@ -182,12 +180,9 @@ export class CutService {
             return typeof value === 'string' ? value.trim() : '';
           };
 
-          // Cut 모델에 맞는 안전한 컷 데이터 생성
+          // 드래프트 DTO에 맞는 안전한 컷 데이터 생성 (식별자, 이미지, 삭제 플래그 제외)
           return {
-            _id: new Types.ObjectId(),
-            sceneId: new Types.ObjectId(),
-            projectId: new Types.ObjectId(),
-            shotNumber: cleanNumber(cut.shotNumber) || (index + 1),
+            order: cleanNumber(cut.shotNumber) || (index + 1),
             title: cleanString(cut.title) || `Shot ${index + 1}`,
             description: cleanString(cut.description) || cleanString(cut.title) || `Shot ${index + 1}`,
             cameraSetup: {
@@ -243,11 +238,8 @@ export class CutService {
                 requiresFireSafety: false,
                 requiresSafetyOfficer: false
               }
-            },
-            imageUrl: cleanString(cut.imageUrl) || '',
-            order: cleanNumber(cut.shotNumber) || (index + 1),
-            isDeleted: false
-          };
+            }
+          } as CutDraftResponseDto;
         });
         
         return cutData;
@@ -767,6 +759,48 @@ estimatedDuration - ${scene.estimatedDuration}
     return this.mapToResponseDto(cut);
   }
 
+  /**
+   * sourceCutId로 컷을 조회합니다 (VideoService에서 사용)
+   */
+  async findBySourceCutId(projectId: string, sourceCutId: string): Promise<CutResponseDto> {
+    if (!Types.ObjectId.isValid(sourceCutId) || !Types.ObjectId.isValid(projectId)) {
+      throw new BadRequestException('Invalid sourceCutId or projectId');
+    }
+
+    const cut = await this.cutModel.findOne({
+      _id: new Types.ObjectId(sourceCutId),
+      projectId: new Types.ObjectId(projectId),
+      isDeleted: false
+    }).exec();
+
+    if (!cut) {
+      throw new NotFoundException('Cut not found');
+    }
+
+    return this.mapToResponseDto(cut);
+  }
+
+  /**
+   * sourceCutId로 컷의 sceneId를 조회합니다
+   */
+  async findSceneIdByCutId(projectId: string, cutId: string): Promise<string> {
+    if (!Types.ObjectId.isValid(cutId) || !Types.ObjectId.isValid(projectId)) {
+      throw new BadRequestException('Invalid cutId or projectId');
+    }
+
+    const cut = await this.cutModel.findOne({
+      _id: new Types.ObjectId(cutId),
+      projectId: new Types.ObjectId(projectId),
+      isDeleted: false
+    }).select('sceneId').exec();
+
+    if (!cut) {
+      throw new NotFoundException('Cut not found');
+    }
+
+    return cut.sceneId.toString();
+  }
+
   async update(projectId: string, sceneId: string, cutId: string, updateCutDto: UpdateCutRequestDto): Promise<CutResponseDto> {
     if (!Types.ObjectId.isValid(cutId) || !Types.ObjectId.isValid(projectId) || !Types.ObjectId.isValid(sceneId)) {
       throw new BadRequestException('Invalid cut ID or project ID or scene ID');
@@ -812,6 +846,13 @@ estimatedDuration - ${scene.estimatedDuration}
 
     if (!cut) {
       throw new NotFoundException('Cut not found');
+    }
+
+    // 연관된 비디오 정리 (백그라운드에서 비동기 처리)
+    try {
+      await this.videoService.removeBySourceCut(projectId, cutId);
+    } catch (error) {
+      console.warn(`컷 ${cutId}에서 생성된 비디오 정리 실패:`, error.message);
     }
 
     return this.mapToResponseDto(cut);
@@ -1092,10 +1133,69 @@ estimatedDuration - ${scene.estimatedDuration}
       prompt += `Production method: ${productionMethod}. `;
     }
 
-    // 시네마틱 스타일 강조
-    prompt += `High quality cinematic film still, professional cinematography, dramatic lighting, movie poster style, detailed composition, film grain, cinematic color grading.`;
+    // 콘티 아티스트 역할 및 카메라 움직임 화살표 표기 규칙
+    prompt += ` You are a professional storyboard artist. Render a storyboard-style frame (not photoreal), with clean outlines, high readability, and clear directional overlays. `;
+    if (cameraSetup?.cameraMovement) {
+      prompt += this.getCameraMovementOverlay(cameraSetup.cameraMovement);
+    }
+
+    // 시네마틱/콘티 스타일 강조
+    prompt += `High quality storyboard frame, clean line art, high contrast, simple shading, annotations allowed, cinematic composition, legible arrows.`;
 
     return prompt;
+  }
+
+  private getCameraMovementOverlay(movement: string): string {
+    const original = movement || '';
+    const mv = original.toLowerCase();
+    const parts: string[] = [];
+    parts.push('Overlay arrow guidance for camera movement: ');
+
+    // 기본
+    if (mv.includes('static')) parts.push('static: no arrow overlays. ');
+
+    // 수평/수직
+    if (mv.includes('pan') || mv.includes('whip_pan')) parts.push('pan: horizontal arrow showing left/right direction; for whip-pan, add motion streaks. ');
+    if (mv.includes('tilt')) parts.push('tilt: vertical arrow up or down at frame edge. ');
+
+    // 이동식
+    if (mv.includes('dolly') || mv.includes('tracking') || mv.includes('track') || mv.includes('push_in') || mv.includes('pull_out')) parts.push('dolly/track: hatched arrow toward subject for in/push, away for out/pull. ');
+    if (mv.includes('slider')) parts.push('slider: small horizontal double-headed arrow near bottom frame indicating rail direction. ');
+    if (mv.includes('crane') || mv.includes('jib')) parts.push('crane/jib: long diagonal/vertical arrow indicating boom up/down with slight arc. ');
+    if (mv.includes('steadicam') || mv.includes('gimbal')) parts.push('steadicam/gimbal: smooth curved arrow following subject path. ');
+    if (mv.includes('handheld')) parts.push('handheld: same arrow as movement plus subtle jitter markers around frame. ');
+    if (mv.includes('drone')) parts.push('drone: aerial path arrow with small altitude indicator (↑/↓) if ascending/descending. ');
+
+    // 줌/복합
+    if (mv.includes('zoom') && !mv.includes('dolly_zoom') && !mv.includes('crash_zoom')) parts.push('zoom: inward/outward arrow centered on subject; add bracket lines indicating magnification. ');
+    if (mv.includes('dolly_zoom') || mv.includes('vertigo')) parts.push('dolly-zoom/vertigo: two opposite arrows—camera arrow forward/back plus zoom arrow opposite. ');
+    if (mv.includes('crash_zoom')) parts.push('crash-zoom: thick rapid arrow toward or away from subject with motion streaks. ');
+
+    // 곡선/원형
+    if (mv.includes('arc')) parts.push('arc: curved arrow around subject indicating orbit direction. ');
+    if (mv.includes('circle') || mv.includes('360') || mv.includes('vr_style')) parts.push('360 orbit: full circular arrow around subject or frame. ');
+    if (mv.includes('spiral')) parts.push('spiral: spiral arrow inward/outward around subject. ');
+
+    // 주체 추적/리드
+    if (mv.includes('follow')) parts.push('follow: path arrow behind subject indicating camera following direction. ');
+    if (mv.includes('lead')) parts.push('lead: path arrow ahead of subject indicating camera leading the motion. ');
+
+    // 리빌/컨실
+    if (mv.includes('reveal') || mv.includes('conceal')) parts.push('reveal/conceal: lateral arrow from behind an occluder showing reveal direction. ');
+
+    // 시차
+    if (mv.includes('parallax')) parts.push('parallax: foreground small arrow opposite to background arrow indicating parallax effect. ');
+
+    // 시간 계열 (아이콘 보조)
+    if (mv.includes('time_lapse')) parts.push('time-lapse: normal movement arrows plus small clock icon. ');
+    if (mv.includes('slow_motion')) parts.push('slow-motion: normal arrows but thin and long, indicating slower pace. ');
+    if (mv.includes('fast_motion')) parts.push('fast-motion: bold short arrows with multiple duplicates to indicate speed. ');
+    if (mv.includes('bullet_time') || mv.includes('matrix_style')) parts.push('bullet-time/matrix: circular segmented arrows frozen around subject, implying orbit while action pauses. ');
+
+    // 작은 라벨 표기 지시
+    parts.push(`Add a small, unobtrusive text label near the arrow head that shows the movement name: "${original}" (8-12px, semi-transparent white with thin black outline), keep it outside the subject's face area. `);
+
+    return parts.join('');
   }
 
   getStorageInfo(): { type: string; bucket?: string; localPath?: string } {
@@ -1123,6 +1223,8 @@ estimatedDuration - ${scene.estimatedDuration}
       imageUrl: cut.imageUrl,
       order: cut.order,
       isDeleted: cut.isDeleted,
+      createdAt: (cut as any).createdAt?.toISOString?.() || new Date().toISOString(),
+      updatedAt: (cut as any).updatedAt?.toISOString?.() || new Date().toISOString(),
     };
   }
 } 
